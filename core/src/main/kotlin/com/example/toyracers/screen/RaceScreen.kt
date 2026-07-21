@@ -9,7 +9,8 @@ import com.example.toyracers.ToyRacersGame
 import com.example.toyracers.car.CarConfig
 import com.example.toyracers.car.CarPhysics
 import com.example.toyracers.car.CarState
-import com.example.toyracers.input.PlayerInput
+import com.example.toyracers.input.KeyboardInputController
+import com.example.toyracers.input.TouchInputController
 import com.example.toyracers.render.CarRenderer
 import kotlin.math.min
 
@@ -17,23 +18,44 @@ import kotlin.math.min
 class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private var manuallyPaused = false
     private var accumulator = 0f
-    private val carState = CarState(x = 605f, y = 190f, rotationDeg = 90f)
+    private val carState = CarState(
+        x = START_X,
+        y = START_Y,
+        rotationDeg = START_ROTATION_DEG,
+    )
     private val carConfig = CarConfig()
     private val carPhysics = CarPhysics()
     private val carRenderer = CarRenderer(game.assets.playerCar)
+    private val keyboardInput = KeyboardInputController()
+    private val touchInput = TouchInputController()
+
+    override fun show() {
+        super.show()
+        Gdx.input.inputProcessor = touchInput.inputProcessor
+    }
+
+    override fun resize(width: Int, height: Int) {
+        super.resize(width, height)
+        touchInput.resize(width, height)
+    }
 
     override fun render(delta: Float) {
         if (!lifecyclePaused && Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             manuallyPaused = !manuallyPaused
+            touchInput.reset()
+        }
+        if (!lifecyclePaused && Gdx.input.isKeyJustPressed(Input.Keys.R)) {
+            resetRace()
         }
 
         if (!lifecyclePaused && !manuallyPaused) {
+            val playerInput = keyboardInput.readInput().combinedWith(touchInput.readInput())
             accumulator += min(delta, CarPhysics.MAX_FRAME_DELTA_SECONDS)
             while (accumulator >= CarPhysics.FIXED_DELTA_SECONDS) {
                 carPhysics.update(
                     carState,
                     carConfig,
-                    PlayerInput.NONE,
+                    playerInput,
                     CarPhysics.FIXED_DELTA_SECONDS,
                 )
                 accumulator -= CarPhysics.FIXED_DELTA_SECONDS
@@ -65,6 +87,8 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
             shapes.end()
         }
 
+        touchInput.render(delta)
+
         if (!lifecyclePaused && !manuallyPaused && finishRequested()) {
             game.showResults()
         }
@@ -74,7 +98,38 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         Gdx.input.isKeyJustPressed(Input.Keys.ENTER) ||
             Gdx.input.isKeyJustPressed(Input.Keys.SPACE)
 
+    private fun resetRace() {
+        carState.x = START_X
+        carState.y = START_Y
+        carState.rotationDeg = START_ROTATION_DEG
+        carState.speed = 0f
+        carState.velocityX = 0f
+        carState.velocityY = 0f
+        carState.angularVelocity = 0f
+        accumulator = 0f
+        manuallyPaused = false
+        touchInput.reset()
+    }
+
+    override fun pause() {
+        touchInput.reset()
+        super.pause()
+    }
+
+    override fun resume() {
+        touchInput.reset()
+        super.resume()
+    }
+
+    override fun hide() {
+        touchInput.reset()
+        if (Gdx.input.inputProcessor === touchInput.inputProcessor) {
+            Gdx.input.inputProcessor = null
+        }
+    }
+
     override fun dispose() {
+        touchInput.dispose()
         carRenderer.dispose()
         super.dispose()
     }
@@ -82,5 +137,8 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private companion object {
         val GRASS = Color(0.18f, 0.48f, 0.24f, 1f)
         val ASPHALT = Color(0.20f, 0.22f, 0.25f, 1f)
+        const val START_X = 605f
+        const val START_Y = 190f
+        const val START_ROTATION_DEG = 90f
     }
 }

@@ -17,7 +17,7 @@
 - [x] Add asynchronous asset loading and shared asset ownership
 - [x] Render the player car from simulation state
 - [x] Implement deterministic car state and arcade physics with unit tests
-- [ ] Add touch and desktop debug controls
+- [x] Add multi-touch controls and desktop keyboard controls
 - [ ] Define an original track, checkpoints, and collision boundaries
 - [ ] Implement ordered checkpoints, laps, timing, and positions with tests
 - [ ] Add three waypoint-following AI opponents
