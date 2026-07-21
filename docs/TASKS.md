@@ -15,7 +15,7 @@
 
 - [x] Establish the basic loading, menu, race, and results screen flow
 - [ ] Add asynchronous asset loading and shared asset ownership
-- [ ] Implement deterministic car state and arcade physics with unit tests
+- [x] Implement deterministic car state and arcade physics with unit tests
 - [ ] Add touch and desktop debug controls
 - [ ] Define an original track, checkpoints, and collision boundaries
 - [ ] Implement ordered checkpoints, laps, timing, and positions with tests
