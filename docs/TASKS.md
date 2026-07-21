@@ -8,6 +8,8 @@
 - [x] Run the desktop launcher
 - [ ] Build and run the Android launcher on a real phone
 - [x] Record exact generated Gradle task names in `README.md` and `AGENTS.md`
+- [x] Define module boundaries, package ownership, and runtime data flow
+- [x] Complete the MVP game design document
 
 ## MVP implementation
 
