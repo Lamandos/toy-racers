@@ -6,14 +6,15 @@
 - [x] Generate the Kotlin libGDX project with GDX-Liftoff
 - [x] Verify Gradle sync and the checked-in wrapper
 - [x] Run the desktop launcher
-- [ ] Build and run the Android launcher on a real phone
+- [x] Build and run the Android launcher on a real phone
 - [x] Record exact generated Gradle task names in `README.md` and `AGENTS.md`
 - [x] Define module boundaries, package ownership, and runtime data flow
 - [x] Complete the MVP game design document
 
 ## MVP implementation
 
-- [ ] Establish screens and asset loading
+- [x] Establish the basic loading, menu, race, and results screen flow
+- [ ] Add asynchronous asset loading and shared asset ownership
 - [ ] Implement deterministic car state and arcade physics with unit tests
 - [ ] Add touch and desktop debug controls
 - [ ] Define an original track, checkpoints, and collision boundaries

@@ -1,24 +1,46 @@
 package com.example.toyracers
 
-import com.badlogic.gdx.ApplicationAdapter
-import com.badlogic.gdx.graphics.Texture
-import com.badlogic.gdx.graphics.g2d.SpriteBatch
-import com.badlogic.gdx.utils.ScreenUtils
+import com.badlogic.gdx.Game
+import com.badlogic.gdx.Screen
+import com.example.toyracers.screen.LoadingScreen
+import com.example.toyracers.screen.MainMenuScreen
+import com.example.toyracers.screen.RaceScreen
+import com.example.toyracers.screen.ResultsScreen
 
-/** [com.badlogic.gdx.ApplicationListener] implementation shared by all platforms. */
-class ToyRacersGame : ApplicationAdapter() {
-    private val batch by lazy { SpriteBatch() }
-    private val image by lazy { Texture("libgdx.png") }
+/** Owns screen navigation for every platform launcher. */
+class ToyRacersGame : Game() {
+    override fun create() {
+        showLoadingScreen()
+    }
 
-    override fun render() {
-        ScreenUtils.clear(0.15f, 0.15f, 0.2f, 1f)
-        batch.begin()
-        batch.draw(image, 140f, 210f)
-        batch.end()
+    fun showMainMenu() {
+        changeScreen(MainMenuScreen(this))
+    }
+
+    fun startRace() {
+        changeScreen(RaceScreen(this))
+    }
+
+    fun showResults() {
+        changeScreen(ResultsScreen(this))
+    }
+
+    private fun showLoadingScreen() {
+        changeScreen(LoadingScreen(this))
+    }
+
+    private fun changeScreen(nextScreen: Screen) {
+        val previousScreen = screen
+        setScreen(nextScreen)
+        previousScreen?.dispose()
     }
 
     override fun dispose() {
-        batch.dispose()
-        image.dispose()
+        screen?.dispose()
+    }
+
+    companion object {
+        const val VIRTUAL_WIDTH = 1280f
+        const val VIRTUAL_HEIGHT = 720f
     }
 }
