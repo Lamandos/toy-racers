@@ -14,7 +14,8 @@
 ## MVP implementation
 
 - [x] Establish the basic loading, menu, race, and results screen flow
-- [ ] Add asynchronous asset loading and shared asset ownership
+- [x] Add asynchronous asset loading and shared asset ownership
+- [x] Render the player car from simulation state
 - [x] Implement deterministic car state and arcade physics with unit tests
 - [ ] Add touch and desktop debug controls
 - [ ] Define an original track, checkpoints, and collision boundaries

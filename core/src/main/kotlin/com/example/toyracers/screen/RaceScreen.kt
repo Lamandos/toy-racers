@@ -10,6 +10,7 @@ import com.example.toyracers.car.CarConfig
 import com.example.toyracers.car.CarPhysics
 import com.example.toyracers.car.CarState
 import com.example.toyracers.input.PlayerInput
+import com.example.toyracers.render.CarRenderer
 import kotlin.math.min
 
 /** First race view: a resolution-independent test track without gameplay physics. */
@@ -19,6 +20,7 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private val carState = CarState(x = 605f, y = 190f, rotationDeg = 90f)
     private val carConfig = CarConfig()
     private val carPhysics = CarPhysics()
+    private val carRenderer = CarRenderer(game.assets.playerCar)
 
     override fun render(delta: Float) {
         if (!lifecyclePaused && Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
@@ -47,19 +49,21 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         shapes.color = GRASS
         shapes.rect(330f, 260f, 620f, 200f)
 
-        // Start/finish stripe and a placeholder player car.
+        // Start/finish stripe.
         shapes.color = Color.WHITE
         shapes.rect(610f, 90f, 16f, 170f)
-        shapes.color = Color(0.94f, 0.25f, 0.18f, 1f)
-        shapes.rect(carState.x - 35f, carState.y - 55f, 70f, 110f)
+        shapes.end()
+
+        carRenderer.render(camera, carState, carConfig)
 
         if (manuallyPaused || lifecyclePaused) {
+            beginShapes(ShapeRenderer.ShapeType.Filled)
             shapes.color = Color(0f, 0f, 0f, 0.55f)
             shapes.rect(0f, 0f, ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT)
             shapes.color = Color(0.98f, 0.76f, 0.22f, 1f)
             shapes.rect(465f, 300f, 350f, 120f)
+            shapes.end()
         }
-        shapes.end()
 
         if (!lifecyclePaused && !manuallyPaused && finishRequested()) {
             game.showResults()
@@ -69,6 +73,11 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private fun finishRequested(): Boolean =
         Gdx.input.isKeyJustPressed(Input.Keys.ENTER) ||
             Gdx.input.isKeyJustPressed(Input.Keys.SPACE)
+
+    override fun dispose() {
+        carRenderer.dispose()
+        super.dispose()
+    }
 
     private companion object {
         val GRASS = Color(0.18f, 0.48f, 0.24f, 1f)

@@ -2,6 +2,7 @@ package com.example.toyracers
 
 import com.badlogic.gdx.Game
 import com.badlogic.gdx.Screen
+import com.example.toyracers.assets.GameAssets
 import com.example.toyracers.screen.LoadingScreen
 import com.example.toyracers.screen.MainMenuScreen
 import com.example.toyracers.screen.RaceScreen
@@ -9,7 +10,12 @@ import com.example.toyracers.screen.ResultsScreen
 
 /** Owns screen navigation for every platform launcher. */
 class ToyRacersGame : Game() {
+    lateinit var assets: GameAssets
+        private set
+
     override fun create() {
+        assets = GameAssets()
+        assets.queueLoading()
         showLoadingScreen()
     }
 
@@ -37,6 +43,7 @@ class ToyRacersGame : Game() {
 
     override fun dispose() {
         screen?.dispose()
+        assets.dispose()
     }
 
     companion object {

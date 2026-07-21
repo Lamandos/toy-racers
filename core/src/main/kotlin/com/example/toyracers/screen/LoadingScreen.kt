@@ -15,15 +15,18 @@ class LoadingScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
             elapsedSeconds += min(delta, MAX_FRAME_DELTA)
         }
 
+        val assetsReady = game.assets.update()
+
         ScreenUtils.clear(BACKGROUND)
         beginShapes(ShapeRenderer.ShapeType.Filled)
         shapes.color = Color(0.18f, 0.72f, 0.82f, 1f)
         shapes.rect(390f, 330f, 500f, 60f)
         shapes.color = Color(0.92f, 0.82f, 0.28f, 1f)
-        shapes.rect(390f, 330f, 500f * (elapsedSeconds / DISPLAY_SECONDS).coerceAtMost(1f), 60f)
+        val displayProgress = (elapsedSeconds / DISPLAY_SECONDS).coerceAtMost(1f)
+        shapes.rect(390f, 330f, 500f * min(displayProgress, game.assets.progress), 60f)
         shapes.end()
 
-        if (!lifecyclePaused && elapsedSeconds >= DISPLAY_SECONDS) {
+        if (!lifecyclePaused && elapsedSeconds >= DISPLAY_SECONDS && assetsReady) {
             game.showMainMenu()
         }
     }
