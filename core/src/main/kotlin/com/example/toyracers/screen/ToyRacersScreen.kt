@@ -38,6 +38,7 @@ abstract class ToyRacersScreen(
     }
 
     protected fun beginShapes(type: ShapeRenderer.ShapeType) {
+        viewport.apply()
         camera.update()
         shapes.projectionMatrix = camera.combined
         shapes.begin(type)

@@ -3,8 +3,10 @@ package com.example.toyracers.screen
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.graphics.OrthographicCamera
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.badlogic.gdx.utils.ScreenUtils
+import com.badlogic.gdx.utils.viewport.FitViewport
 import com.example.toyracers.ToyRacersGame
 import com.example.toyracers.car.CarConfig
 import com.example.toyracers.car.CarPhysics
@@ -14,8 +16,10 @@ import com.example.toyracers.input.TouchInputController
 import com.example.toyracers.render.CarRenderer
 import kotlin.math.min
 
-/** First race view: a resolution-independent test track without gameplay physics. */
+/** First race view with a world-unit simulation and an independent screen-space UI. */
 class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
+    private val worldCamera = OrthographicCamera()
+    private val worldViewport = FitViewport(WORLD_WIDTH, WORLD_HEIGHT, worldCamera)
     private var manuallyPaused = false
     private var accumulator = 0f
     private val carState = CarState(
@@ -36,6 +40,7 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
 
     override fun resize(width: Int, height: Int) {
         super.resize(width, height)
+        worldViewport.update(width, height, true)
         touchInput.resize(width, height)
     }
 
@@ -63,20 +68,25 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         }
 
         ScreenUtils.clear(GRASS)
-        beginShapes(ShapeRenderer.ShapeType.Filled)
+        beginWorldShapes()
 
         // A simple rectangular circuit: asphalt outside, grass in the infield.
         shapes.color = ASPHALT
-        shapes.rect(120f, 90f, 1040f, 540f)
+        shapes.rect(TRACK_X, TRACK_Y, TRACK_WIDTH, TRACK_HEIGHT)
         shapes.color = GRASS
-        shapes.rect(330f, 260f, 620f, 200f)
+        shapes.rect(INFIELD_X, INFIELD_Y, INFIELD_WIDTH, INFIELD_HEIGHT)
 
         // Start/finish stripe.
         shapes.color = Color.WHITE
-        shapes.rect(610f, 90f, 16f, 170f)
+        shapes.rect(
+            START_LINE_X,
+            TRACK_Y,
+            START_LINE_WIDTH,
+            INFIELD_Y - TRACK_Y,
+        )
         shapes.end()
 
-        carRenderer.render(camera, carState, carConfig)
+        carRenderer.render(worldCamera, carState, carConfig)
 
         if (manuallyPaused || lifecyclePaused) {
             beginShapes(ShapeRenderer.ShapeType.Filled)
@@ -134,11 +144,31 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         super.dispose()
     }
 
+    private fun beginWorldShapes() {
+        worldViewport.apply()
+        worldCamera.update()
+        shapes.projectionMatrix = worldCamera.combined
+        shapes.begin(ShapeRenderer.ShapeType.Filled)
+    }
+
     private companion object {
         val GRASS = Color(0.18f, 0.48f, 0.24f, 1f)
         val ASPHALT = Color(0.20f, 0.22f, 0.25f, 1f)
-        const val START_X = 605f
-        const val START_Y = 190f
+        const val DISPLAY_UNITS_PER_WORLD_UNIT = 30f
+        const val WORLD_WIDTH = ToyRacersGame.VIRTUAL_WIDTH / DISPLAY_UNITS_PER_WORLD_UNIT
+        const val WORLD_HEIGHT = ToyRacersGame.VIRTUAL_HEIGHT / DISPLAY_UNITS_PER_WORLD_UNIT
+        const val TRACK_X = 120f / DISPLAY_UNITS_PER_WORLD_UNIT
+        const val TRACK_Y = 90f / DISPLAY_UNITS_PER_WORLD_UNIT
+        const val TRACK_WIDTH = 1040f / DISPLAY_UNITS_PER_WORLD_UNIT
+        const val TRACK_HEIGHT = 540f / DISPLAY_UNITS_PER_WORLD_UNIT
+        const val INFIELD_X = 330f / DISPLAY_UNITS_PER_WORLD_UNIT
+        const val INFIELD_Y = 260f / DISPLAY_UNITS_PER_WORLD_UNIT
+        const val INFIELD_WIDTH = 620f / DISPLAY_UNITS_PER_WORLD_UNIT
+        const val INFIELD_HEIGHT = 200f / DISPLAY_UNITS_PER_WORLD_UNIT
+        const val START_LINE_X = 610f / DISPLAY_UNITS_PER_WORLD_UNIT
+        const val START_LINE_WIDTH = 16f / DISPLAY_UNITS_PER_WORLD_UNIT
+        const val START_X = 605f / DISPLAY_UNITS_PER_WORLD_UNIT
+        const val START_Y = 190f / DISPLAY_UNITS_PER_WORLD_UNIT
         const val START_ROTATION_DEG = 90f
     }
 }

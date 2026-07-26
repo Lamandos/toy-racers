@@ -17,21 +17,18 @@ class CarRenderer(
         state: CarState,
         config: CarConfig,
     ) {
-        val width = config.width * DISPLAY_UNITS_PER_PHYSICS_UNIT
-        val length = config.length * DISPLAY_UNITS_PER_PHYSICS_UNIT
-        val x = state.x - width / 2f
-        val y = state.y - length / 2f
+        val bounds = calculateCarRenderBounds(state, config)
 
         batch.projectionMatrix = camera.combined
         batch.begin()
         batch.draw(
             texture,
-            x,
-            y,
-            width / 2f,
-            length / 2f,
-            width,
-            length,
+            bounds.x,
+            bounds.y,
+            bounds.width / 2f,
+            bounds.length / 2f,
+            bounds.width,
+            bounds.length,
             1f,
             1f,
             state.rotationDeg - TEXTURE_FORWARD_DEGREES,
@@ -44,7 +41,23 @@ class CarRenderer(
     }
 
     private companion object {
-        const val DISPLAY_UNITS_PER_PHYSICS_UNIT = 30f
         const val TEXTURE_FORWARD_DEGREES = 90f
     }
 }
+
+internal data class CarRenderBounds(
+    val x: Float,
+    val y: Float,
+    val width: Float,
+    val length: Float,
+)
+
+internal fun calculateCarRenderBounds(
+    state: CarState,
+    config: CarConfig,
+): CarRenderBounds = CarRenderBounds(
+    x = state.x - config.width / 2f,
+    y = state.y - config.length / 2f,
+    width = config.width,
+    length = config.length,
+)
