@@ -10,7 +10,12 @@ import com.example.toyracers.ui.MainMenuStage
 /** Scene2D main menu with explicit placeholders for post-MVP selections and settings. */
 class MainMenuScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private var playRequested = false
-    private val menu = MainMenuStage { playRequested = true }
+    private var settingsRequested = false
+    private val menu = MainMenuStage(
+        onPlay = { playRequested = true },
+        onSettings = { settingsRequested = true },
+        onButtonClick = game.audio::buttonClick,
+    )
 
     override fun show() {
         super.show()
@@ -29,6 +34,9 @@ class MainMenuScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         if (!lifecyclePaused && (playRequested || startRequested())) {
             playRequested = false
             game.startRace()
+        } else if (!lifecyclePaused && settingsRequested) {
+            settingsRequested = false
+            game.showSettings()
         }
     }
 

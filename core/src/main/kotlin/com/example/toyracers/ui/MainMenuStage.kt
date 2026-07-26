@@ -11,7 +11,11 @@ import com.badlogic.gdx.utils.Disposable
 import com.badlogic.gdx.utils.viewport.FitViewport
 import com.example.toyracers.ToyRacersGame
 
-class MainMenuStage(onPlay: () -> Unit) : Disposable {
+class MainMenuStage(
+    onPlay: () -> Unit,
+    onSettings: () -> Unit = {},
+    private val onButtonClick: () -> Unit = {},
+) : Disposable {
     private val skin = createGameUiSkin()
     private val stage = Stage(
         FitViewport(ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT),
@@ -23,7 +27,9 @@ class MainMenuStage(onPlay: () -> Unit) : Disposable {
     init {
         val menu = Table().apply {
             setFillParent(true)
-            val title = Label("TOY RACERS", skin).apply { setFontScale(3f) }
+            val title = Label("TOY RACERS", this@MainMenuStage.skin).apply {
+                setFontScale(3f)
+            }
             add(title).width(430f).height(110f)
             row()
             add(button("PLAY", onPlay)).width(360f).height(80f).pad(10f)
@@ -32,7 +38,7 @@ class MainMenuStage(onPlay: () -> Unit) : Disposable {
             row()
             add(button("CAR SELECT (SOON)") {}).width(360f).height(72f).pad(8f)
             row()
-            add(button("SETTINGS (SOON)") {}).width(360f).height(72f).pad(8f)
+            add(button("SETTINGS", onSettings)).width(360f).height(72f).pad(8f)
         }
         stage.addActor(menu)
     }
@@ -59,6 +65,7 @@ class MainMenuStage(onPlay: () -> Unit) : Disposable {
                 x: Float,
                 y: Float,
             ) {
+                onButtonClick()
                 action()
             }
         })

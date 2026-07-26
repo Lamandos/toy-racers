@@ -24,7 +24,7 @@
 - [x] Add three waypoint-following AI opponents
 - [x] Implement countdown, pause, HUD, and results
 - [ ] Persist the best time
-- [ ] Add original or properly licensed visuals and basic sounds
+- [x] Add original or properly licensed visuals and basic sounds
 
 ## Quality gates
 

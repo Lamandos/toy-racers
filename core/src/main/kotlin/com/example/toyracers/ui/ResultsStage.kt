@@ -16,6 +16,7 @@ class ResultsStage(
     result: RaceResult,
     onRetry: () -> Unit,
     onMainMenu: () -> Unit,
+    private val onButtonClick: () -> Unit = {},
 ) : Disposable {
     private val skin = createGameUiSkin()
     private val stage = Stage(
@@ -83,6 +84,7 @@ class ResultsStage(
                 x: Float,
                 y: Float,
             ) {
+                onButtonClick()
                 action()
             }
         })

@@ -20,6 +20,7 @@ import com.example.toyracers.debug.DebugCar
 import com.example.toyracers.debug.DebugSettings
 import com.example.toyracers.input.KeyboardInputController
 import com.example.toyracers.input.TouchInputController
+import com.example.toyracers.input.PlayerInput
 import com.example.toyracers.race.RaceProgress
 import com.example.toyracers.race.RacePhase
 import com.example.toyracers.race.RaceCompetitor
@@ -77,11 +78,15 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private val keyboardInput = KeyboardInputController()
     private val touchInput = TouchInputController()
     private var pendingUiAction: RaceUiAction? = null
+    private var latestInput = PlayerInput.NONE
+    private var lastCountdownNumber = -1
+    private var finishSoundPlayed = false
     private val hud = RaceHudStage(
         onPause = { pendingUiAction = RaceUiAction.PAUSE },
         onResume = { pendingUiAction = RaceUiAction.RESUME },
         onRestart = { pendingUiAction = RaceUiAction.RESTART },
         onQuitToMenu = { pendingUiAction = RaceUiAction.QUIT_TO_MENU },
+        onButtonClick = game.audio::buttonClick,
     )
     private val inputProcessor = InputMultiplexer(hud.inputProcessor, touchInput.inputProcessor)
     private val cameraController = RaceCameraController(
@@ -100,6 +105,7 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         Gdx.input.inputProcessor = inputProcessor
         raceState.markReady()
         raceState.startCountdown()
+        game.audio.startRaceLoops()
     }
 
     override fun resize(width: Int, height: Int) {
@@ -132,9 +138,12 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         }
 
         val frameDelta = min(delta, CarPhysics.MAX_FRAME_DELTA_SECONDS)
+        val phaseBeforeAdvance = raceState.phase
         val simulationDelta = if (lifecyclePaused) 0f else raceState.advance(frameDelta)
+        updateCountdownAudio(phaseBeforeAdvance)
         if (simulationDelta > 0f) {
             val playerInput = keyboardInput.readInput().combinedWith(touchInput.readInput())
+            latestInput = playerInput
             accumulator += simulationDelta
             while (accumulator >= CarPhysics.FIXED_DELTA_SECONDS) {
                 val previousPosition = TrackPoint(carState.x, carState.y)
@@ -159,12 +168,16 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
                     surface = track.surfaceAt(carState.x, carState.y),
                     deltaSeconds = CarPhysics.FIXED_DELTA_SECONDS,
                 )
+                val checkpointBefore = raceProgress.currentCheckpointIndex
                 raceRules.update(
                     progress = raceProgress,
                     previousPosition = previousPosition,
                     currentPosition = TrackPoint(carState.x, carState.y),
                     deltaSeconds = CarPhysics.FIXED_DELTA_SECONDS,
                 )
+                if (raceProgress.currentCheckpointIndex > checkpointBefore) {
+                    game.audio.checkpoint()
+                }
                 aiCars.forEachIndexed { index, aiCar ->
                     carPhysics.update(
                         state = aiCar.state,
@@ -194,11 +207,12 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
                         deltaSeconds = CarPhysics.FIXED_DELTA_SECONDS,
                     )
                 }
-                resolveCarCollisions()
-                if (collision.maxImpactSpeed >= MIN_SHAKE_IMPACT_SPEED) {
+                val maxImpact = maxOf(collision.maxImpactSpeed, resolveCarCollisions())
+                if (maxImpact >= MIN_SHAKE_IMPACT_SPEED) {
                     cameraController.addShake(
-                        collision.maxImpactSpeed * SHAKE_PER_IMPACT_SPEED,
+                        maxImpact * SHAKE_PER_IMPACT_SPEED,
                     )
+                    game.audio.collision(maxImpact / carConfig.maxForwardSpeed)
                 }
                 accumulator -= CarPhysics.FIXED_DELTA_SECONDS
                 if (raceProgress.finished) {
@@ -209,6 +223,13 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
             }
         }
         cameraController.update(carState, frameDelta)
+        game.audio.updateRace(
+            speed = carState.speed,
+            maxSpeed = carConfig.maxForwardSpeed,
+            throttle = latestInput.throttle,
+            steering = latestInput.steering,
+            racing = raceState.phase == RacePhase.RACING,
+        )
 
         trackRenderer.render(worldViewport, worldCamera, shapes, track)
 
@@ -238,6 +259,10 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         }
 
         if (!lifecyclePaused && raceState.phase == RacePhase.FINISHED) {
+            if (!finishSoundPlayed) {
+                finishSoundPlayed = true
+                game.audio.finish()
+            }
             game.showResults(
                 RaceResult(
                     finishPosition = currentPlayerPosition(),
@@ -255,10 +280,12 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         when (action) {
             RaceUiAction.PAUSE -> if (raceState.phase == RacePhase.RACING) {
                 raceState.pause()
+                game.audio.pauseRace()
                 touchInput.reset()
             }
             RaceUiAction.RESUME -> if (raceState.phase == RacePhase.PAUSED && !lifecyclePaused) {
                 raceState.resume()
+                game.audio.resumeRace()
                 touchInput.reset()
             }
             RaceUiAction.RESTART -> if (!lifecyclePaused) resetRace()
@@ -320,6 +347,10 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         }
         accumulator = 0f
         raceState.restart()
+        latestInput = PlayerInput.NONE
+        lastCountdownNumber = -1
+        finishSoundPlayed = false
+        game.audio.resumeRace()
         touchInput.reset()
         cameraController.snapTo(carState)
     }
@@ -336,17 +367,32 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         shapes.end()
     }
 
-    private fun resolveCarCollisions() {
+    private fun resolveCarCollisions(): Float {
         val states = listOf(carState) + aiCars.map(AiCar::state)
+        var maxImpactSpeed = 0f
         states.indices.forEach { firstIndex ->
             for (secondIndex in firstIndex + 1..<states.size) {
-                collisionSystem.resolveCarCollision(
+                val result = collisionSystem.resolveCarCollision(
                     first = states[firstIndex],
                     firstRadius = carConfig.collisionRadius,
                     second = states[secondIndex],
                     secondRadius = carConfig.collisionRadius,
                 )
+                maxImpactSpeed = maxOf(maxImpactSpeed, result.maxImpactSpeed)
             }
+        }
+        return maxImpactSpeed
+    }
+
+    private fun updateCountdownAudio(phaseBeforeAdvance: RacePhase) {
+        if (raceState.phase == RacePhase.COUNTDOWN) {
+            val countdownNumber = kotlin.math.ceil(raceState.countdownRemainingSeconds).toInt()
+            if (countdownNumber != lastCountdownNumber) {
+                lastCountdownNumber = countdownNumber
+                game.audio.countdown()
+            }
+        } else if (phaseBeforeAdvance == RacePhase.COUNTDOWN && raceState.phase == RacePhase.RACING) {
+            game.audio.go()
         }
     }
 
@@ -364,6 +410,7 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         touchInput.reset()
         if (raceState.phase == RacePhase.RACING) {
             raceState.pause()
+            game.audio.pauseRace()
         }
         super.pause()
     }
@@ -381,6 +428,7 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     }
 
     override fun dispose() {
+        game.audio.stopRaceLoops()
         touchInput.dispose()
         hud.dispose()
         carRenderer.dispose()

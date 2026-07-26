@@ -19,6 +19,7 @@ class ResultsScreen(
         result = result,
         onRetry = { retryRequested = true },
         onMainMenu = { mainMenuRequested = true },
+        onButtonClick = game.audio::buttonClick,
     )
 
     override fun show() {

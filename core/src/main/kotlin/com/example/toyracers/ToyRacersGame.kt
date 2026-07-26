@@ -3,15 +3,19 @@ package com.example.toyracers
 import com.badlogic.gdx.Game
 import com.badlogic.gdx.Screen
 import com.example.toyracers.assets.GameAssets
+import com.example.toyracers.audio.GameAudio
 import com.example.toyracers.race.RaceResult
 import com.example.toyracers.screen.LoadingScreen
 import com.example.toyracers.screen.MainMenuScreen
 import com.example.toyracers.screen.RaceScreen
 import com.example.toyracers.screen.ResultsScreen
+import com.example.toyracers.screen.SettingsScreen
 
 /** Owns screen navigation for every platform launcher. */
 class ToyRacersGame : Game() {
     lateinit var assets: GameAssets
+        private set
+    lateinit var audio: GameAudio
         private set
 
     override fun create() {
@@ -21,11 +25,16 @@ class ToyRacersGame : Game() {
     }
 
     fun showMainMenu() {
+        ensureAudio().startMusic()
         changeScreen(MainMenuScreen(this))
     }
 
     fun startRace() {
         changeScreen(RaceScreen(this))
+    }
+
+    fun showSettings() {
+        changeScreen(SettingsScreen(this))
     }
 
     fun showResults(result: RaceResult) {
@@ -44,7 +53,13 @@ class ToyRacersGame : Game() {
 
     override fun dispose() {
         screen?.dispose()
+        if (::audio.isInitialized) audio.dispose()
         assets.dispose()
+    }
+
+    private fun ensureAudio(): GameAudio {
+        if (!::audio.isInitialized) audio = GameAudio(assets)
+        return audio
     }
 
     companion object {

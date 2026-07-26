@@ -1,3 +1,12 @@
 README.md
+audio/background-music.wav
+audio/button-click.wav
+audio/checkpoint.wav
+audio/collision.wav
+audio/countdown-beep.wav
+audio/engine-loop.wav
+audio/finish.wav
+audio/go.wav
+audio/skid-loop.wav
 libgdx.png
 sprites/player-car.png

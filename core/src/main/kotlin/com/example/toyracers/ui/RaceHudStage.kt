@@ -26,6 +26,7 @@ class RaceHudStage(
     onResume: () -> Unit,
     onRestart: () -> Unit,
     onQuitToMenu: () -> Unit,
+    private val onButtonClick: () -> Unit = {},
 ) : Disposable {
     private val skin = createGameUiSkin()
     private val stage = Stage(
@@ -96,8 +97,11 @@ class RaceHudStage(
         onQuitToMenu: () -> Unit,
     ): Table = Table().apply {
         setFillParent(true)
-        background = skin.newDrawable("white", Color(0.03f, 0.05f, 0.09f, 0.88f))
-        val title = Label("PAUSED", skin).apply { setFontScale(2.2f) }
+        background = this@RaceHudStage.skin.newDrawable(
+            "white",
+            Color(0.03f, 0.05f, 0.09f, 0.88f),
+        )
+        val title = Label("PAUSED", this@RaceHudStage.skin).apply { setFontScale(2.2f) }
         add(title).width(360f).height(80f)
         row()
         add(button("RESUME", onResume)).width(360f).height(72f).pad(8f)
@@ -119,6 +123,7 @@ class RaceHudStage(
                 x: Float,
                 y: Float,
             ) {
+                onButtonClick()
                 action()
             }
         })
