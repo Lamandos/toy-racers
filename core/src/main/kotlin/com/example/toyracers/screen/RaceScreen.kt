@@ -5,7 +5,6 @@ import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.OrthographicCamera
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
-import com.badlogic.gdx.utils.ScreenUtils
 import com.badlogic.gdx.utils.viewport.FitViewport
 import com.example.toyracers.ToyRacersGame
 import com.example.toyracers.camera.CameraBounds
@@ -16,6 +15,8 @@ import com.example.toyracers.car.CarState
 import com.example.toyracers.input.KeyboardInputController
 import com.example.toyracers.input.TouchInputController
 import com.example.toyracers.render.CarRenderer
+import com.example.toyracers.render.TrackRenderer
+import com.example.toyracers.track.TrackLoader
 import kotlin.math.min
 
 /** First race view with a world-unit simulation and an independent screen-space UI. */
@@ -24,19 +25,27 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private val worldViewport = FitViewport(CAMERA_VIEW_WIDTH, CAMERA_VIEW_HEIGHT, worldCamera)
     private var manuallyPaused = false
     private var accumulator = 0f
+    private val track = TrackLoader().load()
+    private val playerStart = track.startGrid.first()
     private val carState = CarState(
-        x = START_X,
-        y = START_Y,
-        rotationDeg = START_ROTATION_DEG,
+        x = playerStart.position.x,
+        y = playerStart.position.y,
+        rotationDeg = playerStart.rotationDeg,
     )
     private val carConfig = CarConfig()
     private val carPhysics = CarPhysics()
     private val carRenderer = CarRenderer(game.assets.playerCar)
+    private val trackRenderer = TrackRenderer()
     private val keyboardInput = KeyboardInputController()
     private val touchInput = TouchInputController()
     private val cameraController = RaceCameraController(
         camera = worldCamera,
-        bounds = CameraBounds(0f, 0f, WORLD_WIDTH, WORLD_HEIGHT),
+        bounds = CameraBounds(
+            minX = track.cameraBounds.x,
+            minY = track.cameraBounds.y,
+            maxX = track.cameraBounds.maxX,
+            maxY = track.cameraBounds.maxY,
+        ),
     )
 
     override fun show() {
@@ -75,24 +84,7 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         }
         cameraController.update(carState, min(delta, CarPhysics.MAX_FRAME_DELTA_SECONDS))
 
-        ScreenUtils.clear(GRASS)
-        beginWorldShapes()
-
-        // A simple rectangular circuit: asphalt outside, grass in the infield.
-        shapes.color = ASPHALT
-        shapes.rect(TRACK_X, TRACK_Y, TRACK_WIDTH, TRACK_HEIGHT)
-        shapes.color = GRASS
-        shapes.rect(INFIELD_X, INFIELD_Y, INFIELD_WIDTH, INFIELD_HEIGHT)
-
-        // Start/finish stripe.
-        shapes.color = Color.WHITE
-        shapes.rect(
-            START_LINE_X,
-            TRACK_Y,
-            START_LINE_WIDTH,
-            INFIELD_Y - TRACK_Y,
-        )
-        shapes.end()
+        trackRenderer.render(worldViewport, worldCamera, shapes, track)
 
         carRenderer.render(worldCamera, carState, carConfig)
 
@@ -117,9 +109,9 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
             Gdx.input.isKeyJustPressed(Input.Keys.SPACE)
 
     private fun resetRace() {
-        carState.x = START_X
-        carState.y = START_Y
-        carState.rotationDeg = START_ROTATION_DEG
+        carState.x = playerStart.position.x
+        carState.y = playerStart.position.y
+        carState.rotationDeg = playerStart.rotationDeg
         carState.speed = 0f
         carState.velocityX = 0f
         carState.velocityY = 0f
@@ -153,33 +145,8 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         super.dispose()
     }
 
-    private fun beginWorldShapes() {
-        worldViewport.apply()
-        worldCamera.update()
-        shapes.projectionMatrix = worldCamera.combined
-        shapes.begin(ShapeRenderer.ShapeType.Filled)
-    }
-
     private companion object {
-        val GRASS = Color(0.18f, 0.48f, 0.24f, 1f)
-        val ASPHALT = Color(0.20f, 0.22f, 0.25f, 1f)
-        const val DISPLAY_UNITS_PER_WORLD_UNIT = 30f
-        const val WORLD_WIDTH = ToyRacersGame.VIRTUAL_WIDTH / DISPLAY_UNITS_PER_WORLD_UNIT
-        const val WORLD_HEIGHT = ToyRacersGame.VIRTUAL_HEIGHT / DISPLAY_UNITS_PER_WORLD_UNIT
         const val CAMERA_VIEW_WIDTH = 24f
         const val CAMERA_VIEW_HEIGHT = CAMERA_VIEW_WIDTH * 9f / 16f
-        const val TRACK_X = 120f / DISPLAY_UNITS_PER_WORLD_UNIT
-        const val TRACK_Y = 90f / DISPLAY_UNITS_PER_WORLD_UNIT
-        const val TRACK_WIDTH = 1040f / DISPLAY_UNITS_PER_WORLD_UNIT
-        const val TRACK_HEIGHT = 540f / DISPLAY_UNITS_PER_WORLD_UNIT
-        const val INFIELD_X = 330f / DISPLAY_UNITS_PER_WORLD_UNIT
-        const val INFIELD_Y = 260f / DISPLAY_UNITS_PER_WORLD_UNIT
-        const val INFIELD_WIDTH = 620f / DISPLAY_UNITS_PER_WORLD_UNIT
-        const val INFIELD_HEIGHT = 200f / DISPLAY_UNITS_PER_WORLD_UNIT
-        const val START_LINE_X = 610f / DISPLAY_UNITS_PER_WORLD_UNIT
-        const val START_LINE_WIDTH = 16f / DISPLAY_UNITS_PER_WORLD_UNIT
-        const val START_X = 605f / DISPLAY_UNITS_PER_WORLD_UNIT
-        const val START_Y = 190f / DISPLAY_UNITS_PER_WORLD_UNIT
-        const val START_ROTATION_DEG = 90f
     }
 }

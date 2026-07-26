@@ -18,7 +18,7 @@
 - [x] Render the player car from simulation state
 - [x] Implement deterministic car state and arcade physics with unit tests
 - [x] Add multi-touch controls and desktop keyboard controls
-- [ ] Define an original track, checkpoints, and collision boundaries
+- [x] Define an original track, checkpoints, and collision boundaries
 - [ ] Implement ordered checkpoints, laps, timing, and positions with tests
 - [ ] Add three waypoint-following AI opponents
 - [ ] Implement countdown, pause, HUD, and results
