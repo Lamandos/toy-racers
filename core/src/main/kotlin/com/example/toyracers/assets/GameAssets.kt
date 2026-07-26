@@ -1,8 +1,8 @@
 package com.example.toyracers.assets
 
 import com.badlogic.gdx.assets.AssetManager
-import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.TextureRegion
+import com.badlogic.gdx.graphics.g2d.TextureAtlas
 import com.badlogic.gdx.audio.Music
 import com.badlogic.gdx.audio.Sound
 import com.badlogic.gdx.utils.Disposable
@@ -19,7 +19,12 @@ class GameAssets(
 
     val playerCar: TextureRegion by lazy {
         check(prepared) { "Assets must finish loading before they are accessed" }
-        TextureRegion(manager.get(AssetPaths.PLAYER_CAR, Texture::class.java))
+        manager.get(AssetPaths.GAME_ATLAS, TextureAtlas::class.java).findRegion(PLAYER_CAR_REGION)
+    }
+
+    val opponentCar: TextureRegion by lazy {
+        check(prepared) { "Assets must finish loading before they are accessed" }
+        manager.get(AssetPaths.GAME_ATLAS, TextureAtlas::class.java).findRegion(OPPONENT_CAR_REGION)
     }
 
     val engineLoop: Sound get() = sound(AssetPaths.ENGINE_LOOP)
@@ -38,7 +43,7 @@ class GameAssets(
 
     fun queueLoading() {
         if (queued) return
-        manager.load(AssetPaths.PLAYER_CAR, Texture::class.java)
+        manager.load(AssetPaths.GAME_ATLAS, TextureAtlas::class.java)
         listOf(
             AssetPaths.ENGINE_LOOP,
             AssetPaths.SKID_LOOP,
@@ -57,10 +62,6 @@ class GameAssets(
         check(queued) { "queueLoading must be called before update" }
         val finished = manager.update()
         if (finished && !prepared) {
-            manager.get(AssetPaths.PLAYER_CAR, Texture::class.java).setFilter(
-                Texture.TextureFilter.Linear,
-                Texture.TextureFilter.Linear,
-            )
             prepared = true
         }
         return finished
@@ -73,5 +74,10 @@ class GameAssets(
     private fun sound(path: String): Sound {
         check(prepared) { "Assets must finish loading before they are accessed" }
         return manager.get(path, Sound::class.java)
+    }
+
+    private companion object {
+        const val PLAYER_CAR_REGION = "player-car"
+        const val OPPONENT_CAR_REGION = "ai-car"
     }
 }

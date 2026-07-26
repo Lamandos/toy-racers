@@ -71,7 +71,8 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private val positionTracker = PositionTracker(track)
     private val surfaceSpeedSystem = SurfaceSpeedSystem()
     private val surfaceSpeedState = SurfaceSpeedState()
-    private val carRenderer = CarRenderer(game.assets.playerCar)
+    private val playerCarRenderer = CarRenderer(game.assets.playerCar)
+    private val opponentCarRenderer = CarRenderer(game.assets.opponentCar)
     private val trackRenderer = TrackRenderer()
     private val collisionDebugRenderer = CollisionDebugRenderer()
     private val debugSettings = DebugSettings()
@@ -233,8 +234,15 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
 
         trackRenderer.render(worldViewport, worldCamera, shapes, track)
 
-        aiCars.forEach { carRenderer.render(worldCamera, it.state, carConfig) }
-        carRenderer.render(worldCamera, carState, carConfig)
+        aiCars.forEachIndexed { index, aiCar ->
+            opponentCarRenderer.render(
+                worldCamera,
+                aiCar.state,
+                carConfig,
+                AI_CAR_TINTS[index % AI_CAR_TINTS.size],
+            )
+        }
+        playerCarRenderer.render(worldCamera, carState, carConfig)
         if (debugSettings.showCollisions) {
             collisionDebugRenderer.render(
                 viewport = worldViewport,
@@ -431,7 +439,8 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         game.audio.stopRaceLoops()
         touchInput.dispose()
         hud.dispose()
-        carRenderer.dispose()
+        playerCarRenderer.dispose()
+        opponentCarRenderer.dispose()
         super.dispose()
     }
 
@@ -443,6 +452,11 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         const val PLAYER_ID = "player"
         val COUNTDOWN_ACTIVE = Color(0.95f, 0.28f, 0.18f, 1f)
         val COUNTDOWN_INACTIVE = Color(0.25f, 0.27f, 0.31f, 1f)
+        val AI_CAR_TINTS = listOf(
+            Color.WHITE,
+            Color(0.72f, 0.90f, 1f, 1f),
+            Color(1f, 0.72f, 0.82f, 1f),
+        )
     }
 
     private data class AiCar(

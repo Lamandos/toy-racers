@@ -25,6 +25,7 @@
 - [x] Implement countdown, pause, HUD, and results
 - [ ] Persist the best time
 - [x] Add original or properly licensed visuals and basic sounds
+- [x] Establish the original tabletop-workshop visual theme and car texture atlas
 
 ## Quality gates
 

@@ -1,6 +1,7 @@
 package com.example.toyracers.render
 
 import com.badlogic.gdx.graphics.Camera
+import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 import com.badlogic.gdx.utils.Disposable
@@ -16,10 +17,12 @@ class CarRenderer(
         camera: Camera,
         state: CarState,
         config: CarConfig,
+        tint: Color = Color.WHITE,
     ) {
         val bounds = calculateCarRenderBounds(state, config)
 
         batch.projectionMatrix = camera.combined
+        batch.color = tint
         batch.begin()
         batch.draw(
             texture,
@@ -34,6 +37,7 @@ class CarRenderer(
             state.rotationDeg - TEXTURE_FORWARD_DEGREES,
         )
         batch.end()
+        batch.color = Color.WHITE
     }
 
     override fun dispose() {

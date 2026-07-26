@@ -8,5 +8,7 @@ audio/engine-loop.wav
 audio/finish.wav
 audio/go.wav
 audio/skid-loop.wav
+game.atlas
 libgdx.png
+sprites/ai-car-orange.png
 sprites/player-car.png
