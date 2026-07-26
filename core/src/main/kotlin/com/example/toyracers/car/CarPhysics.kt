@@ -26,6 +26,7 @@ class CarPhysics {
         state.velocityY += basis.forwardY * config.acceleration * input.throttle * deltaSeconds
 
         var longitudinalSpeed = basis.forwardDot(state.velocityX, state.velocityY)
+        val lateralSpeedBeforeSteering = basis.rightDot(state.velocityX, state.velocityY)
         if (input.brake > 0f) {
             if (longitudinalSpeed > STOP_EPSILON) {
                 longitudinalSpeed = moveToward(
@@ -44,6 +45,11 @@ class CarPhysics {
             config.rollingResistance * deltaSeconds,
         ).coerceIn(-config.maxReverseSpeed, config.maxForwardSpeed)
 
+        val velocityBeforeSteeringX =
+            basis.forwardX * longitudinalSpeed + basis.rightX * lateralSpeedBeforeSteering
+        val velocityBeforeSteeringY =
+            basis.forwardY * longitudinalSpeed + basis.rightY * lateralSpeedBeforeSteering
+
         // Steering authority rises with speed and reverses naturally while backing up.
         val steeringAuthority = min(abs(longitudinalSpeed) / STEERING_REFERENCE_SPEED, 1f)
         state.angularVelocity = -input.steering *
@@ -52,9 +58,10 @@ class CarPhysics {
             signOrZero(longitudinalSpeed)
         state.rotationDeg = normalizeDegrees(state.rotationDeg + state.angularVelocity * deltaSeconds)
 
-        // Re-project velocity after rotating the car, then progressively remove side slip.
+        // Re-project both velocity components after rotating the car, then remove side slip.
         basis = Basis.fromDegrees(state.rotationDeg)
-        var lateralSpeed = basis.rightDot(state.velocityX, state.velocityY)
+        longitudinalSpeed = basis.forwardDot(velocityBeforeSteeringX, velocityBeforeSteeringY)
+        var lateralSpeed = basis.rightDot(velocityBeforeSteeringX, velocityBeforeSteeringY)
         lateralSpeed *= max(0f, 1f - config.lateralFriction * config.grip * deltaSeconds)
 
         longitudinalSpeed = longitudinalSpeed.coerceIn(-config.maxReverseSpeed, config.maxForwardSpeed)

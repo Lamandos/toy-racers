@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.abs
+import kotlin.math.sqrt
 
 class CarPhysicsTest {
     private val physics = CarPhysics()
@@ -81,6 +82,49 @@ class CarPhysicsTest {
 
         assertTrue(abs(state.velocityY) < 10f)
     }
+
+    @Test
+    fun `steering without engine power does not add kinetic energy`() {
+        val noDragConfig = CarConfig(
+            lateralFriction = 0f,
+            rollingResistance = 0f,
+        )
+        val state = CarState(velocityX = 12f, speed = 12f)
+        val initialVelocity = velocityMagnitude(state)
+
+        physics.update(
+            state,
+            noDragConfig,
+            PlayerInput(steering = 1f),
+            CarPhysics.FIXED_DELTA_SECONDS,
+        )
+
+        assertEquals(initialVelocity, velocityMagnitude(state), EPSILON)
+    }
+
+    @Test
+    fun `continuous steering without drag preserves velocity magnitude`() {
+        val noDragConfig = CarConfig(
+            lateralFriction = 0f,
+            rollingResistance = 0f,
+        )
+        val state = CarState(velocityX = 12f, speed = 12f)
+        val initialVelocity = velocityMagnitude(state)
+
+        repeat(600) {
+            physics.update(
+                state,
+                noDragConfig,
+                PlayerInput(steering = 1f),
+                CarPhysics.FIXED_DELTA_SECONDS,
+            )
+        }
+
+        assertEquals(initialVelocity, velocityMagnitude(state), EPSILON)
+    }
+
+    private fun velocityMagnitude(state: CarState): Float =
+        sqrt(state.velocityX * state.velocityX + state.velocityY * state.velocityY)
 
     private fun simulate(state: CarState, input: PlayerInput, seconds: Float) {
         val steps = (seconds / CarPhysics.FIXED_DELTA_SECONDS).toInt()
