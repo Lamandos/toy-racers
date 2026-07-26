@@ -22,7 +22,7 @@
 - [x] Implement track and car collision response with debug visualization
 - [x] Implement ordered checkpoints, laps, timing, and positions with tests
 - [x] Add three waypoint-following AI opponents
-- [ ] Implement countdown, pause, HUD, and results
+- [ ] Implement countdown, pause, HUD, and results (countdown and race states complete)
 - [ ] Persist the best time
 - [ ] Add original or properly licensed visuals and basic sounds
 

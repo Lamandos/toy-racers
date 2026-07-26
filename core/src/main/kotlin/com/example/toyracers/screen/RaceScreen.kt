@@ -20,7 +20,9 @@ import com.example.toyracers.debug.DebugSettings
 import com.example.toyracers.input.KeyboardInputController
 import com.example.toyracers.input.TouchInputController
 import com.example.toyracers.race.RaceProgress
+import com.example.toyracers.race.RacePhase
 import com.example.toyracers.race.RaceRules
+import com.example.toyracers.race.RaceState
 import com.example.toyracers.render.CarRenderer
 import com.example.toyracers.render.TrackRenderer
 import com.example.toyracers.surface.SurfaceSpeedState
@@ -34,7 +36,6 @@ import kotlin.math.min
 class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private val worldCamera = OrthographicCamera()
     private val worldViewport = FitViewport(CAMERA_VIEW_WIDTH, CAMERA_VIEW_HEIGHT, worldCamera)
-    private var manuallyPaused = false
     private var accumulator = 0f
     private val track = TrackLoader().load()
     private val playerStart = track.startGrid.first()
@@ -59,6 +60,7 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private val collisionSystem = CollisionSystem()
     private val raceRules = RaceRules(track)
     private val raceProgress = RaceProgress()
+    private val raceState = RaceState()
     private val surfaceSpeedSystem = SurfaceSpeedSystem()
     private val surfaceSpeedState = SurfaceSpeedState()
     private val carRenderer = CarRenderer(game.assets.playerCar)
@@ -81,6 +83,8 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         super.show()
         cameraController.snapTo(carState)
         Gdx.input.inputProcessor = touchInput.inputProcessor
+        raceState.markReady()
+        raceState.startCountdown()
     }
 
     override fun resize(width: Int, height: Int) {
@@ -91,8 +95,17 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
 
     override fun render(delta: Float) {
         if (!lifecyclePaused && Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            manuallyPaused = !manuallyPaused
-            touchInput.reset()
+            when (raceState.phase) {
+                RacePhase.RACING -> {
+                    raceState.pause()
+                    touchInput.reset()
+                }
+                RacePhase.PAUSED -> {
+                    raceState.resume()
+                    touchInput.reset()
+                }
+                else -> Unit
+            }
         }
         if (!lifecyclePaused && Gdx.input.isKeyJustPressed(Input.Keys.R)) {
             resetRace()
@@ -101,9 +114,11 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
             debugSettings.showCollisions = !debugSettings.showCollisions
         }
 
-        if (!lifecyclePaused && !manuallyPaused) {
+        val frameDelta = min(delta, CarPhysics.MAX_FRAME_DELTA_SECONDS)
+        val simulationDelta = if (lifecyclePaused) 0f else raceState.advance(frameDelta)
+        if (simulationDelta > 0f) {
             val playerInput = keyboardInput.readInput().combinedWith(touchInput.readInput())
-            accumulator += min(delta, CarPhysics.MAX_FRAME_DELTA_SECONDS)
+            accumulator += simulationDelta
             while (accumulator >= CarPhysics.FIXED_DELTA_SECONDS) {
                 val previousPosition = TrackPoint(carState.x, carState.y)
                 val aiPreviousPositions = aiCars.map {
@@ -169,9 +184,14 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
                     )
                 }
                 accumulator -= CarPhysics.FIXED_DELTA_SECONDS
+                if (raceProgress.finished) {
+                    raceState.finish()
+                    accumulator = 0f
+                    break
+                }
             }
         }
-        cameraController.update(carState, min(delta, CarPhysics.MAX_FRAME_DELTA_SECONDS))
+        cameraController.update(carState, frameDelta)
 
         trackRenderer.render(worldViewport, worldCamera, shapes, track)
 
@@ -188,18 +208,17 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
             )
         }
 
-        if (manuallyPaused || lifecyclePaused) {
-            beginShapes(ShapeRenderer.ShapeType.Filled)
-            shapes.color = Color(0f, 0f, 0f, 0.55f)
-            shapes.rect(0f, 0f, ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT)
-            shapes.color = Color(0.98f, 0.76f, 0.22f, 1f)
-            shapes.rect(465f, 300f, 350f, 120f)
-            shapes.end()
+        if (raceState.phase == RacePhase.PAUSED || lifecyclePaused) {
+            touchInput.reset()
         }
-
         touchInput.render(delta)
 
-        if (!lifecyclePaused && !manuallyPaused && raceProgress.finished) {
+        when {
+            raceState.phase == RacePhase.COUNTDOWN -> renderCountdown()
+            raceState.phase == RacePhase.PAUSED || lifecyclePaused -> renderPauseOverlay()
+        }
+
+        if (!lifecyclePaused && raceState.phase == RacePhase.FINISHED) {
             game.showResults()
         }
     }
@@ -227,9 +246,30 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
             aiCar.driver.reset(aiCar.start.position)
         }
         accumulator = 0f
-        manuallyPaused = false
+        raceState.restart()
         touchInput.reset()
         cameraController.snapTo(carState)
+    }
+
+    private fun renderCountdown() {
+        val activeLight = raceState.countdownRemainingSeconds.toInt().coerceIn(0, 2)
+        beginShapes(ShapeRenderer.ShapeType.Filled)
+        shapes.color = Color(0f, 0f, 0f, 0.68f)
+        shapes.rect(530f, 275f, 220f, 170f)
+        repeat(3) { index ->
+            shapes.color = if (index == activeLight) COUNTDOWN_ACTIVE else COUNTDOWN_INACTIVE
+            shapes.circle(580f + index * 60f, 360f, 22f)
+        }
+        shapes.end()
+    }
+
+    private fun renderPauseOverlay() {
+        beginShapes(ShapeRenderer.ShapeType.Filled)
+        shapes.color = Color(0f, 0f, 0f, 0.55f)
+        shapes.rect(0f, 0f, ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT)
+        shapes.color = Color(0.98f, 0.76f, 0.22f, 1f)
+        shapes.rect(465f, 300f, 350f, 120f)
+        shapes.end()
     }
 
     private fun resolveCarCollisions() {
@@ -258,6 +298,9 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
 
     override fun pause() {
         touchInput.reset()
+        if (raceState.phase == RacePhase.RACING) {
+            raceState.pause()
+        }
         super.pause()
     }
 
@@ -284,6 +327,8 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         const val CAMERA_VIEW_HEIGHT = CAMERA_VIEW_WIDTH * 9f / 16f
         const val MIN_SHAKE_IMPACT_SPEED = 3f
         const val SHAKE_PER_IMPACT_SPEED = 0.025f
+        val COUNTDOWN_ACTIVE = Color(0.95f, 0.28f, 0.18f, 1f)
+        val COUNTDOWN_INACTIVE = Color(0.25f, 0.27f, 0.31f, 1f)
     }
 
     private data class AiCar(
