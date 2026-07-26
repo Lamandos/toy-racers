@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.badlogic.gdx.utils.viewport.FitViewport
 import com.example.toyracers.ToyRacersGame
+import com.example.toyracers.ai.AiDriver
 import com.example.toyracers.camera.CameraBounds
 import com.example.toyracers.camera.RaceCameraController
 import com.example.toyracers.car.CarConfig
@@ -24,6 +25,7 @@ import com.example.toyracers.render.CarRenderer
 import com.example.toyracers.render.TrackRenderer
 import com.example.toyracers.surface.SurfaceSpeedState
 import com.example.toyracers.surface.SurfaceSpeedSystem
+import com.example.toyracers.track.StartGridPosition
 import com.example.toyracers.track.TrackLoader
 import com.example.toyracers.track.TrackPoint
 import kotlin.math.min
@@ -41,6 +43,17 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         y = playerStart.position.y,
         rotationDeg = playerStart.rotationDeg,
     )
+    private val aiCars = track.startGrid.drop(1).map { start ->
+        AiCar(
+            start = start,
+            state = CarState(
+                x = start.position.x,
+                y = start.position.y,
+                rotationDeg = start.rotationDeg,
+            ),
+            driver = AiDriver(track.racingLine, start.position),
+        )
+    }
     private val carConfig = CarConfig()
     private val carPhysics = CarPhysics()
     private val collisionSystem = CollisionSystem()
@@ -93,6 +106,9 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
             accumulator += min(delta, CarPhysics.MAX_FRAME_DELTA_SECONDS)
             while (accumulator >= CarPhysics.FIXED_DELTA_SECONDS) {
                 val previousPosition = TrackPoint(carState.x, carState.y)
+                val aiPreviousPositions = aiCars.map {
+                    TrackPoint(it.state.x, it.state.y)
+                }
                 carPhysics.update(
                     carState,
                     carConfig,
@@ -117,6 +133,36 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
                     currentPosition = TrackPoint(carState.x, carState.y),
                     deltaSeconds = CarPhysics.FIXED_DELTA_SECONDS,
                 )
+                aiCars.forEachIndexed { index, aiCar ->
+                    carPhysics.update(
+                        state = aiCar.state,
+                        config = carConfig,
+                        rawInput = aiCar.driver.update(
+                            aiCar.state,
+                            CarPhysics.FIXED_DELTA_SECONDS,
+                        ),
+                        deltaSeconds = CarPhysics.FIXED_DELTA_SECONDS,
+                    )
+                    collisionSystem.resolveTrackCollision(
+                        state = aiCar.state,
+                        radius = carConfig.collisionRadius,
+                        track = track,
+                    )
+                    surfaceSpeedSystem.update(
+                        carState = aiCar.state,
+                        carConfig = carConfig,
+                        surfaceState = aiCar.surfaceSpeedState,
+                        surface = track.surfaceAt(aiCar.state.x, aiCar.state.y),
+                        deltaSeconds = CarPhysics.FIXED_DELTA_SECONDS,
+                    )
+                    raceRules.update(
+                        progress = aiCar.raceProgress,
+                        previousPosition = aiPreviousPositions[index],
+                        currentPosition = TrackPoint(aiCar.state.x, aiCar.state.y),
+                        deltaSeconds = CarPhysics.FIXED_DELTA_SECONDS,
+                    )
+                }
+                resolveCarCollisions()
                 if (collision.maxImpactSpeed >= MIN_SHAKE_IMPACT_SPEED) {
                     cameraController.addShake(
                         collision.maxImpactSpeed * SHAKE_PER_IMPACT_SPEED,
@@ -129,6 +175,7 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
 
         trackRenderer.render(worldViewport, worldCamera, shapes, track)
 
+        aiCars.forEach { carRenderer.render(worldCamera, it.state, carConfig) }
         carRenderer.render(worldCamera, carState, carConfig)
         if (debugSettings.showCollisions) {
             collisionDebugRenderer.render(
@@ -136,7 +183,8 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
                 camera = worldCamera,
                 shapes = shapes,
                 track = track,
-                cars = listOf(DebugCar(carState, carConfig.collisionRadius)),
+                cars = listOf(DebugCar(carState, carConfig.collisionRadius)) +
+                    aiCars.map { DebugCar(it.state, carConfig.collisionRadius) },
             )
         }
 
@@ -165,17 +213,47 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         carState.velocityY = 0f
         carState.angularVelocity = 0f
         surfaceSpeedState.speedMultiplier = 1f
-        raceProgress.currentCheckpointIndex = 0
-        raceProgress.completedLaps = 0
-        raceProgress.lapStartTime = 0f
-        raceProgress.bestLapTime = null
-        raceProgress.totalRaceTime = 0f
-        raceProgress.finished = false
-        raceProgress.finishPosition = null
+        resetProgress(raceProgress)
+        aiCars.forEach { aiCar ->
+            aiCar.state.x = aiCar.start.position.x
+            aiCar.state.y = aiCar.start.position.y
+            aiCar.state.rotationDeg = aiCar.start.rotationDeg
+            aiCar.state.speed = 0f
+            aiCar.state.velocityX = 0f
+            aiCar.state.velocityY = 0f
+            aiCar.state.angularVelocity = 0f
+            aiCar.surfaceSpeedState.speedMultiplier = 1f
+            resetProgress(aiCar.raceProgress)
+            aiCar.driver.reset(aiCar.start.position)
+        }
         accumulator = 0f
         manuallyPaused = false
         touchInput.reset()
         cameraController.snapTo(carState)
+    }
+
+    private fun resolveCarCollisions() {
+        val states = listOf(carState) + aiCars.map(AiCar::state)
+        states.indices.forEach { firstIndex ->
+            for (secondIndex in firstIndex + 1..<states.size) {
+                collisionSystem.resolveCarCollision(
+                    first = states[firstIndex],
+                    firstRadius = carConfig.collisionRadius,
+                    second = states[secondIndex],
+                    secondRadius = carConfig.collisionRadius,
+                )
+            }
+        }
+    }
+
+    private fun resetProgress(progress: RaceProgress) {
+        progress.currentCheckpointIndex = 0
+        progress.completedLaps = 0
+        progress.lapStartTime = 0f
+        progress.bestLapTime = null
+        progress.totalRaceTime = 0f
+        progress.finished = false
+        progress.finishPosition = null
     }
 
     override fun pause() {
@@ -207,4 +285,12 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         const val MIN_SHAKE_IMPACT_SPEED = 3f
         const val SHAKE_PER_IMPACT_SPEED = 0.025f
     }
+
+    private data class AiCar(
+        val start: StartGridPosition,
+        val state: CarState,
+        val driver: AiDriver,
+        val surfaceSpeedState: SurfaceSpeedState = SurfaceSpeedState(),
+        val raceProgress: RaceProgress = RaceProgress(),
+    )
 }
