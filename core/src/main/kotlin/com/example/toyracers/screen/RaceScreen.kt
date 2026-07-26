@@ -2,6 +2,7 @@ package com.example.toyracers.screen
 
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
+import com.badlogic.gdx.InputMultiplexer
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.OrthographicCamera
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
@@ -21,8 +22,11 @@ import com.example.toyracers.input.KeyboardInputController
 import com.example.toyracers.input.TouchInputController
 import com.example.toyracers.race.RaceProgress
 import com.example.toyracers.race.RacePhase
+import com.example.toyracers.race.RaceCompetitor
+import com.example.toyracers.race.RaceResult
 import com.example.toyracers.race.RaceRules
 import com.example.toyracers.race.RaceState
+import com.example.toyracers.race.PositionTracker
 import com.example.toyracers.render.CarRenderer
 import com.example.toyracers.render.TrackRenderer
 import com.example.toyracers.surface.SurfaceSpeedState
@@ -30,6 +34,8 @@ import com.example.toyracers.surface.SurfaceSpeedSystem
 import com.example.toyracers.track.StartGridPosition
 import com.example.toyracers.track.TrackLoader
 import com.example.toyracers.track.TrackPoint
+import com.example.toyracers.ui.RaceHudSnapshot
+import com.example.toyracers.ui.RaceHudStage
 import kotlin.math.min
 
 /** First race view with a world-unit simulation and an independent screen-space UI. */
@@ -61,6 +67,7 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private val raceRules = RaceRules(track)
     private val raceProgress = RaceProgress()
     private val raceState = RaceState()
+    private val positionTracker = PositionTracker(track)
     private val surfaceSpeedSystem = SurfaceSpeedSystem()
     private val surfaceSpeedState = SurfaceSpeedState()
     private val carRenderer = CarRenderer(game.assets.playerCar)
@@ -69,6 +76,14 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private val debugSettings = DebugSettings()
     private val keyboardInput = KeyboardInputController()
     private val touchInput = TouchInputController()
+    private var pendingUiAction: RaceUiAction? = null
+    private val hud = RaceHudStage(
+        onPause = { pendingUiAction = RaceUiAction.PAUSE },
+        onResume = { pendingUiAction = RaceUiAction.RESUME },
+        onRestart = { pendingUiAction = RaceUiAction.RESTART },
+        onQuitToMenu = { pendingUiAction = RaceUiAction.QUIT_TO_MENU },
+    )
+    private val inputProcessor = InputMultiplexer(hud.inputProcessor, touchInput.inputProcessor)
     private val cameraController = RaceCameraController(
         camera = worldCamera,
         bounds = CameraBounds(
@@ -82,7 +97,7 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     override fun show() {
         super.show()
         cameraController.snapTo(carState)
-        Gdx.input.inputProcessor = touchInput.inputProcessor
+        Gdx.input.inputProcessor = inputProcessor
         raceState.markReady()
         raceState.startCountdown()
     }
@@ -91,9 +106,11 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         super.resize(width, height)
         worldViewport.update(width, height, true)
         touchInput.resize(width, height)
+        hud.resize(width, height)
     }
 
     override fun render(delta: Float) {
+        if (handlePendingUiAction()) return
         if (!lifecyclePaused && Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             when (raceState.phase) {
                 RacePhase.RACING -> {
@@ -212,16 +229,72 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
             touchInput.reset()
         }
         touchInput.render(delta)
+        hud.update(createHudSnapshot())
+        hud.showPause(raceState.phase == RacePhase.PAUSED || lifecyclePaused)
+        hud.render(delta)
 
-        when {
-            raceState.phase == RacePhase.COUNTDOWN -> renderCountdown()
-            raceState.phase == RacePhase.PAUSED || lifecyclePaused -> renderPauseOverlay()
+        if (raceState.phase == RacePhase.COUNTDOWN) {
+            renderCountdown()
         }
 
         if (!lifecyclePaused && raceState.phase == RacePhase.FINISHED) {
-            game.showResults()
+            game.showResults(
+                RaceResult(
+                    finishPosition = currentPlayerPosition(),
+                    competitorCount = aiCars.size + 1,
+                    totalRaceTime = raceProgress.totalRaceTime,
+                    bestLapTime = raceProgress.bestLapTime,
+                ),
+            )
         }
     }
+
+    private fun handlePendingUiAction(): Boolean {
+        val action = pendingUiAction ?: return false
+        pendingUiAction = null
+        when (action) {
+            RaceUiAction.PAUSE -> if (raceState.phase == RacePhase.RACING) {
+                raceState.pause()
+                touchInput.reset()
+            }
+            RaceUiAction.RESUME -> if (raceState.phase == RacePhase.PAUSED && !lifecyclePaused) {
+                raceState.resume()
+                touchInput.reset()
+            }
+            RaceUiAction.RESTART -> if (!lifecyclePaused) resetRace()
+            RaceUiAction.QUIT_TO_MENU -> {
+                game.showMainMenu()
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun createHudSnapshot(): RaceHudSnapshot = RaceHudSnapshot(
+        position = currentPlayerPosition(),
+        competitorCount = aiCars.size + 1,
+        completedLaps = raceProgress.completedLaps,
+        requiredLaps = raceRules.requiredLaps,
+        totalRaceTime = raceProgress.totalRaceTime,
+        bestLapTime = raceProgress.bestLapTime,
+    )
+
+    private fun currentPlayerPosition(): Int =
+        positionTracker.positions(
+            listOf(
+                RaceCompetitor(
+                    id = PLAYER_ID,
+                    progress = raceProgress,
+                    position = TrackPoint(carState.x, carState.y),
+                ),
+            ) + aiCars.mapIndexed { index, aiCar ->
+                RaceCompetitor(
+                    id = "ai-$index",
+                    progress = aiCar.raceProgress,
+                    position = TrackPoint(aiCar.state.x, aiCar.state.y),
+                )
+            },
+        ).getValue(PLAYER_ID)
 
     private fun resetRace() {
         carState.x = playerStart.position.x
@@ -260,15 +333,6 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
             shapes.color = if (index == activeLight) COUNTDOWN_ACTIVE else COUNTDOWN_INACTIVE
             shapes.circle(580f + index * 60f, 360f, 22f)
         }
-        shapes.end()
-    }
-
-    private fun renderPauseOverlay() {
-        beginShapes(ShapeRenderer.ShapeType.Filled)
-        shapes.color = Color(0f, 0f, 0f, 0.55f)
-        shapes.rect(0f, 0f, ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT)
-        shapes.color = Color(0.98f, 0.76f, 0.22f, 1f)
-        shapes.rect(465f, 300f, 350f, 120f)
         shapes.end()
     }
 
@@ -311,13 +375,14 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
 
     override fun hide() {
         touchInput.reset()
-        if (Gdx.input.inputProcessor === touchInput.inputProcessor) {
+        if (Gdx.input.inputProcessor === inputProcessor) {
             Gdx.input.inputProcessor = null
         }
     }
 
     override fun dispose() {
         touchInput.dispose()
+        hud.dispose()
         carRenderer.dispose()
         super.dispose()
     }
@@ -327,6 +392,7 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         const val CAMERA_VIEW_HEIGHT = CAMERA_VIEW_WIDTH * 9f / 16f
         const val MIN_SHAKE_IMPACT_SPEED = 3f
         const val SHAKE_PER_IMPACT_SPEED = 0.025f
+        const val PLAYER_ID = "player"
         val COUNTDOWN_ACTIVE = Color(0.95f, 0.28f, 0.18f, 1f)
         val COUNTDOWN_INACTIVE = Color(0.25f, 0.27f, 0.31f, 1f)
     }
@@ -338,4 +404,11 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         val surfaceSpeedState: SurfaceSpeedState = SurfaceSpeedState(),
         val raceProgress: RaceProgress = RaceProgress(),
     )
+
+    private enum class RaceUiAction {
+        PAUSE,
+        RESUME,
+        RESTART,
+        QUIT_TO_MENU,
+    }
 }

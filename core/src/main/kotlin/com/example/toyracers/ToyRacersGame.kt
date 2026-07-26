@@ -3,6 +3,7 @@ package com.example.toyracers
 import com.badlogic.gdx.Game
 import com.badlogic.gdx.Screen
 import com.example.toyracers.assets.GameAssets
+import com.example.toyracers.race.RaceResult
 import com.example.toyracers.screen.LoadingScreen
 import com.example.toyracers.screen.MainMenuScreen
 import com.example.toyracers.screen.RaceScreen
@@ -27,8 +28,8 @@ class ToyRacersGame : Game() {
         changeScreen(RaceScreen(this))
     }
 
-    fun showResults() {
-        changeScreen(ResultsScreen(this))
+    fun showResults(result: RaceResult) {
+        changeScreen(ResultsScreen(this, result))
     }
 
     private fun showLoadingScreen() {

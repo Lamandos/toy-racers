@@ -3,37 +3,62 @@ package com.example.toyracers.screen
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.Color
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.badlogic.gdx.utils.ScreenUtils
 import com.example.toyracers.ToyRacersGame
+import com.example.toyracers.race.RaceResult
+import com.example.toyracers.ui.ResultsStage
 
-/** Shape-based results placeholder with retry and return-to-menu transitions. */
-class ResultsScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
+/** Displays the completed race summary and navigation actions. */
+class ResultsScreen(
+    game: ToyRacersGame,
+    result: RaceResult,
+) : ToyRacersScreen(game) {
+    private var retryRequested = false
+    private var mainMenuRequested = false
+    private val results = ResultsStage(
+        result = result,
+        onRetry = { retryRequested = true },
+        onMainMenu = { mainMenuRequested = true },
+    )
+
+    override fun show() {
+        super.show()
+        Gdx.input.inputProcessor = results.inputProcessor
+    }
+
+    override fun resize(width: Int, height: Int) {
+        super.resize(width, height)
+        results.resize(width, height)
+    }
+
     override fun render(delta: Float) {
         ScreenUtils.clear(BACKGROUND)
-        beginShapes(ShapeRenderer.ShapeType.Filled)
-
-        shapes.color = Color(0.95f, 0.76f, 0.20f, 1f)
-        shapes.rect(515f, 220f, 250f, 310f)
-        shapes.color = Color(0.78f, 0.80f, 0.84f, 1f)
-        shapes.rect(260f, 220f, 250f, 220f)
-        shapes.color = Color(0.72f, 0.42f, 0.20f, 1f)
-        shapes.rect(770f, 220f, 250f, 160f)
-        shapes.end()
+        results.render(delta)
 
         if (lifecyclePaused) return
 
         when {
-            Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) -> game.showMainMenu()
-            retryRequested() -> game.startRace()
+            mainMenuRequested || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) ->
+                game.showMainMenu()
+            retryRequested || retryKeyPressed() -> game.startRace()
         }
     }
 
-    private fun retryRequested(): Boolean =
-        Gdx.input.justTouched() ||
-            Gdx.input.isKeyJustPressed(Input.Keys.R) ||
+    private fun retryKeyPressed(): Boolean =
+        Gdx.input.isKeyJustPressed(Input.Keys.R) ||
             Gdx.input.isKeyJustPressed(Input.Keys.ENTER) ||
             Gdx.input.isKeyJustPressed(Input.Keys.SPACE)
+
+    override fun hide() {
+        if (Gdx.input.inputProcessor === results.inputProcessor) {
+            Gdx.input.inputProcessor = null
+        }
+    }
+
+    override fun dispose() {
+        results.dispose()
+        super.dispose()
+    }
 
     private companion object {
         val BACKGROUND = Color(0.08f, 0.10f, 0.16f, 1f)
