@@ -18,11 +18,14 @@ import com.example.toyracers.debug.DebugCar
 import com.example.toyracers.debug.DebugSettings
 import com.example.toyracers.input.KeyboardInputController
 import com.example.toyracers.input.TouchInputController
+import com.example.toyracers.race.RaceProgress
+import com.example.toyracers.race.RaceRules
 import com.example.toyracers.render.CarRenderer
 import com.example.toyracers.render.TrackRenderer
 import com.example.toyracers.surface.SurfaceSpeedState
 import com.example.toyracers.surface.SurfaceSpeedSystem
 import com.example.toyracers.track.TrackLoader
+import com.example.toyracers.track.TrackPoint
 import kotlin.math.min
 
 /** First race view with a world-unit simulation and an independent screen-space UI. */
@@ -41,6 +44,8 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private val carConfig = CarConfig()
     private val carPhysics = CarPhysics()
     private val collisionSystem = CollisionSystem()
+    private val raceRules = RaceRules(track)
+    private val raceProgress = RaceProgress()
     private val surfaceSpeedSystem = SurfaceSpeedSystem()
     private val surfaceSpeedState = SurfaceSpeedState()
     private val carRenderer = CarRenderer(game.assets.playerCar)
@@ -87,6 +92,7 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
             val playerInput = keyboardInput.readInput().combinedWith(touchInput.readInput())
             accumulator += min(delta, CarPhysics.MAX_FRAME_DELTA_SECONDS)
             while (accumulator >= CarPhysics.FIXED_DELTA_SECONDS) {
+                val previousPosition = TrackPoint(carState.x, carState.y)
                 carPhysics.update(
                     carState,
                     carConfig,
@@ -103,6 +109,12 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
                     carConfig = carConfig,
                     surfaceState = surfaceSpeedState,
                     surface = track.surfaceAt(carState.x, carState.y),
+                    deltaSeconds = CarPhysics.FIXED_DELTA_SECONDS,
+                )
+                raceRules.update(
+                    progress = raceProgress,
+                    previousPosition = previousPosition,
+                    currentPosition = TrackPoint(carState.x, carState.y),
                     deltaSeconds = CarPhysics.FIXED_DELTA_SECONDS,
                 )
                 if (collision.maxImpactSpeed >= MIN_SHAKE_IMPACT_SPEED) {
@@ -139,14 +151,10 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
 
         touchInput.render(delta)
 
-        if (!lifecyclePaused && !manuallyPaused && finishRequested()) {
+        if (!lifecyclePaused && !manuallyPaused && raceProgress.finished) {
             game.showResults()
         }
     }
-
-    private fun finishRequested(): Boolean =
-        Gdx.input.isKeyJustPressed(Input.Keys.ENTER) ||
-            Gdx.input.isKeyJustPressed(Input.Keys.SPACE)
 
     private fun resetRace() {
         carState.x = playerStart.position.x
@@ -157,6 +165,13 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         carState.velocityY = 0f
         carState.angularVelocity = 0f
         surfaceSpeedState.speedMultiplier = 1f
+        raceProgress.currentCheckpointIndex = 0
+        raceProgress.completedLaps = 0
+        raceProgress.lapStartTime = 0f
+        raceProgress.bestLapTime = null
+        raceProgress.totalRaceTime = 0f
+        raceProgress.finished = false
+        raceProgress.finishPosition = null
         accumulator = 0f
         manuallyPaused = false
         touchInput.reset()
