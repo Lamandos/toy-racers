@@ -22,7 +22,12 @@ data class TrackRectangle(
         get() = y + height
 
     fun contains(point: TrackPoint): Boolean =
-        point.x in x..maxX && point.y in y..maxY
+        contains(point.x, point.y)
+
+    fun contains(
+        pointX: Float,
+        pointY: Float,
+    ): Boolean = pointX in x..maxX && pointY in y..maxY
 
     fun contains(other: TrackRectangle): Boolean =
         other.x >= x &&

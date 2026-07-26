@@ -19,6 +19,7 @@
 - [x] Implement deterministic car state and arcade physics with unit tests
 - [x] Add multi-touch controls and desktop keyboard controls
 - [x] Define an original track, checkpoints, and collision boundaries
+- [x] Implement track and car collision response with debug visualization
 - [ ] Implement ordered checkpoints, laps, timing, and positions with tests
 - [ ] Add three waypoint-following AI opponents
 - [ ] Implement countdown, pause, HUD, and results

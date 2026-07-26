@@ -57,10 +57,17 @@ data class Track(
     }
 
     fun surfaceAt(point: TrackPoint): SurfaceType {
-        if (innerObstacles.any { it.contains(point) }) {
+        return surfaceAt(point.x, point.y)
+    }
+
+    fun surfaceAt(
+        x: Float,
+        y: Float,
+    ): SurfaceType {
+        if (innerObstacles.any { it.contains(x, y) }) {
             return backgroundSurface
         }
-        return surfaceRegions.lastOrNull { it.bounds.contains(point) }?.surface
+        return surfaceRegions.lastOrNull { it.bounds.contains(x, y) }?.surface
             ?: backgroundSurface
     }
 

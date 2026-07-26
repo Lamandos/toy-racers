@@ -12,10 +12,16 @@ import com.example.toyracers.camera.RaceCameraController
 import com.example.toyracers.car.CarConfig
 import com.example.toyracers.car.CarPhysics
 import com.example.toyracers.car.CarState
+import com.example.toyracers.collision.CollisionSystem
+import com.example.toyracers.debug.CollisionDebugRenderer
+import com.example.toyracers.debug.DebugCar
+import com.example.toyracers.debug.DebugSettings
 import com.example.toyracers.input.KeyboardInputController
 import com.example.toyracers.input.TouchInputController
 import com.example.toyracers.render.CarRenderer
 import com.example.toyracers.render.TrackRenderer
+import com.example.toyracers.surface.SurfaceSpeedState
+import com.example.toyracers.surface.SurfaceSpeedSystem
 import com.example.toyracers.track.TrackLoader
 import kotlin.math.min
 
@@ -34,8 +40,13 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     )
     private val carConfig = CarConfig()
     private val carPhysics = CarPhysics()
+    private val collisionSystem = CollisionSystem()
+    private val surfaceSpeedSystem = SurfaceSpeedSystem()
+    private val surfaceSpeedState = SurfaceSpeedState()
     private val carRenderer = CarRenderer(game.assets.playerCar)
     private val trackRenderer = TrackRenderer()
+    private val collisionDebugRenderer = CollisionDebugRenderer()
+    private val debugSettings = DebugSettings()
     private val keyboardInput = KeyboardInputController()
     private val touchInput = TouchInputController()
     private val cameraController = RaceCameraController(
@@ -68,6 +79,9 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         if (!lifecyclePaused && Gdx.input.isKeyJustPressed(Input.Keys.R)) {
             resetRace()
         }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F3)) {
+            debugSettings.showCollisions = !debugSettings.showCollisions
+        }
 
         if (!lifecyclePaused && !manuallyPaused) {
             val playerInput = keyboardInput.readInput().combinedWith(touchInput.readInput())
@@ -79,6 +93,23 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
                     playerInput,
                     CarPhysics.FIXED_DELTA_SECONDS,
                 )
+                val collision = collisionSystem.resolveTrackCollision(
+                    state = carState,
+                    radius = carConfig.collisionRadius,
+                    track = track,
+                )
+                surfaceSpeedSystem.update(
+                    carState = carState,
+                    carConfig = carConfig,
+                    surfaceState = surfaceSpeedState,
+                    surface = track.surfaceAt(carState.x, carState.y),
+                    deltaSeconds = CarPhysics.FIXED_DELTA_SECONDS,
+                )
+                if (collision.maxImpactSpeed >= MIN_SHAKE_IMPACT_SPEED) {
+                    cameraController.addShake(
+                        collision.maxImpactSpeed * SHAKE_PER_IMPACT_SPEED,
+                    )
+                }
                 accumulator -= CarPhysics.FIXED_DELTA_SECONDS
             }
         }
@@ -87,6 +118,15 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         trackRenderer.render(worldViewport, worldCamera, shapes, track)
 
         carRenderer.render(worldCamera, carState, carConfig)
+        if (debugSettings.showCollisions) {
+            collisionDebugRenderer.render(
+                viewport = worldViewport,
+                camera = worldCamera,
+                shapes = shapes,
+                track = track,
+                cars = listOf(DebugCar(carState, carConfig.collisionRadius)),
+            )
+        }
 
         if (manuallyPaused || lifecyclePaused) {
             beginShapes(ShapeRenderer.ShapeType.Filled)
@@ -116,6 +156,7 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         carState.velocityX = 0f
         carState.velocityY = 0f
         carState.angularVelocity = 0f
+        surfaceSpeedState.speedMultiplier = 1f
         accumulator = 0f
         manuallyPaused = false
         touchInput.reset()
@@ -148,5 +189,7 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private companion object {
         const val CAMERA_VIEW_WIDTH = 24f
         const val CAMERA_VIEW_HEIGHT = CAMERA_VIEW_WIDTH * 9f / 16f
+        const val MIN_SHAKE_IMPACT_SPEED = 3f
+        const val SHAKE_PER_IMPACT_SPEED = 0.025f
     }
 }
