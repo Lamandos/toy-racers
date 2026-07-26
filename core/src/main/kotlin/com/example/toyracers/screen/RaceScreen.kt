@@ -8,6 +8,8 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.badlogic.gdx.utils.ScreenUtils
 import com.badlogic.gdx.utils.viewport.FitViewport
 import com.example.toyracers.ToyRacersGame
+import com.example.toyracers.camera.CameraBounds
+import com.example.toyracers.camera.RaceCameraController
 import com.example.toyracers.car.CarConfig
 import com.example.toyracers.car.CarPhysics
 import com.example.toyracers.car.CarState
@@ -19,7 +21,7 @@ import kotlin.math.min
 /** First race view with a world-unit simulation and an independent screen-space UI. */
 class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private val worldCamera = OrthographicCamera()
-    private val worldViewport = FitViewport(WORLD_WIDTH, WORLD_HEIGHT, worldCamera)
+    private val worldViewport = FitViewport(CAMERA_VIEW_WIDTH, CAMERA_VIEW_HEIGHT, worldCamera)
     private var manuallyPaused = false
     private var accumulator = 0f
     private val carState = CarState(
@@ -32,9 +34,14 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private val carRenderer = CarRenderer(game.assets.playerCar)
     private val keyboardInput = KeyboardInputController()
     private val touchInput = TouchInputController()
+    private val cameraController = RaceCameraController(
+        camera = worldCamera,
+        bounds = CameraBounds(0f, 0f, WORLD_WIDTH, WORLD_HEIGHT),
+    )
 
     override fun show() {
         super.show()
+        cameraController.snapTo(carState)
         Gdx.input.inputProcessor = touchInput.inputProcessor
     }
 
@@ -66,6 +73,7 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
                 accumulator -= CarPhysics.FIXED_DELTA_SECONDS
             }
         }
+        cameraController.update(carState, min(delta, CarPhysics.MAX_FRAME_DELTA_SECONDS))
 
         ScreenUtils.clear(GRASS)
         beginWorldShapes()
@@ -119,6 +127,7 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         accumulator = 0f
         manuallyPaused = false
         touchInput.reset()
+        cameraController.snapTo(carState)
     }
 
     override fun pause() {
@@ -157,6 +166,8 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         const val DISPLAY_UNITS_PER_WORLD_UNIT = 30f
         const val WORLD_WIDTH = ToyRacersGame.VIRTUAL_WIDTH / DISPLAY_UNITS_PER_WORLD_UNIT
         const val WORLD_HEIGHT = ToyRacersGame.VIRTUAL_HEIGHT / DISPLAY_UNITS_PER_WORLD_UNIT
+        const val CAMERA_VIEW_WIDTH = 24f
+        const val CAMERA_VIEW_HEIGHT = CAMERA_VIEW_WIDTH * 9f / 16f
         const val TRACK_X = 120f / DISPLAY_UNITS_PER_WORLD_UNIT
         const val TRACK_Y = 90f / DISPLAY_UNITS_PER_WORLD_UNIT
         const val TRACK_WIDTH = 1040f / DISPLAY_UNITS_PER_WORLD_UNIT
