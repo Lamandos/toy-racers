@@ -92,7 +92,7 @@ This is a target structure, not a requirement to create empty placeholder classe
 - `ToyRacersGame` owns application-wide resources and screen transitions.
 - Screens coordinate a use case and lifecycle; they do not implement car physics or race rules.
 - Input controllers translate keyboard or touch state into `PlayerInput` commands.
-- `RaceWorld` advances the simulation and owns the active `RaceState`.
+- `RaceSession` advances the simulation and owns the active `RaceState` and competitors.
 - `CarPhysics` changes `CarState` from configuration, input, and fixed elapsed time.
 - `CollisionSystem` detects and resolves contacts, returning explicit results.
 - Race services validate checkpoints, laps, positions, and finish conditions.
@@ -107,7 +107,7 @@ keyboard/touch ──> InputController ──> PlayerInput
                                              │
 AI route ───────────────> AiDriver ──────────┤
                                              ▼
-                                      RaceWorld update
+                                     RaceSession update
                                      /       |        \
                                CarPhysics  Collision  RaceRules
                                      \       |        /
