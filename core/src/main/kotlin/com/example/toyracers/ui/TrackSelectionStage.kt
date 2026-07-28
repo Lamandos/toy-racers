@@ -17,12 +17,15 @@ import com.example.toyracers.track.TrackId
 
 /** Presents visual track cards immediately after the player presses Play. */
 class TrackSelectionStage(
-    track01: Texture,
-    track02: Texture,
+    options: List<TrackSelectionOption>,
     private val onTrackSelected: (TrackId) -> Unit,
     onBack: () -> Unit,
     private val onButtonClick: () -> Unit = {},
 ) : Disposable {
+    init {
+        require(options.isNotEmpty()) { "Track selection requires at least one option" }
+    }
+
     private val skin = createGameUiSkin()
     private val stage = Stage(
         FitViewport(ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT),
@@ -32,36 +35,41 @@ class TrackSelectionStage(
         get() = stage
 
     init {
+        val cardWidth = minOf(MAX_CARD_WIDTH, CARD_ROW_WIDTH / options.size)
         val content = Table().apply {
             setFillParent(true)
             add(Label("SELECT TRACK", this@TrackSelectionStage.skin).apply {
                 setFontScale(2.2f)
-            }).colspan(2).height(100f)
+            }).colspan(options.size).height(100f)
             row()
-            add(trackCard(track01, TrackId.LIVING_ROOM)).width(480f).height(390f).pad(20f)
-            add(trackCard(track02, TrackId.BATHROOM)).width(480f).height(390f).pad(20f)
+            options.forEach { option ->
+                add(trackCard(option)).width(cardWidth).height(390f).pad(20f)
+            }
             row()
-            add(button("BACK", onBack)).colspan(2).width(300f).height(68f).padTop(14f)
+            add(button("BACK", onBack))
+                .colspan(options.size)
+                .width(300f)
+                .height(68f)
+                .padTop(14f)
         }
         stage.addActor(content)
     }
 
     private fun trackCard(
-        texture: Texture,
-        trackId: TrackId,
+        option: TrackSelectionOption,
     ): TextButton = TextButton("", skin).apply {
         clearChildren()
-        add(Image(texture).apply {
+        add(Image(option.preview).apply {
             setScaling(Scaling.fit)
         }).grow().pad(12f)
         row()
-        add(Label(trackId.displayName, skin).apply {
+        add(Label(option.trackId.displayName, skin).apply {
             setFontScale(1.45f)
         }).height(62f)
         addListener(object : ClickListener() {
             override fun clicked(event: InputEvent, x: Float, y: Float) {
                 onButtonClick()
-                onTrackSelected(trackId)
+                onTrackSelected(option.trackId)
             }
         })
     }
@@ -94,5 +102,12 @@ class TrackSelectionStage(
 
     private companion object {
         const val MAX_UI_DELTA = 0.1f
+        const val MAX_CARD_WIDTH = 480f
+        const val CARD_ROW_WIDTH = 1040f
     }
 }
+
+data class TrackSelectionOption(
+    val trackId: TrackId,
+    val preview: Texture,
+)

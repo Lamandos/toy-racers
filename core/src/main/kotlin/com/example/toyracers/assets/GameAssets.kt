@@ -29,12 +29,6 @@ class GameAssets(
         manager.get(AssetPaths.GAME_ATLAS, TextureAtlas::class.java).findRegion(OPPONENT_CAR_REGION)
     }
 
-    val track01: Texture
-        get() = track(TrackId.LIVING_ROOM)
-
-    val track02: Texture
-        get() = track(TrackId.BATHROOM)
-
     fun track(trackId: TrackId): Texture {
         check(prepared) { "Assets must finish loading before they are accessed" }
         val path = when (trackId) {

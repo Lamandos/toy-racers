@@ -19,7 +19,6 @@ On the yellow `collisions` object layer, draw one object around each solid obsta
 
 - use polygons for walls, furniture, and irregular objects;
 - use ellipses for round objects;
-- set `type` to `collision` and give each object a descriptive unique name;
 - use several small convex polygons instead of one deeply concave polygon when practical.
 
 Do not use rectangle objects: the runtime loader currently accepts only polygons and ellipses.

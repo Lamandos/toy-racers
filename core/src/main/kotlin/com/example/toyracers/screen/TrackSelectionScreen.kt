@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.utils.ScreenUtils
 import com.example.toyracers.ToyRacersGame
 import com.example.toyracers.track.TrackId
+import com.example.toyracers.ui.TrackSelectionOption
 import com.example.toyracers.ui.TrackSelectionStage
 
 /** Track selection shown as the second step of the Play flow. */
@@ -13,8 +14,9 @@ class TrackSelectionScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private var selectedTrack: TrackId? = null
     private var backRequested = false
     private val selection = TrackSelectionStage(
-        track01 = game.assets.track01,
-        track02 = game.assets.track02,
+        options = TrackId.entries.map { trackId ->
+            TrackSelectionOption(trackId, game.assets.track(trackId))
+        },
         onTrackSelected = { selectedTrack = it },
         onBack = { backRequested = true },
         onButtonClick = game.audio::buttonClick,
