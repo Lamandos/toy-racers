@@ -23,21 +23,26 @@ import com.example.toyracers.race.RaceSession
 import com.example.toyracers.render.CarRenderer
 import com.example.toyracers.render.TrackRenderer
 import com.example.toyracers.track.TrackLoader
+import com.example.toyracers.track.TrackId
 import com.example.toyracers.ui.RaceHudSnapshot
 import com.example.toyracers.ui.RaceHudStage
 import kotlin.math.min
 
 /** First race view with a world-unit simulation and an independent screen-space UI. */
-class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
+class RaceScreen(
+    game: ToyRacersGame,
+    private val trackId: TrackId = TrackId.LIVING_ROOM,
+) : ToyRacersScreen(game) {
     private val worldCamera = OrthographicCamera()
     private val worldViewport = FitViewport(CAMERA_VIEW_WIDTH, CAMERA_VIEW_HEIGHT, worldCamera)
     private val track = TrackLoader().load(
-        collisionMap = Gdx.files.internal(TrackLoader.TRACK_01_TMX).read(),
+        trackId = trackId,
+        collisionMap = Gdx.files.internal(TrackLoader.tmxPath(trackId)).read(),
     )
     private var raceSession = RaceSession(track)
     private val playerCarRenderer = CarRenderer(game.assets.playerCar)
     private val opponentCarRenderer = CarRenderer(game.assets.opponentCar)
-    private val trackRenderer = TrackRenderer(game.assets.track01)
+    private val trackRenderer = TrackRenderer(game.assets.track(trackId))
     private val collisionDebugRenderer = CollisionDebugRenderer()
     private val debugSettings = DebugSettings()
     private val keyboardInput = KeyboardInputController()

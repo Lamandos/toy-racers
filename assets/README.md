@@ -29,6 +29,9 @@
 ## `tracks/track_01.png`
 
 - User-provided original track background, imported from `Desktop/track_01.png` on 2026-07-28.
+- A black-and-white start/finish stripe was added with OpenAI built-in image editing on
+  2026-07-29; the edit prompt requested a single stripe on the lower straight while preserving
+  the existing scene, road geometry, lighting, objects, colors, dimensions, and crop.
 - Its road, parquet, object collision masks, and world boundary are authored separately in
   `TrackLoader`, so simulation does not depend on image pixels.
 
@@ -37,3 +40,17 @@
 - Editable Tiled map for `track_01.png`.
 - The `collisions` object layer is the runtime source of polygon and circular collision contours.
 - Open this file in Tiled, edit only the object layer, save, and restart the game to apply changes.
+
+## `tracks/track_02.png`
+
+- User-provided original track background, imported from `Desktop/track_02.png` on 2026-07-29.
+- A black-and-white start/finish stripe was added with OpenAI built-in image editing on
+  2026-07-29; the edit prompt requested a single stripe on the lower straight while preserving
+  the existing bathroom scene, road geometry, lighting, objects, colors, dimensions, and crop.
+- Collision contours live in `track_02.tmx`; checkpoints, grid, and the AI racing line live in
+  `TrackLoader`.
+
+## `tracks/track_02.tmx`
+
+- Runtime Tiled map containing the manually authored road contours and solid collisions.
+- Follow `track_02-collision-guide.md` when refining the collision geometry.

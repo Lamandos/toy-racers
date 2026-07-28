@@ -7,6 +7,7 @@ import org.junit.Test
 
 class TrackLoaderTest {
     private val track = TrackLoader().load()
+    private val bathroom = TrackLoader().load(TrackId.BATHROOM)
 
     @Test
     fun `built in track contains all required race data`() {
@@ -52,6 +53,23 @@ class TrackLoaderTest {
     @Test(expected = IllegalArgumentException::class)
     fun `unknown track id is rejected`() {
         TrackLoader().load("missing-track")
+    }
+
+    @Test
+    fun `bathroom track contains race and AI data`() {
+        assertEquals(TrackId.BATHROOM.value, bathroom.id)
+        assertTrue(bathroom.collisionShapes.isNotEmpty())
+        assertTrue(bathroom.roadOuter != null)
+        assertTrue(bathroom.roadInner != null)
+        assertEquals(4, bathroom.startGrid.size)
+        assertTrue(bathroom.checkpoints.size >= 3)
+        assertTrue(bathroom.racingLine.size >= 20)
+        bathroom.startGrid.forEach {
+            assertEquals(SurfaceType.ASPHALT, bathroom.surfaceAt(it.position))
+        }
+        bathroom.racingLine.forEach {
+            assertEquals(SurfaceType.ASPHALT, bathroom.surfaceAt(it))
+        }
     }
 
     @Test(expected = IllegalArgumentException::class)

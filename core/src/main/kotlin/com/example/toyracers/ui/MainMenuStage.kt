@@ -34,8 +34,6 @@ class MainMenuStage(
             row()
             add(button("PLAY", onPlay)).width(360f).height(80f).pad(10f)
             row()
-            add(button("TRACK SELECT (SOON)") {}).width(360f).height(72f).pad(8f)
-            row()
             add(button("CAR SELECT (SOON)") {}).width(360f).height(72f).pad(8f)
             row()
             add(button("SETTINGS", onSettings)).width(360f).height(72f).pad(8f)

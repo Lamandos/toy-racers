@@ -7,7 +7,7 @@ import com.badlogic.gdx.utils.ScreenUtils
 import com.example.toyracers.ToyRacersGame
 import com.example.toyracers.ui.MainMenuStage
 
-/** Scene2D main menu with explicit placeholders for post-MVP selections and settings. */
+/** Scene2D entry menu; Play continues to the dedicated track selection step. */
 class MainMenuScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private var playRequested = false
     private var settingsRequested = false
@@ -33,7 +33,7 @@ class MainMenuScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
 
         if (!lifecyclePaused && (playRequested || startRequested())) {
             playRequested = false
-            game.startRace()
+            game.showTrackSelection()
         } else if (!lifecyclePaused && settingsRequested) {
             settingsRequested = false
             game.showSettings()

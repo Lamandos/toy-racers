@@ -144,14 +144,28 @@ class RaceRulesTest {
         rules: RaceRules,
         progress: RaceProgress,
     ) {
-        rules.update(progress, point(19f, 6f), point(22f, 6f), 0f)
+        val line = track.startLine.bounds
+        val y = line.y + line.height / 2f
+        rules.update(
+            progress,
+            TrackPoint(line.x - 1f, y),
+            TrackPoint(line.maxX + 1f, y),
+            0f,
+        )
     }
 
     private fun crossFinishBackward(
         rules: RaceRules,
         progress: RaceProgress,
     ) {
-        rules.update(progress, point(22f, 6f), point(19f, 6f), 0f)
+        val line = track.startLine.bounds
+        val y = line.y + line.height / 2f
+        rules.update(
+            progress,
+            TrackPoint(line.maxX + 1f, y),
+            TrackPoint(line.x - 1f, y),
+            0f,
+        )
     }
 
     private fun advanceTime(

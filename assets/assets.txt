@@ -14,3 +14,6 @@ sprites/ai-car-orange.png
 sprites/player-car.png
 tracks/track_01.png
 tracks/track_01.tmx
+tracks/track_02-collision-guide.md
+tracks/track_02.png
+tracks/track_02.tmx

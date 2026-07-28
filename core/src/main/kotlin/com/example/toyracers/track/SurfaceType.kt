@@ -4,6 +4,7 @@ package com.example.toyracers.track
 enum class SurfaceType {
     ASPHALT,
     PARQUET,
+    TILE,
     GRASS,
     BOOST,
     OIL,

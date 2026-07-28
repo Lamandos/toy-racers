@@ -3,6 +3,8 @@ package com.example.toyracers.race
 import com.example.toyracers.car.CarPhysics
 import com.example.toyracers.input.PlayerInput
 import com.example.toyracers.track.TrackLoader
+import com.example.toyracers.track.TrackId
+import com.example.toyracers.track.SurfaceType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -53,6 +55,33 @@ class RaceSessionTest {
         assertEquals(playerX, session.player.state.x, TOLERANCE)
         assertEquals(raceTime, session.player.progress.totalRaceTime, TOLERANCE)
         assertEquals(RacePhase.PAUSED, session.raceState.phase)
+    }
+
+    @Test
+    fun `bathroom AI follows its racing line on asphalt`() {
+        val track = TrackLoader().load(TrackId.BATHROOM)
+        val session = RaceSession(track).apply {
+            start()
+            advance(raceState.countdownDurationSeconds, PlayerInput.NONE)
+        }
+        val opponent = session.opponents.first()
+        val startX = opponent.state.x
+        val startY = opponent.state.y
+
+        session.advance(120f, PlayerInput.NONE)
+
+        val movementSquared =
+            (opponent.state.x - startX) * (opponent.state.x - startX) +
+                (opponent.state.y - startY) * (opponent.state.y - startY)
+        assertTrue(movementSquared > 1f)
+        assertEquals(
+            SurfaceType.ASPHALT,
+            track.surfaceAt(opponent.state.x, opponent.state.y),
+        )
+        assertTrue(
+            opponent.progress.completedLaps > 0 ||
+                opponent.progress.currentCheckpointIndex > 0,
+        )
     }
 
     private fun racingSession(withoutObjects: Boolean = false): RaceSession {

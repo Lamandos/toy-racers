@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.TextureAtlas
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 import com.badlogic.gdx.utils.Disposable
+import com.example.toyracers.track.TrackId
 
 /** Owns application-wide assets and their loading lifecycle. */
 class GameAssets(
@@ -29,10 +30,19 @@ class GameAssets(
     }
 
     val track01: Texture
-        get() {
-            check(prepared) { "Assets must finish loading before they are accessed" }
-            return manager.get(AssetPaths.TRACK_01, Texture::class.java)
+        get() = track(TrackId.LIVING_ROOM)
+
+    val track02: Texture
+        get() = track(TrackId.BATHROOM)
+
+    fun track(trackId: TrackId): Texture {
+        check(prepared) { "Assets must finish loading before they are accessed" }
+        val path = when (trackId) {
+            TrackId.LIVING_ROOM -> AssetPaths.TRACK_01
+            TrackId.BATHROOM -> AssetPaths.TRACK_02
         }
+        return manager.get(path, Texture::class.java)
+    }
 
     val engineLoop: Sound get() = sound(AssetPaths.ENGINE_LOOP)
     val skidLoop: Sound get() = sound(AssetPaths.SKID_LOOP)
@@ -52,6 +62,7 @@ class GameAssets(
         if (queued) return
         manager.load(AssetPaths.GAME_ATLAS, TextureAtlas::class.java)
         manager.load(AssetPaths.TRACK_01, Texture::class.java)
+        manager.load(AssetPaths.TRACK_02, Texture::class.java)
         listOf(
             AssetPaths.ENGINE_LOOP,
             AssetPaths.SKID_LOOP,

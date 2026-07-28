@@ -10,6 +10,8 @@ import com.example.toyracers.screen.MainMenuScreen
 import com.example.toyracers.screen.RaceScreen
 import com.example.toyracers.screen.ResultsScreen
 import com.example.toyracers.screen.SettingsScreen
+import com.example.toyracers.screen.TrackSelectionScreen
+import com.example.toyracers.track.TrackId
 
 /** Owns screen navigation for every platform launcher. */
 class ToyRacersGame : Game() {
@@ -29,8 +31,12 @@ class ToyRacersGame : Game() {
         changeScreen(MainMenuScreen(this))
     }
 
-    fun startRace() {
-        changeScreen(RaceScreen(this))
+    fun showTrackSelection() {
+        changeScreen(TrackSelectionScreen(this))
+    }
+
+    fun startRace(trackId: TrackId = TrackId.LIVING_ROOM) {
+        changeScreen(RaceScreen(this, trackId))
     }
 
     fun showSettings() {
