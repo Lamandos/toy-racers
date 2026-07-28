@@ -1,10 +1,11 @@
 package com.example.toyracers.assets
 
 import com.badlogic.gdx.assets.AssetManager
-import com.badlogic.gdx.graphics.g2d.TextureRegion
-import com.badlogic.gdx.graphics.g2d.TextureAtlas
 import com.badlogic.gdx.audio.Music
 import com.badlogic.gdx.audio.Sound
+import com.badlogic.gdx.graphics.Texture
+import com.badlogic.gdx.graphics.g2d.TextureAtlas
+import com.badlogic.gdx.graphics.g2d.TextureRegion
 import com.badlogic.gdx.utils.Disposable
 
 /** Owns application-wide assets and their loading lifecycle. */
@@ -27,6 +28,12 @@ class GameAssets(
         manager.get(AssetPaths.GAME_ATLAS, TextureAtlas::class.java).findRegion(OPPONENT_CAR_REGION)
     }
 
+    val track01: Texture
+        get() {
+            check(prepared) { "Assets must finish loading before they are accessed" }
+            return manager.get(AssetPaths.TRACK_01, Texture::class.java)
+        }
+
     val engineLoop: Sound get() = sound(AssetPaths.ENGINE_LOOP)
     val skidLoop: Sound get() = sound(AssetPaths.SKID_LOOP)
     val collision: Sound get() = sound(AssetPaths.COLLISION)
@@ -44,6 +51,7 @@ class GameAssets(
     fun queueLoading() {
         if (queued) return
         manager.load(AssetPaths.GAME_ATLAS, TextureAtlas::class.java)
+        manager.load(AssetPaths.TRACK_01, Texture::class.java)
         listOf(
             AssetPaths.ENGINE_LOOP,
             AssetPaths.SKID_LOOP,

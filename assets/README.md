@@ -25,3 +25,15 @@
 ## `game.atlas`
 
 - Project-authored libGDX atlas descriptor collecting the two original car sprites.
+
+## `tracks/track_01.png`
+
+- User-provided original track background, imported from `Desktop/track_01.png` on 2026-07-28.
+- Its road, parquet, object collision masks, and world boundary are authored separately in
+  `TrackLoader`, so simulation does not depend on image pixels.
+
+## `tracks/track_01.tmx`
+
+- Editable Tiled map for `track_01.png`.
+- The `collisions` object layer is the runtime source of polygon and circular collision contours.
+- Open this file in Tiled, edit only the object layer, save, and restart the game to apply changes.

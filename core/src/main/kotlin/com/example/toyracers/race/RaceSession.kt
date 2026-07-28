@@ -1,5 +1,6 @@
 package com.example.toyracers.race
 
+import com.example.toyracers.ai.AiConfig
 import com.example.toyracers.ai.AiDriver
 import com.example.toyracers.car.CarConfig
 import com.example.toyracers.car.CarPhysics
@@ -33,7 +34,11 @@ internal class RaceSession(
         RaceParticipant(
             id = "ai-$index",
             start = start,
-            driver = AiDriver(track.racingLine, start.position),
+            driver = AiDriver(
+                track.racingLine,
+                start.position,
+                AiConfig(waypointRadius = track.racingLineWaypointRadius),
+            ),
         )
     }
     val raceState = RaceState()

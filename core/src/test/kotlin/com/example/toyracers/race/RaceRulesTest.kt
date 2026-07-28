@@ -165,7 +165,7 @@ class RaceRulesTest {
     private fun point(
         x: Float,
         y: Float,
-    ) = TrackPoint(x, y)
+    ) = TrackPoint(x * TrackLoader.MAP_SCALE, y * TrackLoader.MAP_SCALE)
 
     private companion object {
         const val TOLERANCE = 0.001f

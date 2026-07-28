@@ -90,7 +90,11 @@ class AiDriverTest {
                 y = start.position.y,
                 rotationDeg = start.rotationDeg,
             )
-            val driver = AiDriver(track.racingLine, start.position)
+            val driver = AiDriver(
+                track.racingLine,
+                start.position,
+                AiConfig(waypointRadius = track.racingLineWaypointRadius),
+            )
             val physics = CarPhysics()
             val carConfig = CarConfig()
             val collisions = CollisionSystem()

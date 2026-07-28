@@ -10,8 +10,9 @@ class TrackLoaderTest {
 
     @Test
     fun `built in track contains all required race data`() {
-        assertTrue(track.innerObstacles.isNotEmpty())
-        assertTrue(track.surfaceRegions.isNotEmpty())
+        assertTrue(track.collisionShapes.isNotEmpty())
+        assertTrue(track.roadOuter != null)
+        assertTrue(track.roadInner != null)
         assertTrue(track.checkpoints.isNotEmpty())
         assertEquals(4, track.startGrid.size)
         assertTrue(track.racingLine.size >= 3)
@@ -35,14 +36,17 @@ class TrackLoaderTest {
     }
 
     @Test
-    fun `infield and outside area use background surface`() {
-        val obstacleCenter = track.innerObstacles.first().let {
-            TrackPoint(it.x + it.width / 2f, it.y + it.height / 2f)
-        }
+    fun `infield and outside area use parquet`() {
+        assertEquals(track.backgroundSurface, track.surfaceAt(TrackPoint(54f, 36f)))
+        assertEquals(track.backgroundSurface, track.surfaceAt(TrackPoint(3f, 3f)))
+        assertFalse(track.roadOuter!!.contains(3f, 3f))
+    }
 
-        assertEquals(track.backgroundSurface, track.surfaceAt(obstacleCenter))
-        assertEquals(track.backgroundSurface, track.surfaceAt(TrackPoint(1f, 1f)))
-        assertFalse(track.outerBoundary.contains(TrackPoint(1f, 1f)))
+    @Test
+    fun `oval road edges separate asphalt from parquet`() {
+        assertEquals(SurfaceType.ASPHALT, track.surfaceAt(TrackPoint(54f, 18f)))
+        assertEquals(SurfaceType.PARQUET, track.surfaceAt(TrackPoint(54f, 36f)))
+        assertEquals(SurfaceType.PARQUET, track.surfaceAt(TrackPoint(54f, 6f)))
     }
 
     @Test(expected = IllegalArgumentException::class)

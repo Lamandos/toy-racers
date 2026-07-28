@@ -23,5 +23,6 @@ data class CollisionContact(
 
 enum class CollisionType {
     WORLD_BOUNDARY,
+    TRACK_OBJECT,
     CAR,
 }

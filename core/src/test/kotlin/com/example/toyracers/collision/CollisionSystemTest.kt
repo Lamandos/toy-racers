@@ -2,6 +2,8 @@ package com.example.toyracers.collision
 
 import com.example.toyracers.car.CarState
 import com.example.toyracers.track.TrackLoader
+import com.example.toyracers.track.TrackPoint
+import com.example.toyracers.track.TrackPolygon
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -10,6 +12,7 @@ import org.junit.Test
 class CollisionSystemTest {
     private val collisionSystem = CollisionSystem()
     private val track = TrackLoader().load()
+    private val trackWithoutObjects = track.copy(collisionShapes = emptyList())
 
     @Test
     fun `world edge pushes car inside and removes outward velocity`() {
@@ -21,7 +24,7 @@ class CollisionSystemTest {
             speed = -10f,
         )
 
-        val result = collisionSystem.resolveTrackCollision(state, radius = 1f, track)
+        val result = collisionSystem.resolveTrackCollision(state, radius = 1f, trackWithoutObjects)
 
         assertTrue(result.collided)
         assertEquals(CollisionType.WORLD_BOUNDARY, result.contacts.first().type)
@@ -32,30 +35,43 @@ class CollisionSystemTest {
     }
 
     @Test
-    fun `center obstacle does not cause collision`() {
-        val obstacle = track.innerObstacles.first()
+    fun `track object pushes car out and reports object contact`() {
+        val obstacle = TrackPolygon(
+            listOf(
+                TrackPoint(50f, 50f),
+                TrackPoint(54f, 50f),
+                TrackPoint(54f, 54f),
+                TrackPoint(50f, 54f),
+            ),
+        )
+        val leftX = obstacle.vertices.minOf { it.x }
+        val centerY = obstacle.vertices.map { it.y }.average().toFloat()
         val state = CarState(
-            x = obstacle.x + obstacle.width / 2f,
-            y = obstacle.y + obstacle.height / 2f,
-            rotationDeg = 90f,
-            velocityY = 8f,
+            x = leftX - 0.5f,
+            y = centerY,
+            velocityX = 8f,
             speed = 8f,
         )
 
-        val result = collisionSystem.resolveTrackCollision(state, radius = 1f, track)
+        val result = collisionSystem.resolveTrackCollision(
+            state,
+            radius = 1f,
+            track.copy(collisionShapes = listOf(obstacle)),
+        )
 
-        assertFalse(result.collided)
-        assertEquals(obstacle.x + obstacle.width / 2f, state.x, TOLERANCE)
-        assertEquals(obstacle.y + obstacle.height / 2f, state.y, TOLERANCE)
-        assertEquals(8f, state.velocityY, TOLERANCE)
+        assertTrue(result.collided)
+        assertEquals(CollisionType.TRACK_OBJECT, result.contacts.first().type)
+        assertTrue(state.velocityX < 8f)
+        assertTrue(state.x != leftX - 0.5f)
     }
 
     @Test
     fun `car does not remain stuck in world corner`() {
         val state = CarState(x = -1f, y = -2f, velocityX = -5f, velocityY = -5f)
 
-        collisionSystem.resolveTrackCollision(state, radius = 1f, track)
-        val secondResult = collisionSystem.resolveTrackCollision(state, radius = 1f, track)
+        collisionSystem.resolveTrackCollision(state, radius = 1f, trackWithoutObjects)
+        val secondResult =
+            collisionSystem.resolveTrackCollision(state, radius = 1f, trackWithoutObjects)
 
         assertEquals(1f, state.x, TOLERANCE)
         assertEquals(1f, state.y, TOLERANCE)
@@ -66,7 +82,7 @@ class CollisionSystemTest {
     fun `leaving asphalt does not collide before world edge`() {
         val state = CarState(x = 2f, y = 6f, velocityX = -2f)
 
-        val result = collisionSystem.resolveTrackCollision(state, radius = 1f, track)
+        val result = collisionSystem.resolveTrackCollision(state, radius = 1f, trackWithoutObjects)
 
         assertFalse(result.collided)
         assertEquals(2f, state.x, TOLERANCE)
@@ -76,7 +92,7 @@ class CollisionSystemTest {
     fun `separated car does not report collision`() {
         val state = CarState(x = 7f, y = 6f)
 
-        val result = collisionSystem.resolveTrackCollision(state, radius = 1f, track)
+        val result = collisionSystem.resolveTrackCollision(state, radius = 1f, trackWithoutObjects)
 
         assertFalse(result.collided)
     }

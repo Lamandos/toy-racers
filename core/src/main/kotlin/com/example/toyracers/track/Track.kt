@@ -8,12 +8,17 @@ data class Track(
     val cameraBounds: TrackRectangle,
     val outerBoundary: TrackRectangle,
     val innerObstacles: List<TrackRectangle>,
+    val collisionShapes: List<TrackCollisionShape> = emptyList(),
     val backgroundSurface: SurfaceType,
     val surfaceRegions: List<SurfaceRegion>,
+    val roadRegion: StadiumRing? = null,
+    val roadOuter: TrackPolygon? = null,
+    val roadInner: TrackPolygon? = null,
     val startLine: StartLine,
     val checkpoints: List<Checkpoint>,
     val startGrid: List<StartGridPosition>,
     val racingLine: List<TrackPoint>,
+    val racingLineWaypointRadius: Float = 3f,
 ) {
     init {
         require(id.isNotBlank()) { "Track id must not be blank" }
@@ -29,6 +34,9 @@ data class Track(
         }
         require(surfaceRegions.all { worldBounds.contains(it.bounds) }) {
             "Surface regions must be inside world bounds"
+        }
+        require(innerObstacles.all(worldBounds::contains)) {
+            "Collision obstacles must be inside world bounds"
         }
         require(outerBoundary.contains(startLine.bounds)) {
             "Start line must be inside the outer boundary"
@@ -54,6 +62,12 @@ data class Track(
         require(racingLine.all(worldBounds::contains)) {
             "Racing line must be inside world bounds"
         }
+        require(racingLineWaypointRadius > 0f) {
+            "Racing line waypoint radius must be positive"
+        }
+        require((roadOuter == null) == (roadInner == null)) {
+            "Tiled road contours must be provided together"
+        }
     }
 
     fun surfaceAt(point: TrackPoint): SurfaceType {
@@ -66,6 +80,11 @@ data class Track(
     ): SurfaceType {
         if (innerObstacles.any { it.contains(x, y) }) {
             return backgroundSurface
+        }
+        val insideTiledRoad =
+            roadOuter?.contains(x, y) == true && roadInner?.contains(x, y) == false
+        if (insideTiledRoad || roadRegion?.contains(x, y) == true) {
+            return SurfaceType.ASPHALT
         }
         return surfaceRegions.lastOrNull { it.bounds.contains(x, y) }?.surface
             ?: backgroundSurface

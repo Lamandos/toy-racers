@@ -73,4 +73,4 @@ class SurfaceSpeedSystem(
 }
 
 private val SurfaceType.isRoad: Boolean
-    get() = this != SurfaceType.GRASS
+    get() = this != SurfaceType.PARQUET && this != SurfaceType.GRASS

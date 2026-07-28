@@ -27,11 +27,11 @@ class RaceSessionTest {
 
     @Test
     fun `shared pipeline applies track collision to every participant`() {
-        val session = racingSession()
+        val session = racingSession(withoutObjects = true)
         session.player.state.x = -10f
-        session.player.state.y = 5f
+        session.player.state.y = 36f
         session.opponents.first().state.x = -10f
-        session.opponents.first().state.y = 10f
+        session.opponents.first().state.y = 45f
 
         session.advance(CarPhysics.FIXED_DELTA_SECONDS, PlayerInput.NONE)
 
@@ -55,9 +55,17 @@ class RaceSessionTest {
         assertEquals(RacePhase.PAUSED, session.raceState.phase)
     }
 
-    private fun racingSession(): RaceSession = RaceSession(TrackLoader().load()).apply {
-        start()
-        advance(raceState.countdownDurationSeconds, PlayerInput.NONE)
+    private fun racingSession(withoutObjects: Boolean = false): RaceSession {
+        val loadedTrack = TrackLoader().load()
+        val track = if (withoutObjects) {
+            loadedTrack.copy(collisionShapes = emptyList())
+        } else {
+            loadedTrack
+        }
+        return RaceSession(track).apply {
+            start()
+            advance(raceState.countdownDurationSeconds, PlayerInput.NONE)
+        }
     }
 
     private companion object {

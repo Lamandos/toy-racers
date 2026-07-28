@@ -61,6 +61,6 @@ class PositionTrackerTest {
             finished = finished,
             finishPosition = finishPosition,
         ),
-        position = TrackPoint(x, y),
+        position = TrackPoint(x * TrackLoader.MAP_SCALE, y * TrackLoader.MAP_SCALE),
     )
 }

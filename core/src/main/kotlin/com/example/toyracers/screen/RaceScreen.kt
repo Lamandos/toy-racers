@@ -31,11 +31,13 @@ import kotlin.math.min
 class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private val worldCamera = OrthographicCamera()
     private val worldViewport = FitViewport(CAMERA_VIEW_WIDTH, CAMERA_VIEW_HEIGHT, worldCamera)
-    private val track = TrackLoader().load()
+    private val track = TrackLoader().load(
+        collisionMap = Gdx.files.internal(TrackLoader.TRACK_01_TMX).read(),
+    )
     private var raceSession = RaceSession(track)
     private val playerCarRenderer = CarRenderer(game.assets.playerCar)
     private val opponentCarRenderer = CarRenderer(game.assets.opponentCar)
-    private val trackRenderer = TrackRenderer()
+    private val trackRenderer = TrackRenderer(game.assets.track01)
     private val collisionDebugRenderer = CollisionDebugRenderer()
     private val debugSettings = DebugSettings()
     private val keyboardInput = KeyboardInputController()
@@ -135,7 +137,7 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     }
 
     private fun renderWorld() {
-        trackRenderer.render(worldViewport, worldCamera, shapes, track)
+        trackRenderer.render(worldViewport, worldCamera, track)
         raceSession.opponents.forEachIndexed { index, opponent ->
             opponentCarRenderer.render(
                 worldCamera,
@@ -300,6 +302,7 @@ class RaceScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
         hud.dispose()
         playerCarRenderer.dispose()
         opponentCarRenderer.dispose()
+        trackRenderer.dispose()
         super.dispose()
     }
 
