@@ -25,11 +25,6 @@ class CollisionDebugRenderer {
         shapes.begin(ShapeRenderer.ShapeType.Line)
         shapes.color = BOUNDARY_COLOR
         drawRectangle(shapes, track.worldBounds)
-        track.roadRegion?.let { road ->
-            shapes.color = ROAD_EDGE_COLOR
-            drawStadium(shapes, road.outer)
-            drawStadium(shapes, road.inner)
-        }
         shapes.color = ROAD_EDGE_COLOR
         track.roadOuter?.let { drawPolygon(shapes, it) }
         track.roadInner?.let { drawPolygon(shapes, it) }
@@ -61,40 +56,6 @@ class CollisionDebugRenderer {
         }
     }
 
-    private fun drawStadium(
-        shapes: ShapeRenderer,
-        stadium: com.example.toyracers.track.TrackStadium,
-    ) {
-        shapes.arc(
-            stadium.leftCenterX,
-            stadium.centerY,
-            stadium.radius,
-            90f,
-            180f,
-            ARC_SEGMENTS,
-        )
-        shapes.arc(
-            stadium.rightCenterX,
-            stadium.centerY,
-            stadium.radius,
-            -90f,
-            180f,
-            ARC_SEGMENTS,
-        )
-        shapes.line(
-            stadium.leftCenterX,
-            stadium.centerY + stadium.radius,
-            stadium.rightCenterX,
-            stadium.centerY + stadium.radius,
-        )
-        shapes.line(
-            stadium.leftCenterX,
-            stadium.centerY - stadium.radius,
-            stadium.rightCenterX,
-            stadium.centerY - stadium.radius,
-        )
-    }
-
     private fun drawRectangle(
         shapes: ShapeRenderer,
         rectangle: TrackRectangle,
@@ -104,7 +65,6 @@ class CollisionDebugRenderer {
 
     private companion object {
         const val CIRCLE_SEGMENTS = 24
-        const val ARC_SEGMENTS = 24
         val BOUNDARY_COLOR = Color(1f, 0.25f, 0.2f, 1f)
         val ROAD_EDGE_COLOR = Color(0.25f, 1f, 0.35f, 1f)
         val OBJECT_COLOR = Color(1f, 0.75f, 0.15f, 1f)

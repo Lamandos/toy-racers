@@ -1,7 +1,5 @@
 package com.example.toyracers.track
 
-import kotlin.math.hypot
-
 data class TrackPoint(
     val x: Float,
     val y: Float,
@@ -45,45 +43,6 @@ data class TrackSegment(
     init {
         require(start != end) { "Segment endpoints must be different" }
     }
-}
-
-/**
- * A horizontal stadium (a rectangle with semicircular ends), used for the oval road mask.
- */
-data class TrackStadium(
-    val centerY: Float,
-    val leftCenterX: Float,
-    val rightCenterX: Float,
-    val radius: Float,
-) {
-    init {
-        require(leftCenterX < rightCenterX) { "Stadium centers must be ordered" }
-        require(radius > 0f) { "Stadium radius must be positive" }
-    }
-
-    fun contains(
-        x: Float,
-        y: Float,
-    ): Boolean {
-        val nearestX = x.coerceIn(leftCenterX, rightCenterX)
-        return hypot(x - nearestX, y - centerY) <= radius
-    }
-}
-
-/** Road area between the outer and inner edges of an oval track. */
-data class StadiumRing(
-    val outer: TrackStadium,
-    val inner: TrackStadium,
-) {
-    init {
-        require(outer.centerY == inner.centerY) { "Ring stadiums must share a center line" }
-        require(outer.radius > inner.radius) { "Outer stadium must be larger than inner stadium" }
-    }
-
-    fun contains(
-        x: Float,
-        y: Float,
-    ): Boolean = outer.contains(x, y) && !inner.contains(x, y)
 }
 
 sealed interface TrackCollisionShape

@@ -11,7 +11,6 @@ data class Track(
     val collisionShapes: List<TrackCollisionShape> = emptyList(),
     val backgroundSurface: SurfaceType,
     val surfaceRegions: List<SurfaceRegion>,
-    val roadRegion: StadiumRing? = null,
     val roadOuter: TrackPolygon? = null,
     val roadInner: TrackPolygon? = null,
     val startLine: StartLine,
@@ -83,7 +82,7 @@ data class Track(
         }
         val insideTiledRoad =
             roadOuter?.contains(x, y) == true && roadInner?.contains(x, y) == false
-        if (insideTiledRoad || roadRegion?.contains(x, y) == true) {
+        if (insideTiledRoad) {
             return SurfaceType.ASPHALT
         }
         return surfaceRegions.lastOrNull { it.bounds.contains(x, y) }?.surface

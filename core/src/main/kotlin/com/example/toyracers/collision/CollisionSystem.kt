@@ -97,7 +97,7 @@ class CollisionSystem(
         val offsetX = state.x - closest.point.x
         val offsetY = state.y - closest.point.y
         val distance = hypot(offsetX, offsetY)
-        val inside = pointInsidePolygon(center, obstacle.vertices)
+        val inside = obstacle.contains(center.x, center.y)
         if (!inside && distance >= radius) return
 
         val normalX: Float
@@ -166,27 +166,6 @@ class CollisionSystem(
             }
         }
         return checkNotNull(closest)
-    }
-
-    private fun pointInsidePolygon(
-        point: TrackPoint,
-        vertices: List<TrackPoint>,
-    ): Boolean {
-        var inside = false
-        var previous = vertices.last()
-        vertices.forEach { current ->
-            if (
-                (current.y > point.y) != (previous.y > point.y) &&
-                point.x < (
-                    (previous.x - current.x) * (point.y - current.y) /
-                        (previous.y - current.y) + current.x
-                    )
-            ) {
-                inside = !inside
-            }
-            previous = current
-        }
-        return inside
     }
 
     private fun outwardNormal(
