@@ -2,6 +2,7 @@ package com.example.toyracers.track
 
 import java.io.InputStream
 import javax.xml.parsers.DocumentBuilderFactory
+import javax.xml.parsers.ParserConfigurationException
 import org.w3c.dom.Element
 
 /**
@@ -157,12 +158,24 @@ class TiledCollisionLoader(
 
     private fun documentBuilderFactory(): DocumentBuilderFactory =
         DocumentBuilderFactory.newInstance().apply {
-            isXIncludeAware = false
+            // XInclude processing is disabled by default. Android's parser throws even when asked
+            // to explicitly set that default, so leave it untouched for platform compatibility.
             isExpandEntityReferences = false
-            setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-            setFeature("http://xml.org/sax/features/external-general-entities", false)
-            setFeature("http://xml.org/sax/features/external-parameter-entities", false)
+            setFeatureIfSupported("http://apache.org/xml/features/disallow-doctype-decl", true)
+            setFeatureIfSupported("http://xml.org/sax/features/external-general-entities", false)
+            setFeatureIfSupported("http://xml.org/sax/features/external-parameter-entities", false)
         }
+
+    private fun DocumentBuilderFactory.setFeatureIfSupported(
+        feature: String,
+        enabled: Boolean,
+    ) {
+        try {
+            setFeature(feature, enabled)
+        } catch (_: ParserConfigurationException) {
+            // Android's bundled parser does not implement every standard Xerces/SAX feature.
+        }
+    }
 
     private companion object {
         const val COLLISION_LAYER_NAME = "collisions"
