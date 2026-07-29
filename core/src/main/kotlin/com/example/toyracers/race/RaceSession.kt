@@ -90,7 +90,9 @@ internal class RaceSession(
                     val input = participant.driver?.update(
                         participant.state,
                         CarPhysics.FIXED_DELTA_SECONDS,
-                    ) ?: playerInput
+                    ) ?: playerInput.copy(
+                        steering = playerInput.steering * carConfig.playerSteeringSensitivity,
+                    )
                     val stepResult = updateParticipant(participant, input)
                     if (participant === player) {
                         maxImpactSpeed = maxOf(maxImpactSpeed, stepResult.impactSpeed)

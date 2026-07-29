@@ -71,8 +71,3 @@ class SurfaceSpeedSystem(
         else -> target
     }
 }
-
-private val SurfaceType.isRoad: Boolean
-    get() = this == SurfaceType.ASPHALT ||
-        this == SurfaceType.BOOST ||
-        this == SurfaceType.OIL

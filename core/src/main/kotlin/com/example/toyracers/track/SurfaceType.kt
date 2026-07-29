@@ -8,4 +8,8 @@ enum class SurfaceType {
     GRASS,
     BOOST,
     OIL,
+    ;
+
+    val isRoad: Boolean
+        get() = this == ASPHALT || this == BOOST || this == OIL
 }

@@ -51,6 +51,7 @@ class RaceScreen(
     private var latestInput = PlayerInput.NONE
     private var lastCountdownNumber = -1
     private var finishSoundPlayed = false
+    private var finishTransitionRemaining = 0f
     private val hud = RaceHudStage(
         onPause = { pendingUiAction = RaceUiAction.PAUSE },
         onResume = { pendingUiAction = RaceUiAction.RESUME },
@@ -89,10 +90,11 @@ class RaceScreen(
         handleKeyboardActions()
 
         val frameDelta = min(delta, CarPhysics.MAX_FRAME_DELTA_SECONDS)
+        game.audio.advanceRaceFadeOut(frameDelta)
         updateRace(frameDelta)
         renderWorld()
         renderInterface(delta)
-        showResultsIfFinished()
+        showResultsIfFinished(frameDelta)
     }
 
     private fun handleKeyboardActions() {
@@ -136,8 +138,13 @@ class RaceScreen(
             speed = raceSession.player.state.speed,
             maxSpeed = raceSession.carConfig.maxForwardSpeed,
             throttle = latestInput.throttle,
+            brake = latestInput.brake,
             steering = latestInput.steering,
             racing = raceSession.raceState.phase == RacePhase.RACING,
+            surface = track.surfaceAt(
+                raceSession.player.state.x,
+                raceSession.player.state.y,
+            ),
         )
     }
 
@@ -188,11 +195,19 @@ class RaceScreen(
         }
     }
 
-    private fun showResultsIfFinished() {
+    private fun showResultsIfFinished(frameDelta: Float) {
         if (!lifecyclePaused && raceSession.raceState.phase == RacePhase.FINISHED) {
             if (!finishSoundPlayed) {
                 finishSoundPlayed = true
+                finishTransitionRemaining = FINISH_AUDIO_FADE_SECONDS
+                latestInput = PlayerInput.NONE
                 game.audio.finish()
+                game.audio.beginRaceFadeOut()
+            } else {
+                finishTransitionRemaining -= frameDelta
+            }
+            if (finishTransitionRemaining > 0f) {
+                return
             }
             game.showResults(
                 RaceResult(
@@ -234,6 +249,8 @@ class RaceScreen(
         latestInput = PlayerInput.NONE
         lastCountdownNumber = -1
         finishSoundPlayed = false
+        finishTransitionRemaining = 0f
+        game.audio.resetRaceMix()
         game.audio.resumeRace()
         touchInput.reset()
         cameraController.snapTo(raceSession.player.state)
@@ -258,7 +275,9 @@ class RaceScreen(
                 kotlin.math.ceil(raceSession.raceState.countdownRemainingSeconds).toInt()
             if (countdownNumber != lastCountdownNumber) {
                 lastCountdownNumber = countdownNumber
-                game.audio.countdown()
+                if (countdownNumber == COUNTDOWN_START_NUMBER) {
+                    game.audio.countdown()
+                }
             }
         } else if (
             phaseBeforeAdvance == RacePhase.COUNTDOWN &&
@@ -316,6 +335,8 @@ class RaceScreen(
         const val CAMERA_VIEW_HEIGHT = CAMERA_VIEW_WIDTH * 9f / 16f
         const val MIN_SHAKE_IMPACT_SPEED = 3f
         const val SHAKE_PER_IMPACT_SPEED = 0.025f
+        const val COUNTDOWN_START_NUMBER = 3
+        const val FINISH_AUDIO_FADE_SECONDS = 0.8f
         val COUNTDOWN_ACTIVE = Color(0.95f, 0.28f, 0.18f, 1f)
         val COUNTDOWN_INACTIVE = Color(0.25f, 0.27f, 0.31f, 1f)
         val AI_CAR_TINTS = listOf(

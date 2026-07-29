@@ -39,9 +39,15 @@ class GameAssets(
     }
 
     val engineLoop: Sound get() = sound(AssetPaths.ENGINE_LOOP)
-    val skidLoop: Sound get() = sound(AssetPaths.SKID_LOOP)
-    val collision: Sound get() = sound(AssetPaths.COLLISION)
-    val countdownBeep: Sound get() = sound(AssetPaths.COUNTDOWN_BEEP)
+    val tireDriftLoop: Sound get() = sound(AssetPaths.TIRE_DRIFT_LOOP)
+    val brakeLoop: Sound get() = sound(AssetPaths.BRAKE_LOOP)
+    val collisionLight: List<Sound> get() = AssetPaths.COLLISION_LIGHT.map(::sound)
+    val collisionMedium: List<Sound> get() = AssetPaths.COLLISION_MEDIUM.map(::sound)
+    val collisionHeavy: List<Sound> get() = AssetPaths.COLLISION_HEAVY.map(::sound)
+    val offtrackGravelLoop: Sound get() = sound(AssetPaths.OFFTRACK_GRAVEL_LOOP)
+    val offtrackGrassLoop: Sound get() = sound(AssetPaths.OFFTRACK_GRASS_LOOP)
+    val gravelHits: List<Sound> get() = AssetPaths.GRAVEL_HITS.map(::sound)
+    val startCountdown: Sound get() = sound(AssetPaths.START_COUNTDOWN)
     val go: Sound get() = sound(AssetPaths.GO)
     val checkpoint: Sound get() = sound(AssetPaths.CHECKPOINT)
     val finish: Sound get() = sound(AssetPaths.FINISH)
@@ -57,16 +63,26 @@ class GameAssets(
         manager.load(AssetPaths.GAME_ATLAS, TextureAtlas::class.java)
         manager.load(AssetPaths.TRACK_01, Texture::class.java)
         manager.load(AssetPaths.TRACK_02, Texture::class.java)
-        listOf(
-            AssetPaths.ENGINE_LOOP,
-            AssetPaths.SKID_LOOP,
-            AssetPaths.COLLISION,
-            AssetPaths.COUNTDOWN_BEEP,
-            AssetPaths.GO,
-            AssetPaths.CHECKPOINT,
-            AssetPaths.FINISH,
-            AssetPaths.BUTTON_CLICK,
-        ).forEach { manager.load(it, Sound::class.java) }
+        (
+            listOf(
+                AssetPaths.ENGINE_LOOP,
+                AssetPaths.TIRE_DRIFT_LOOP,
+                AssetPaths.BRAKE_LOOP,
+            ) +
+                AssetPaths.COLLISION_LIGHT +
+                AssetPaths.COLLISION_MEDIUM +
+                AssetPaths.COLLISION_HEAVY +
+                AssetPaths.OFFTRACK_GRAVEL_LOOP +
+                AssetPaths.OFFTRACK_GRASS_LOOP +
+                AssetPaths.GRAVEL_HITS +
+                AssetPaths.START_COUNTDOWN +
+                listOf(
+                    AssetPaths.GO,
+                    AssetPaths.CHECKPOINT,
+                    AssetPaths.FINISH,
+                    AssetPaths.BUTTON_CLICK,
+                )
+            ).forEach { manager.load(it, Sound::class.java) }
         manager.load(AssetPaths.BACKGROUND_MUSIC, Music::class.java)
         queued = true
     }

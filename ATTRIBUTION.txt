@@ -1,0 +1,7 @@
+Toy Racers racing audio pack
+
+All third-party source recordings are licensed under Creative Commons Zero (CC0).
+Attribution is not legally required, but the creators and source links are documented
+in SOURCES.md as a courtesy and for provenance.
+
+No attribution-required source is included in this pack.

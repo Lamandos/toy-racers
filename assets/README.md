@@ -13,6 +13,10 @@
   library and does not sample or derive from third-party recordings or music.
 - The generated set contains engine and skid loops, race/UI cues, collision SFX, and a short
   original background loop.
+- The licensed CC0 pack built in `racing_audio/` was integrated into the runtime on 2026-07-30.
+  The game uses one real engine loop with throttle-controlled volume, one brake loop, and the new
+  tire, collision, gravel, grass, and countdown assets. Full provenance is in the repository-level
+  `SOURCES.md`.
 
 ## `sprites/ai-car-orange.png`
 
