@@ -6,6 +6,7 @@ import com.example.toyracers.car.CarConfig
 import com.example.toyracers.car.CarPhysics
 import com.example.toyracers.car.CarState
 import com.example.toyracers.collision.CollisionSystem
+import com.example.toyracers.input.PlayerControlConfig
 import com.example.toyracers.input.PlayerInput
 import com.example.toyracers.surface.SurfaceSpeedState
 import com.example.toyracers.surface.SurfaceSpeedSystem
@@ -25,6 +26,7 @@ internal class RaceSession(
     private val carPhysics: CarPhysics = CarPhysics(),
     private val collisionSystem: CollisionSystem = CollisionSystem(),
     private val surfaceSpeedSystem: SurfaceSpeedSystem = SurfaceSpeedSystem(),
+    private val playerControlConfig: PlayerControlConfig = PlayerControlConfig(),
 ) {
     val player = RaceParticipant(
         id = PLAYER_ID,
@@ -90,9 +92,7 @@ internal class RaceSession(
                     val input = participant.driver?.update(
                         participant.state,
                         CarPhysics.FIXED_DELTA_SECONDS,
-                    ) ?: playerInput.copy(
-                        steering = playerInput.steering * carConfig.playerSteeringSensitivity,
-                    )
+                    ) ?: playerControlConfig.applyTo(playerInput)
                     val stepResult = updateParticipant(participant, input)
                     if (participant === player) {
                         maxImpactSpeed = maxOf(maxImpactSpeed, stepResult.impactSpeed)

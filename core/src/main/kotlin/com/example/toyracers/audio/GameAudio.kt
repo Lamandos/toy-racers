@@ -9,7 +9,6 @@ import kotlin.math.abs
 
 internal data class RaceAudioMix(
     val engineVolume: Float,
-    val enginePitch: Float,
     val driftVolume: Float,
     val driftPitch: Float,
     val wheelspinVolume: Float,
@@ -35,7 +34,6 @@ internal fun calculateRaceAudioMix(
         } else {
             (IDLE_VOLUME + throttle.coerceIn(0f, 1f) * THROTTLE_VOLUME) * sfxVolume
         },
-        enginePitch = BASE_PITCH + speedRatio * PITCH_RANGE,
         driftVolume = abs(steering).coerceIn(0f, 1f) * speedRatio * activeRaceVolume,
         driftPitch = 0.9f + speedRatio * 0.25f,
         wheelspinVolume = if (offRoad) {
@@ -50,7 +48,7 @@ internal fun calculateRaceAudioMix(
     )
 }
 
-/** Owns music, one-shot effects, and the long-lived engine/skid loop instances. */
+/** Owns music, one-shot effects, and long-lived race loop instances. */
 class GameAudio(
     assets: GameAssets,
     settings: AudioSettings = AudioSettings(),
@@ -88,6 +86,9 @@ class GameAudio(
             music.volume = value.effectiveMusicVolume
         }
 
+    val isRaceFadeComplete: Boolean
+        get() = !raceFadeActive || raceMixGain <= 0f
+
     fun startMusic() {
         music.isLooping = true
         music.volume = settings.effectiveMusicVolume
@@ -111,7 +112,6 @@ class GameAudio(
         racing: Boolean,
         surface: SurfaceType,
     ) {
-        startRaceLoops()
         val offRoad = !surface.isRoad
         val mix = calculateRaceAudioMix(
             speed = speed,
@@ -221,7 +221,5 @@ class GameAudio(
     }
 }
 
-private const val BASE_PITCH = 0.7f
-private const val PITCH_RANGE = 0.75f
 private const val IDLE_VOLUME = 0.18f
 private const val THROTTLE_VOLUME = 0.62f

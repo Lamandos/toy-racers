@@ -6,7 +6,6 @@ object AssetPaths {
     const val TRACK_01 = "tracks/track_01.png"
     const val TRACK_02 = "tracks/track_02.png"
     const val ENGINE_LOOP = "audio/engine/engine_mid_loop.wav"
-    const val ENGINE_ACCELERATION = "audio/engine/engine_acceleration.wav"
     const val TIRE_DRIFT_LOOP = "audio/tires/tire_drift_loop.wav"
     const val BRAKE_LOOP = "audio/tires/brake_hard.wav"
     val COLLISION_LIGHT = listOf(

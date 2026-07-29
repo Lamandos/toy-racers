@@ -12,7 +12,6 @@ import array
 import math
 import re
 import shutil
-import struct
 import subprocess
 import tempfile
 import wave
@@ -41,6 +40,21 @@ SOURCE = {
     "grass": SOURCES / "364712_rustling_grass.mp3",
 }
 
+SOURCE_LABELS = {
+    SOURCE["engine"]: "Freesound 669618",
+    SOURCE["drift"]: "Freesound 271337",
+    SOURCE["distant_drift"]: "Freesound 752837",
+    SOURCE["crash"]: "Freesound 237375",
+    SOURCE["crash_glass"]: "Freesound 592388",
+    SOURCE["rc_impact"]: "Freesound 726486",
+    SOURCE["metal_crash"]: "Freesound 40158",
+    SOURCE["metal_hit"]: "Freesound 321482",
+    SOURCE["scrap"]: "Freesound 587443",
+    SOURCE["car_gravel"]: "Freesound 529225",
+    SOURCE["gravel"]: "Freesound 251662",
+    SOURCE["grass"]: "Freesound 364712",
+}
+
 
 def run(*args: str, capture: bool = False) -> str:
     result = subprocess.run(
@@ -60,21 +74,6 @@ def require_tools_and_sources() -> None:
     missing = [str(path.relative_to(ROOT)) for path in SOURCE.values() if not path.is_file()]
     if missing:
         raise SystemExit("Missing source recordings:\n" + "\n".join(missing))
-
-
-def duration(path: Path) -> float:
-    output = run(
-        "ffprobe",
-        "-v",
-        "error",
-        "-show_entries",
-        "format=duration",
-        "-of",
-        "default=nw=1:nk=1",
-        str(path),
-        capture=True,
-    )
-    return float(output.strip())
 
 
 def ffmpeg_render(inputs: list[Path], filter_graph: str, output: Path) -> None:
@@ -142,7 +141,7 @@ def normalize_peak(source: Path, output: Path, target_db: float) -> None:
 def base_chain(start: float, end: float) -> str:
     return (
         f"atrim=start={start}:end={end},asetpts=PTS-STARTPTS,"
-        "aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,"
+        f"aresample={SAMPLE_RATE},aformat=sample_fmts=fltp:channel_layouts=stereo,"
         "highpass=f=28:p=2,lowpass=f=18000:p=1"
     )
 
@@ -270,6 +269,72 @@ def build_countdown(beep: Path, output: Path) -> None:
     write_samples(output, countdown)
 
 
+class AudioBuild:
+    """Builds output files and records their real source recordings."""
+
+    def __init__(self, work: Path) -> None:
+        self.work = work
+        self.sources_by_output: dict[Path, str] = {}
+
+    def loop(
+        self,
+        source: Path,
+        start: float,
+        end: float,
+        crossfade: float,
+        output: Path,
+        target_db: float,
+        extra_filter: str = "",
+    ) -> None:
+        build_loop(
+            source,
+            start,
+            end,
+            crossfade,
+            output,
+            target_db,
+            self.work,
+            extra_filter,
+        )
+        self.record(output, source)
+
+    def one_shot(
+        self,
+        source: Path,
+        start: float,
+        end: float,
+        output: Path,
+        target_db: float,
+        extra_filter: str = "",
+    ) -> None:
+        build_one_shot(
+            source,
+            start,
+            end,
+            output,
+            target_db,
+            self.work,
+            extra_filter,
+        )
+        self.record(output, source)
+
+    def mix(
+        self,
+        layers: list[tuple[Path, float, float, float]],
+        output: Path,
+        target_db: float,
+    ) -> None:
+        build_mix(layers, output, target_db, self.work)
+        self.record(output, *(source for source, _, _, _ in layers))
+
+    def generated(self, output: Path) -> None:
+        self.sources_by_output[output] = "Original electronic synthesis"
+
+    def record(self, output: Path, *sources: Path) -> None:
+        labels = dict.fromkeys(SOURCE_LABELS[source] for source in sources)
+        self.sources_by_output[output] = " + ".join(labels)
+
+
 def wav_metrics(path: Path) -> dict[str, float | int]:
     with wave.open(str(path), "rb") as wav:
         channels = wav.getnchannels()
@@ -297,36 +362,7 @@ def wav_metrics(path: Path) -> dict[str, float | int]:
     }
 
 
-def source_summary(path: Path) -> str:
-    mapping = {
-        "engine_idle_loop.wav": "Freesound 669618",
-        "engine_low_loop.wav": "Freesound 669618",
-        "engine_mid_loop.wav": "Freesound 669618",
-        "engine_high_loop.wav": "Freesound 669618",
-        "engine_acceleration.wav": "Freesound 669618",
-        "tire_drift_loop.wav": "Freesound 271337",
-        "brake_light.wav": "Freesound 752837",
-        "brake_hard.wav": "Freesound 271337",
-        "brake_lockup.wav": "Freesound 271337 + 752837",
-        "collision_light_01.wav": "Freesound 726486",
-        "collision_light_02.wav": "Freesound 321482",
-        "collision_medium_01.wav": "Freesound 587443 take 1",
-        "collision_medium_02.wav": "Freesound 587443 take 2",
-        "collision_medium_03.wav": "Freesound 40158",
-        "collision_heavy_01.wav": "Freesound 237375 + 592388",
-        "collision_heavy_02.wav": "Freesound 592388 + 587443",
-        "offtrack_gravel_loop.wav": "Freesound 529225",
-        "offtrack_grass_loop.wav": "Freesound 529225 + 364712",
-        "gravel_hit_01.wav": "Freesound 529225 take 1",
-        "gravel_hit_02.wav": "Freesound 529225 take 2",
-        "gravel_hit_03.wav": "Freesound 251662",
-        "start_beep.wav": "Original electronic synthesis",
-        "start_countdown_3.wav": "Original electronic synthesis",
-    }
-    return mapping[path.name]
-
-
-def write_report(files: list[Path]) -> None:
+def write_report(files: list[Path], sources_by_output: dict[Path, str]) -> None:
     rows = []
     loop_rows = []
     failures = []
@@ -346,7 +382,7 @@ def write_report(files: list[Path]) -> None:
                 duration=metrics["duration"],
                 rate=metrics["rate"],
                 peak=metrics["peak_db"],
-                source=source_summary(path),
+                source=sources_by_output[path],
             ),
         )
         if "_loop" in path.name:
@@ -396,82 +432,76 @@ def main() -> None:
 
     with tempfile.TemporaryDirectory(prefix="toy-racers-audio-") as temporary:
         work = Path(temporary)
+        build = AudioBuild(work)
         engine = OUTPUT / "engine"
-        build_loop(SOURCE["engine"], 4.2, 10.2, 0.45, engine / "engine_idle_loop.wav", -8.0, work)
-        build_loop(SOURCE["engine"], 14.0, 20.0, 0.45, engine / "engine_low_loop.wav", -7.0, work)
-        build_loop(SOURCE["engine"], 27.0, 33.0, 0.45, engine / "engine_mid_loop.wav", -6.0, work)
-        build_loop(SOURCE["engine"], 46.0, 52.0, 0.45, engine / "engine_high_loop.wav", -5.0, work)
-        build_one_shot(
+        build.loop(SOURCE["engine"], 4.2, 10.2, 0.45, engine / "engine_idle_loop.wav", -8.0)
+        build.loop(SOURCE["engine"], 14.0, 20.0, 0.45, engine / "engine_low_loop.wav", -7.0)
+        build.loop(SOURCE["engine"], 27.0, 33.0, 0.45, engine / "engine_mid_loop.wav", -6.0)
+        build.loop(SOURCE["engine"], 46.0, 52.0, 0.45, engine / "engine_high_loop.wav", -5.0)
+        build.one_shot(
             SOURCE["engine"],
             64.0,
             70.2,
             engine / "engine_acceleration.wav",
             -3.5,
-            work,
         )
 
         tires = OUTPUT / "tires"
-        build_loop(
+        build.loop(
             SOURCE["drift"],
             0.18,
             3.02,
             0.3,
             tires / "tire_drift_loop.wav",
             -5.0,
-            work,
             "highpass=f=180:p=1",
         )
-        build_one_shot(
+        build.one_shot(
             SOURCE["distant_drift"],
             3.0,
             4.35,
             tires / "brake_light.wav",
             -8.0,
-            work,
             "highpass=f=150:p=1",
         )
-        build_one_shot(
+        build.one_shot(
             SOURCE["drift"],
             0.05,
             1.75,
             tires / "brake_hard.wav",
             -5.0,
-            work,
             "highpass=f=140:p=1",
         )
-        build_mix(
+        build.mix(
             [
                 (SOURCE["drift"], 0.65, 2.75, 0.9),
                 (SOURCE["distant_drift"], 6.2, 8.3, 0.45),
             ],
             tires / "brake_lockup.wav",
             -3.5,
-            work,
         )
 
         collision = OUTPUT / "collision"
-        build_one_shot(SOURCE["rc_impact"], 0.0, 1.25, collision / "collision_light_01.wav", -8.0, work)
-        build_one_shot(SOURCE["metal_hit"], 0.0, 1.25, collision / "collision_light_02.wav", -7.0, work)
-        build_one_shot(SOURCE["scrap"], 0.15, 2.35, collision / "collision_medium_01.wav", -5.5, work)
-        build_one_shot(SOURCE["scrap"], 3.05, 5.35, collision / "collision_medium_02.wav", -5.0, work)
-        build_one_shot(SOURCE["metal_crash"], 0.0, 2.8, collision / "collision_medium_03.wav", -4.5, work)
-        build_mix(
+        build.one_shot(SOURCE["rc_impact"], 0.0, 1.25, collision / "collision_light_01.wav", -8.0)
+        build.one_shot(SOURCE["metal_hit"], 0.0, 1.25, collision / "collision_light_02.wav", -7.0)
+        build.one_shot(SOURCE["scrap"], 0.15, 2.35, collision / "collision_medium_01.wav", -5.5)
+        build.one_shot(SOURCE["scrap"], 3.05, 5.35, collision / "collision_medium_02.wav", -5.0)
+        build.one_shot(SOURCE["metal_crash"], 0.0, 2.8, collision / "collision_medium_03.wav", -4.5)
+        build.mix(
             [
                 (SOURCE["crash"], 0.0, 3.3, 0.9),
                 (SOURCE["crash_glass"], 0.0, 2.56, 0.7),
             ],
             collision / "collision_heavy_01.wav",
             -2.5,
-            work,
         )
-        build_mix(
+        build.mix(
             [
                 (SOURCE["crash_glass"], 0.0, 2.56, 0.95),
                 (SOURCE["scrap"], 10.2, 13.1, 0.65),
             ],
             collision / "collision_heavy_02.wav",
             -2.0,
-            work,
         )
 
         surface = OUTPUT / "surface"
@@ -479,7 +509,9 @@ def main() -> None:
         grass_vehicle_loop = work / "grass-vehicle-loop.wav"
         grass_rustle_loop = work / "grass-rustle-loop.wav"
         build_loop(SOURCE["car_gravel"], 3.0, 9.2, 0.5, gravel_loop, -8.0, work)
-        shutil.copy2(gravel_loop, surface / "offtrack_gravel_loop.wav")
+        gravel_output = surface / "offtrack_gravel_loop.wav"
+        shutil.copy2(gravel_loop, gravel_output)
+        build.record(gravel_output, SOURCE["car_gravel"])
         build_loop(SOURCE["car_gravel"], 17.0, 23.2, 0.5, grass_vehicle_loop, -12.0, work)
         build_loop(SOURCE["grass"], 0.3, 6.3, 0.45, grass_rustle_loop, -9.0, work)
         grass_raw = work / "offtrack-grass-raw.wav"
@@ -489,17 +521,21 @@ def main() -> None:
             "[a][b]amix=inputs=2:normalize=0:duration=shortest[out]",
             grass_raw,
         )
-        normalize_peak(grass_raw, surface / "offtrack_grass_loop.wav", -8.5)
-        build_one_shot(SOURCE["car_gravel"], 18.2, 19.15, surface / "gravel_hit_01.wav", -7.0, work)
-        build_one_shot(SOURCE["car_gravel"], 20.0, 21.05, surface / "gravel_hit_02.wav", -6.5, work)
-        build_one_shot(SOURCE["gravel"], 4.2, 5.35, surface / "gravel_hit_03.wav", -6.0, work)
+        grass_output = surface / "offtrack_grass_loop.wav"
+        normalize_peak(grass_raw, grass_output, -8.5)
+        build.record(grass_output, SOURCE["car_gravel"], SOURCE["grass"])
+        build.one_shot(SOURCE["car_gravel"], 18.2, 19.15, surface / "gravel_hit_01.wav", -7.0)
+        build.one_shot(SOURCE["car_gravel"], 20.0, 21.05, surface / "gravel_hit_02.wav", -6.5)
+        build.one_shot(SOURCE["gravel"], 4.2, 5.35, surface / "gravel_hit_03.wav", -6.0)
 
         ui = OUTPUT / "ui"
         build_beep(ui / "start_beep.wav")
         build_countdown(ui / "start_beep.wav", ui / "start_countdown_3.wav")
+        build.generated(ui / "start_beep.wav")
+        build.generated(ui / "start_countdown_3.wav")
 
     files = sorted(OUTPUT.rglob("*.wav"))
-    write_report(files)
+    write_report(files, build.sources_by_output)
     create_archive(files)
     print((ROOT / "AUDIO_REPORT.md").read_text(encoding="utf-8"))
     print(f"Created {ARCHIVE.name} with {len(files)} WAV files.")

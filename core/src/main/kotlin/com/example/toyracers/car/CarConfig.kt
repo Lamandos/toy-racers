@@ -8,7 +8,6 @@ data class CarConfig(
     val maxForwardSpeed: Float = 34f,
     val maxReverseSpeed: Float = 13f,
     val steeringSpeed: Float = 145f,
-    val playerSteeringSensitivity: Float = 0.85f,
     val grip: Float = 1f,
     val lateralFriction: Float = 7f,
     val rollingResistance: Float = 4f,
@@ -23,7 +22,6 @@ data class CarConfig(
         require(maxForwardSpeed > 0f)
         require(maxReverseSpeed > 0f)
         require(steeringSpeed >= 0f)
-        require(playerSteeringSensitivity in 0f..1f)
         require(grip >= 0f)
         require(lateralFriction >= 0f)
         require(rollingResistance >= 0f)

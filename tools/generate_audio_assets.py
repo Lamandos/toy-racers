@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""Generate the original procedural prototype audio shipped with Toy Racers."""
+"""Generate the small UI sounds and background music shipped with Toy Racers."""
 
 import math
-import random
 import struct
 import wave
 from pathlib import Path
@@ -35,31 +34,6 @@ def tone(frequency, volume=0.5):
     )
 
 
-random_source = random.Random(19)
-noise = [random_source.uniform(-1, 1) for _ in range(RATE)]
-
-write(
-    "engine-loop.wav",
-    1.0,
-    lambda time, _index, _count: 0.22 * math.sin(2 * math.pi * 55 * time)
-    + 0.10 * math.sin(2 * math.pi * 110 * time)
-    + 0.04 * math.sin(2 * math.pi * 165 * time),
-)
-write(
-    "skid-loop.wav",
-    1.0,
-    lambda _time, index, _count: 0.19
-    * (noise[index] - 0.65 * noise[(index - 1) % RATE]),
-)
-write(
-    "collision.wav",
-    0.32,
-    lambda time, index, count: (
-        noise[index % RATE] * 0.55 + math.sin(2 * math.pi * 82 * time) * 0.4
-    )
-    * envelope(index, count, 0.005, 0.28),
-)
-write("countdown-beep.wav", 0.16, tone(660, 0.55))
 write("go.wav", 0.35, lambda time, index, count: tone(880 + time * 500, 0.58)(time, index, count))
 write("checkpoint.wav", 0.22, lambda time, index, count: tone(740 + time * 900, 0.48)(time, index, count))
 write(

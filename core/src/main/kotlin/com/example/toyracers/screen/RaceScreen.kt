@@ -51,7 +51,6 @@ class RaceScreen(
     private var latestInput = PlayerInput.NONE
     private var lastCountdownNumber = -1
     private var finishSoundPlayed = false
-    private var finishTransitionRemaining = 0f
     private val hud = RaceHudStage(
         onPause = { pendingUiAction = RaceUiAction.PAUSE },
         onResume = { pendingUiAction = RaceUiAction.RESUME },
@@ -94,7 +93,7 @@ class RaceScreen(
         updateRace(frameDelta)
         renderWorld()
         renderInterface(delta)
-        showResultsIfFinished(frameDelta)
+        showResultsIfFinished()
     }
 
     private fun handleKeyboardActions() {
@@ -195,18 +194,15 @@ class RaceScreen(
         }
     }
 
-    private fun showResultsIfFinished(frameDelta: Float) {
+    private fun showResultsIfFinished() {
         if (!lifecyclePaused && raceSession.raceState.phase == RacePhase.FINISHED) {
             if (!finishSoundPlayed) {
                 finishSoundPlayed = true
-                finishTransitionRemaining = FINISH_AUDIO_FADE_SECONDS
                 latestInput = PlayerInput.NONE
                 game.audio.finish()
                 game.audio.beginRaceFadeOut()
-            } else {
-                finishTransitionRemaining -= frameDelta
             }
-            if (finishTransitionRemaining > 0f) {
+            if (!game.audio.isRaceFadeComplete) {
                 return
             }
             game.showResults(
@@ -249,7 +245,6 @@ class RaceScreen(
         latestInput = PlayerInput.NONE
         lastCountdownNumber = -1
         finishSoundPlayed = false
-        finishTransitionRemaining = 0f
         game.audio.resetRaceMix()
         game.audio.resumeRace()
         touchInput.reset()
@@ -336,7 +331,6 @@ class RaceScreen(
         const val MIN_SHAKE_IMPACT_SPEED = 3f
         const val SHAKE_PER_IMPACT_SPEED = 0.025f
         const val COUNTDOWN_START_NUMBER = 3
-        const val FINISH_AUDIO_FADE_SECONDS = 0.8f
         val COUNTDOWN_ACTIVE = Color(0.95f, 0.28f, 0.18f, 1f)
         val COUNTDOWN_INACTIVE = Color(0.25f, 0.27f, 0.31f, 1f)
         val AI_CAR_TINTS = listOf(
