@@ -1,6 +1,24 @@
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 eclipse.project.name = appName + '-core'
 
+apply plugin: 'jacoco'
+
+jacoco {
+  toolVersion = '0.8.13'
+}
+
+def unitTestCoverageClasses = sourceSets.main.output.classesDirs.asFileTree.matching {
+  include 'com/example/toyracers/ai/**'
+  include 'com/example/toyracers/camera/**'
+  include 'com/example/toyracers/car/**'
+  include 'com/example/toyracers/collision/**'
+  include 'com/example/toyracers/input/PlayerControlConfig*'
+  include 'com/example/toyracers/input/PlayerInput*'
+  include 'com/example/toyracers/race/**'
+  include 'com/example/toyracers/surface/**'
+  include 'com/example/toyracers/track/**'
+}
+
 sourceSets {
   test {
     resources.srcDir rootProject.file('assets')
@@ -20,3 +38,27 @@ dependencies {
 jar {
   duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
+
+jacocoTestReport {
+  dependsOn test
+  classDirectories.setFrom(unitTestCoverageClasses)
+  reports {
+    html.required = true
+    xml.required = true
+  }
+}
+
+jacocoTestCoverageVerification {
+  dependsOn test
+  classDirectories.setFrom(unitTestCoverageClasses)
+  violationRules {
+    rule {
+      limit {
+        counter = 'LINE'
+        minimum = 0.75
+      }
+    }
+  }
+}
+
+check.dependsOn jacocoTestCoverageVerification
