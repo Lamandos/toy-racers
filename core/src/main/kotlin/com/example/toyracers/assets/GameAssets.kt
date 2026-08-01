@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.TextureAtlas
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 import com.badlogic.gdx.utils.Disposable
+import com.example.toyracers.car.CarModel
 import com.example.toyracers.track.TrackId
 
 /** Owns application-wide assets and their loading lifecycle. */
@@ -19,9 +20,9 @@ class GameAssets(
     val progress: Float
         get() = manager.progress
 
-    val playerCar: TextureRegion by lazy {
+    fun car(model: CarModel): TextureRegion {
         check(prepared) { "Assets must finish loading before they are accessed" }
-        manager.get(AssetPaths.GAME_ATLAS, TextureAtlas::class.java).findRegion(PLAYER_CAR_REGION)
+        return TextureRegion(manager.get(model.assetPath, Texture::class.java))
     }
 
     val opponentCar: TextureRegion by lazy {
@@ -63,6 +64,7 @@ class GameAssets(
         manager.load(AssetPaths.GAME_ATLAS, TextureAtlas::class.java)
         manager.load(AssetPaths.TRACK_01, Texture::class.java)
         manager.load(AssetPaths.TRACK_02, Texture::class.java)
+        CarModel.entries.forEach { manager.load(it.assetPath, Texture::class.java) }
         (
             listOf(
                 AssetPaths.ENGINE_LOOP,
@@ -106,7 +108,6 @@ class GameAssets(
     }
 
     private companion object {
-        const val PLAYER_CAR_REGION = "player-car"
         const val OPPONENT_CAR_REGION = "ai-car"
     }
 }

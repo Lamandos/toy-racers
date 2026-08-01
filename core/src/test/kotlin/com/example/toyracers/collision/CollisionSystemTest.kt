@@ -127,6 +127,38 @@ class CollisionSystemTest {
         assertEquals(8f, second.velocityX, TOLERANCE)
     }
 
+    @Test
+    fun `oriented collision capsule reaches the visible nose of car`() {
+        val state = CarState(x = 1.5f, y = 6f, rotationDeg = 0f, velocityX = -2f)
+
+        val result = collisionSystem.resolveTrackCollision(
+            state = state,
+            radius = 0.81f,
+            longitudinalOffset = 0.81f,
+            track = trackWithoutObjects,
+        )
+
+        assertTrue(result.collided)
+        assertEquals(1.62f, state.x, TOLERANCE)
+    }
+
+    @Test
+    fun `oriented car capsules collide nose to tail near sprite boundaries`() {
+        val first = CarState(x = 0f, rotationDeg = 0f)
+        val second = CarState(x = 3.1f, rotationDeg = 0f)
+
+        val result = collisionSystem.resolveCarCollision(
+            first = first,
+            firstRadius = 0.81f,
+            firstLongitudinalOffset = 0.81f,
+            second = second,
+            secondRadius = 0.81f,
+            secondLongitudinalOffset = 0.81f,
+        )
+
+        assertTrue(result.collided)
+    }
+
     private companion object {
         const val TOLERANCE = 0.001f
     }

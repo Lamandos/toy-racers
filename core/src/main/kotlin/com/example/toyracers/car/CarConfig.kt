@@ -11,7 +11,8 @@ data class CarConfig(
     val grip: Float = 1f,
     val lateralFriction: Float = 7f,
     val rollingResistance: Float = 4f,
-    val collisionRadius: Float = 1.1f,
+    val collisionRadius: Float = 0.81f,
+    val collisionLongitudinalOffset: Float = 0.81f,
     val width: Float = 1.8f,
     val length: Float = 3.4f,
 ) {
@@ -26,7 +27,14 @@ data class CarConfig(
         require(lateralFriction >= 0f)
         require(rollingResistance >= 0f)
         require(collisionRadius > 0f)
+        require(collisionLongitudinalOffset >= 0f)
         require(width > 0f)
         require(length > 0f)
+        require(collisionRadius * 2f <= width) {
+            "Collision shape must fit inside car width"
+        }
+        require(collisionLongitudinalOffset + collisionRadius <= length / 2f) {
+            "Collision shape must fit inside car length"
+        }
     }
 }

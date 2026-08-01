@@ -4,7 +4,9 @@ import com.badlogic.gdx.Game
 import com.badlogic.gdx.Screen
 import com.example.toyracers.assets.GameAssets
 import com.example.toyracers.audio.GameAudio
+import com.example.toyracers.car.CarModel
 import com.example.toyracers.race.RaceResult
+import com.example.toyracers.screen.CarSelectionScreen
 import com.example.toyracers.screen.LoadingScreen
 import com.example.toyracers.screen.MainMenuScreen
 import com.example.toyracers.screen.RaceScreen
@@ -18,6 +20,8 @@ class ToyRacersGame : Game() {
     lateinit var assets: GameAssets
         private set
     lateinit var audio: GameAudio
+        private set
+    var selectedCar: CarModel = CarModel.RED_STRIPE
         private set
 
     override fun create() {
@@ -33,6 +37,14 @@ class ToyRacersGame : Game() {
 
     fun showTrackSelection() {
         changeScreen(TrackSelectionScreen(this))
+    }
+
+    fun showCarSelection(trackId: TrackId) {
+        changeScreen(CarSelectionScreen(this, trackId))
+    }
+
+    fun selectCar(model: CarModel) {
+        selectedCar = model
     }
 
     fun startRace(trackId: TrackId = TrackId.LIVING_ROOM) {

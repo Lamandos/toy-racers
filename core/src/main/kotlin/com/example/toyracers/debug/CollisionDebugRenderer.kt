@@ -9,6 +9,8 @@ import com.example.toyracers.track.Track
 import com.example.toyracers.track.TrackCircle
 import com.example.toyracers.track.TrackPolygon
 import com.example.toyracers.track.TrackRectangle
+import kotlin.math.cos
+import kotlin.math.sin
 
 /** Optional wireframe view of collision shapes. */
 class CollisionDebugRenderer {
@@ -42,7 +44,18 @@ class CollisionDebugRenderer {
             }
         }
         shapes.color = CAR_COLOR
-        cars.forEach { shapes.circle(it.state.x, it.state.y, it.radius, CIRCLE_SEGMENTS) }
+        cars.forEach { car ->
+            val radians = Math.toRadians(car.state.rotationDeg.toDouble())
+            COLLISION_OFFSETS.forEach { offsetMultiplier ->
+                val offset = car.longitudinalOffset * offsetMultiplier
+                shapes.circle(
+                    car.state.x + cos(radians).toFloat() * offset,
+                    car.state.y + sin(radians).toFloat() * offset,
+                    car.radius,
+                    CIRCLE_SEGMENTS,
+                )
+            }
+        }
         shapes.end()
     }
 
@@ -65,6 +78,7 @@ class CollisionDebugRenderer {
 
     private companion object {
         const val CIRCLE_SEGMENTS = 24
+        val COLLISION_OFFSETS = listOf(-1f, 0f, 1f)
         val BOUNDARY_COLOR = Color(1f, 0.25f, 0.2f, 1f)
         val ROAD_EDGE_COLOR = Color(0.25f, 1f, 0.35f, 1f)
         val OBJECT_COLOR = Color(1f, 0.75f, 0.15f, 1f)
@@ -75,4 +89,5 @@ class CollisionDebugRenderer {
 data class DebugCar(
     val state: CarState,
     val radius: Float,
+    val longitudinalOffset: Float,
 )

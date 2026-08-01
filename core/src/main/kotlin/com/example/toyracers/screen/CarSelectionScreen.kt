@@ -5,19 +5,23 @@ import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.utils.ScreenUtils
 import com.example.toyracers.ToyRacersGame
+import com.example.toyracers.car.CarModel
 import com.example.toyracers.track.TrackId
-import com.example.toyracers.ui.TrackSelectionOption
-import com.example.toyracers.ui.TrackSelectionStage
+import com.example.toyracers.ui.CarSelectionOption
+import com.example.toyracers.ui.CarSelectionStage
 
-/** Track selection shown as the second step of the Play flow. */
-class TrackSelectionScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
-    private var selectedTrack: TrackId? = null
+/** Final Play-flow step: select a car for the chosen track and start the race. */
+class CarSelectionScreen(
+    game: ToyRacersGame,
+    private val trackId: TrackId,
+) : ToyRacersScreen(game) {
     private var backRequested = false
-    private val selection = TrackSelectionStage(
-        options = TrackId.entries.map { trackId ->
-            TrackSelectionOption(trackId, game.assets.track(trackId))
-        },
-        onTrackSelected = { selectedTrack = it },
+    private var startRequested = false
+    private val selection = CarSelectionStage(
+        options = CarModel.entries.map { CarSelectionOption(it, game.assets.car(it)) },
+        initiallySelected = game.selectedCar,
+        onCarSelected = game::selectCar,
+        onStartRace = { startRequested = true },
         onBack = { backRequested = true },
         onButtonClick = game.audio::buttonClick,
     )
@@ -35,22 +39,18 @@ class TrackSelectionScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     override fun render(delta: Float) {
         ScreenUtils.clear(BACKGROUND)
         selection.render(delta)
-        selectedTrack?.let {
-            selectedTrack = null
-            game.showCarSelection(it)
+        if (!lifecyclePaused && startRequested) {
+            startRequested = false
+            game.startRace(trackId)
             return
         }
-        if (!lifecyclePaused &&
-            (backRequested || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE))
-        ) {
-            game.showMainMenu()
+        if (!lifecyclePaused && (backRequested || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE))) {
+            game.showTrackSelection()
         }
     }
 
     override fun hide() {
-        if (Gdx.input.inputProcessor === selection.inputProcessor) {
-            Gdx.input.inputProcessor = null
-        }
+        if (Gdx.input.inputProcessor === selection.inputProcessor) Gdx.input.inputProcessor = null
     }
 
     override fun dispose() {

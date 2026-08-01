@@ -1,6 +1,8 @@
 package com.example.toyracers.race
 
 import com.example.toyracers.car.CarPhysics
+import com.example.toyracers.car.CarModel
+import com.example.toyracers.car.opponentModelsFor
 import com.example.toyracers.input.PlayerInput
 import com.example.toyracers.track.TrackLoader
 import com.example.toyracers.track.TrackId
@@ -10,6 +12,30 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RaceSessionTest {
+    @Test
+    fun `race uses four opponents for the five car roster`() {
+        assertEquals(4, racingSession().opponents.size)
+    }
+
+    @Test
+    fun `player and AI participants receive their own model performance`() {
+        val playerModel = CarModel.YELLOW_SPORT
+        val opponents = opponentModelsFor(playerModel)
+        val session = RaceSession(
+            track = TrackLoader().load(),
+            playerCarModel = playerModel,
+            opponentCarModels = opponents,
+        )
+
+        assertEquals(
+            playerModel.performance.applyTo(),
+            session.player.carConfig,
+        )
+        session.opponents.forEachIndexed { index, opponent ->
+            assertEquals(opponents[index].performance.applyTo(), opponent.carConfig)
+        }
+    }
+
     @Test
     fun `one session step updates player and AI through the shared pipeline`() {
         val session = racingSession()

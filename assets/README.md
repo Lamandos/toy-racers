@@ -24,6 +24,18 @@
   `tools/ProcessGeneratedSprite.java` into a transparent `64 × 128` sprite.
 - No brand, real vehicle, protected character, or third-party artwork was used as a reference.
 
+## `sprites/cars/*.png`
+
+- Five player-selectable car drawings imported from the user-provided `Desktop/car models.png`
+  on 2026-08-02.
+- The runtime cutouts were refined with OpenAI image editing on 2026-08-02 to remove cast
+  shadows, smooth the silhouettes, and align the green racer and orange truck with the other
+  cars while preserving the supplied designs.
+- `tools/ProcessCarModelSheet.java` deterministically separates the drawings from their light
+  checkerboard background and fits them to transparent `64 × 128` runtime canvases.
+- The source sheet contains no visible vehicle branding; the user is responsible for its
+  provenance and permission to use it.
+
 ## `game.atlas`
 
 - Project-authored libGDX atlas descriptor collecting the two original car sprites.

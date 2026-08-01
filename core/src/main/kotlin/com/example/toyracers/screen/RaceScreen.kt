@@ -11,6 +11,7 @@ import com.example.toyracers.ToyRacersGame
 import com.example.toyracers.camera.CameraBounds
 import com.example.toyracers.camera.RaceCameraController
 import com.example.toyracers.car.CarPhysics
+import com.example.toyracers.car.opponentModelsFor
 import com.example.toyracers.debug.CollisionDebugRenderer
 import com.example.toyracers.debug.DebugCar
 import com.example.toyracers.debug.DebugSettings
@@ -39,9 +40,11 @@ class RaceScreen(
         trackId = trackId,
         collisionMap = Gdx.files.internal(TrackLoader.tmxPath(trackId)).read(),
     )
-    private var raceSession = RaceSession(track)
-    private val playerCarRenderer = CarRenderer(game.assets.playerCar)
-    private val opponentCarRenderer = CarRenderer(game.assets.opponentCar)
+    private val playerModel = game.selectedCar
+    private val opponentModels = opponentModelsFor(game.selectedCar)
+    private var raceSession = createRaceSession()
+    private val playerCarRenderer = CarRenderer(game.assets.car(playerModel))
+    private val opponentCarRenderers = opponentModels.map { CarRenderer(game.assets.car(it)) }
     private val trackRenderer = TrackRenderer(game.assets.track(trackId))
     private val collisionDebugRenderer = CollisionDebugRenderer()
     private val debugSettings = DebugSettings()
@@ -150,11 +153,10 @@ class RaceScreen(
     private fun renderWorld() {
         trackRenderer.render(worldViewport, worldCamera, track)
         raceSession.opponents.forEachIndexed { index, opponent ->
-            opponentCarRenderer.render(
+            opponentCarRenderers[index].render(
                 worldCamera,
                 opponent.state,
-                raceSession.carConfig,
-                AI_CAR_TINTS[index % AI_CAR_TINTS.size],
+                opponent.carConfig,
             )
         }
         playerCarRenderer.render(
@@ -171,10 +173,15 @@ class RaceScreen(
                 cars = listOf(
                     DebugCar(
                         raceSession.player.state,
-                        raceSession.carConfig.collisionRadius,
+                        raceSession.player.carConfig.collisionRadius,
+                        raceSession.player.carConfig.collisionLongitudinalOffset,
                     ),
                 ) + raceSession.opponents.map {
-                    DebugCar(it.state, raceSession.carConfig.collisionRadius)
+                    DebugCar(
+                        it.state,
+                        it.carConfig.collisionRadius,
+                        it.carConfig.collisionLongitudinalOffset,
+                    )
                 },
             )
         }
@@ -241,7 +248,7 @@ class RaceScreen(
     )
 
     private fun resetRace() {
-        raceSession = RaceSession(track).also(RaceSession::start)
+        raceSession = createRaceSession().also(RaceSession::start)
         latestInput = PlayerInput.NONE
         lastCountdownNumber = -1
         finishSoundPlayed = false
@@ -263,6 +270,12 @@ class RaceScreen(
         }
         shapes.end()
     }
+
+    private fun createRaceSession(): RaceSession = RaceSession(
+        track = track,
+        playerCarModel = playerModel,
+        opponentCarModels = opponentModels,
+    )
 
     private fun updateCountdownAudio(phaseBeforeAdvance: RacePhase) {
         if (raceSession.raceState.phase == RacePhase.COUNTDOWN) {
@@ -320,7 +333,7 @@ class RaceScreen(
         touchInput.dispose()
         hud.dispose()
         playerCarRenderer.dispose()
-        opponentCarRenderer.dispose()
+        opponentCarRenderers.forEach(CarRenderer::dispose)
         trackRenderer.dispose()
         super.dispose()
     }
@@ -333,11 +346,6 @@ class RaceScreen(
         const val COUNTDOWN_START_NUMBER = 3
         val COUNTDOWN_ACTIVE = Color(0.95f, 0.28f, 0.18f, 1f)
         val COUNTDOWN_INACTIVE = Color(0.25f, 0.27f, 0.31f, 1f)
-        val AI_CAR_TINTS = listOf(
-            Color.WHITE,
-            Color(0.72f, 0.90f, 1f, 1f),
-            Color(1f, 0.72f, 0.82f, 1f),
-        )
     }
 
     private enum class RaceUiAction {

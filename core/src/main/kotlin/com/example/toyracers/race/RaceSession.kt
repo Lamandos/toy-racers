@@ -3,8 +3,10 @@ package com.example.toyracers.race
 import com.example.toyracers.ai.AiConfig
 import com.example.toyracers.ai.AiDriver
 import com.example.toyracers.car.CarConfig
+import com.example.toyracers.car.CarModel
 import com.example.toyracers.car.CarPhysics
 import com.example.toyracers.car.CarState
+import com.example.toyracers.car.opponentModelsFor
 import com.example.toyracers.collision.CollisionSystem
 import com.example.toyracers.input.PlayerControlConfig
 import com.example.toyracers.input.PlayerInput
@@ -22,20 +24,30 @@ import com.example.toyracers.track.TrackPoint
  */
 internal class RaceSession(
     private val track: Track,
-    val carConfig: CarConfig = CarConfig(),
+    playerCarModel: CarModel = CarModel.RED_STRIPE,
+    opponentCarModels: List<CarModel> = opponentModelsFor(playerCarModel),
+    baseCarConfig: CarConfig = CarConfig(),
     private val carPhysics: CarPhysics = CarPhysics(),
     private val collisionSystem: CollisionSystem = CollisionSystem(),
     private val surfaceSpeedSystem: SurfaceSpeedSystem = SurfaceSpeedSystem(),
     private val playerControlConfig: PlayerControlConfig = PlayerControlConfig(),
 ) {
+    init {
+        require(track.startGrid.size == opponentCarModels.size + 1) {
+            "Start grid must contain one position for every race participant"
+        }
+    }
+
     val player = RaceParticipant(
         id = PLAYER_ID,
         start = track.startGrid.first(),
+        carConfig = playerCarModel.performance.applyTo(baseCarConfig),
     )
     val opponents: List<RaceParticipant> = track.startGrid.drop(1).mapIndexed { index, start ->
         RaceParticipant(
             id = "ai-$index",
             start = start,
+            carConfig = opponentCarModels[index].performance.applyTo(baseCarConfig),
             driver = AiDriver(
                 track.racingLine,
                 start.position,
@@ -44,6 +56,8 @@ internal class RaceSession(
         )
     }
     val raceState = RaceState()
+    val carConfig: CarConfig
+        get() = player.carConfig
     val requiredLaps: Int
         get() = raceRules.requiredLaps
 
@@ -126,18 +140,19 @@ internal class RaceSession(
         val previousPosition = participant.state.position()
         carPhysics.update(
             state = participant.state,
-            config = carConfig,
+            config = participant.carConfig,
             rawInput = input,
             deltaSeconds = CarPhysics.FIXED_DELTA_SECONDS,
         )
         val collision = collisionSystem.resolveTrackCollision(
             state = participant.state,
-            radius = carConfig.collisionRadius,
+            radius = participant.carConfig.collisionRadius,
+            longitudinalOffset = participant.carConfig.collisionLongitudinalOffset,
             track = track,
         )
         surfaceSpeedSystem.update(
             carState = participant.state,
-            carConfig = carConfig,
+            carConfig = participant.carConfig,
             surfaceState = participant.surfaceSpeedState,
             surface = track.surfaceAt(participant.state.x, participant.state.y),
             deltaSeconds = CarPhysics.FIXED_DELTA_SECONDS,
@@ -161,9 +176,13 @@ internal class RaceSession(
             for (secondIndex in firstIndex + 1..<participants.size) {
                 val result = collisionSystem.resolveCarCollision(
                     first = participants[firstIndex].state,
-                    firstRadius = carConfig.collisionRadius,
+                    firstRadius = participants[firstIndex].carConfig.collisionRadius,
+                    firstLongitudinalOffset =
+                        participants[firstIndex].carConfig.collisionLongitudinalOffset,
                     second = participants[secondIndex].state,
-                    secondRadius = carConfig.collisionRadius,
+                    secondRadius = participants[secondIndex].carConfig.collisionRadius,
+                    secondLongitudinalOffset =
+                        participants[secondIndex].carConfig.collisionLongitudinalOffset,
                 )
                 maxImpactSpeed = maxOf(maxImpactSpeed, result.maxImpactSpeed)
             }
@@ -186,6 +205,7 @@ internal class RaceSession(
 internal class RaceParticipant(
     val id: String,
     start: StartGridPosition,
+    val carConfig: CarConfig,
     val driver: AiDriver? = null,
 ) {
     val state = CarState(
