@@ -16,7 +16,7 @@ import com.badlogic.gdx.utils.viewport.FitViewport
 import com.example.toyracers.ToyRacersGame
 import com.example.toyracers.car.CarModel
 import com.example.toyracers.car.CarPerformance
-import com.example.toyracers.car.performanceSquareCount
+import kotlin.math.roundToInt
 
 /** Displays every player car without coupling the selected visual to simulation rules. */
 class CarSelectionStage(
@@ -168,3 +168,10 @@ data class CarSelectionOption(
     val model: CarModel,
     val preview: TextureRegion,
 )
+
+/** Maps the supported performance range onto the five-square selection UI. */
+internal fun performanceSquareCount(multiplier: Float): Int {
+    val normalized = (multiplier - CarPerformance.MIN_MULTIPLIER) /
+        (CarPerformance.MAX_MULTIPLIER - CarPerformance.MIN_MULTIPLIER)
+    return (1 + (normalized * 4f).roundToInt()).coerceIn(1, 5)
+}

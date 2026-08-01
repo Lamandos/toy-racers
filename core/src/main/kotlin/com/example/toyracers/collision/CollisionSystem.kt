@@ -24,19 +24,26 @@ class CollisionSystem(
         longitudinalOffset: Float,
         track: Track,
     ): CollisionResult {
-        require(longitudinalOffset >= 0f) { "Collision offset must not be negative" }
-        if (longitudinalOffset == 0f) return resolveTrackCollision(state, radius, track)
-
         val contacts = mutableListOf<CollisionContact>()
-        collisionOffsets(longitudinalOffset).forEach { offset ->
-            val shift = orientedOffset(state, offset)
-            state.x += shift.first
-            state.y += shift.second
-            contacts += resolveTrackCollision(state, radius, track).contacts
-            state.x -= shift.first
-            state.y -= shift.second
+        val circleIndices = carCollisionCircles(state, radius, longitudinalOffset).indices
+        circleIndices.forEach { circleIndex ->
+            val circle = carCollisionCircles(state, radius, longitudinalOffset)[circleIndex]
+            contacts += resolveTrackCollisionCircle(state, circle, track).contacts
         }
         return if (contacts.isEmpty()) CollisionResult.NONE else CollisionResult(contacts)
+    }
+
+    private fun resolveTrackCollisionCircle(
+        state: CarState,
+        circle: CarCollisionCircle,
+        track: Track,
+    ): CollisionResult {
+        val circleState = state.copy(x = circle.x, y = circle.y)
+        val result = resolveTrackCollision(circleState, circle.radius, track)
+        state.x += circleState.x - circle.x
+        state.y += circleState.y - circle.y
+        state.copyMotionFrom(circleState)
+        return result
     }
 
     fun resolveTrackCollision(
@@ -320,43 +327,43 @@ class CollisionSystem(
         secondRadius: Float,
         secondLongitudinalOffset: Float,
     ): CollisionResult {
-        require(firstLongitudinalOffset >= 0f) { "First collision offset must not be negative" }
-        require(secondLongitudinalOffset >= 0f) { "Second collision offset must not be negative" }
-        val closestPair = collisionOffsets(firstLongitudinalOffset).flatMap { firstOffset ->
-            collisionOffsets(secondLongitudinalOffset).map { secondOffset ->
-                val firstShift = orientedOffset(first, firstOffset)
-                val secondShift = orientedOffset(second, secondOffset)
-                val offsetX = second.x + secondShift.first - first.x - firstShift.first
-                val offsetY = second.y + secondShift.second - first.y - firstShift.second
-                CirclePair(firstShift, secondShift, offsetX * offsetX + offsetY * offsetY)
+        val firstCircles = carCollisionCircles(first, firstRadius, firstLongitudinalOffset)
+        val secondCircles = carCollisionCircles(second, secondRadius, secondLongitudinalOffset)
+        val closestPair = firstCircles.flatMap { firstCircle ->
+            secondCircles.map { secondCircle ->
+                val offsetX = secondCircle.x - firstCircle.x
+                val offsetY = secondCircle.y - firstCircle.y
+                CirclePair(firstCircle, secondCircle, offsetX * offsetX + offsetY * offsetY)
             }
         }.minBy(CirclePair::distanceSquared)
 
-        first.x += closestPair.firstShift.first
-        first.y += closestPair.firstShift.second
-        second.x += closestPair.secondShift.first
-        second.y += closestPair.secondShift.second
-        val result = resolveCarCollision(first, firstRadius, second, secondRadius)
-        first.x -= closestPair.firstShift.first
-        first.y -= closestPair.firstShift.second
-        second.x -= closestPair.secondShift.first
-        second.y -= closestPair.secondShift.second
+        val firstCircleState = first.copy(
+            x = closestPair.firstCircle.x,
+            y = closestPair.firstCircle.y,
+        )
+        val secondCircleState = second.copy(
+            x = closestPair.secondCircle.x,
+            y = closestPair.secondCircle.y,
+        )
+        val result = resolveCarCollision(
+            firstCircleState,
+            closestPair.firstCircle.radius,
+            secondCircleState,
+            closestPair.secondCircle.radius,
+        )
+        first.x += firstCircleState.x - closestPair.firstCircle.x
+        first.y += firstCircleState.y - closestPair.firstCircle.y
+        second.x += secondCircleState.x - closestPair.secondCircle.x
+        second.y += secondCircleState.y - closestPair.secondCircle.y
+        first.copyMotionFrom(firstCircleState)
+        second.copyMotionFrom(secondCircleState)
         return result
     }
 
-    private fun collisionOffsets(longitudinalOffset: Float): List<Float> =
-        if (longitudinalOffset == 0f) {
-            listOf(0f)
-        } else {
-            listOf(-longitudinalOffset, 0f, longitudinalOffset)
-        }
-
-    private fun orientedOffset(state: CarState, longitudinalOffset: Float): Pair<Float, Float> {
-        val radians = Math.toRadians(state.rotationDeg.toDouble())
-        return Pair(
-            cos(radians).toFloat() * longitudinalOffset,
-            sin(radians).toFloat() * longitudinalOffset,
-        )
+    private fun CarState.copyMotionFrom(source: CarState) {
+        speed = source.speed
+        velocityX = source.velocityX
+        velocityY = source.velocityY
     }
 
     private fun resolveOuterBoundary(
@@ -435,8 +442,8 @@ class CollisionSystem(
     )
 
     private data class CirclePair(
-        val firstShift: Pair<Float, Float>,
-        val secondShift: Pair<Float, Float>,
+        val firstCircle: CarCollisionCircle,
+        val secondCircle: CarCollisionCircle,
         val distanceSquared: Float,
     )
 }

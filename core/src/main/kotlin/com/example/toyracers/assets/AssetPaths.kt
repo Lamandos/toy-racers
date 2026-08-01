@@ -2,7 +2,6 @@ package com.example.toyracers.assets
 
 /** Central list of runtime asset paths. */
 object AssetPaths {
-    const val GAME_ATLAS = "game.atlas"
     const val TRACK_01 = "tracks/track_01.png"
     const val TRACK_02 = "tracks/track_02.png"
     const val ENGINE_LOOP = "audio/engine/engine_mid_loop.wav"

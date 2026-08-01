@@ -10,6 +10,7 @@ import com.badlogic.gdx.utils.viewport.FitViewport
 import com.example.toyracers.ToyRacersGame
 import com.example.toyracers.camera.CameraBounds
 import com.example.toyracers.camera.RaceCameraController
+import com.example.toyracers.car.CarModel
 import com.example.toyracers.car.CarPhysics
 import com.example.toyracers.car.opponentModelsFor
 import com.example.toyracers.debug.CollisionDebugRenderer
@@ -40,11 +41,11 @@ class RaceScreen(
         trackId = trackId,
         collisionMap = Gdx.files.internal(TrackLoader.tmxPath(trackId)).read(),
     )
-    private val playerModel = game.selectedCar
-    private val opponentModels = opponentModelsFor(game.selectedCar)
+    private val selectedCarModel = game.selectedCar
     private var raceSession = createRaceSession()
-    private val playerCarRenderer = CarRenderer(game.assets.car(playerModel))
-    private val opponentCarRenderers = opponentModels.map { CarRenderer(game.assets.car(it)) }
+    private val carRenderers = CarModel.entries.associateWith { model ->
+        CarRenderer(game.assets.car(model))
+    }
     private val trackRenderer = TrackRenderer(game.assets.track(trackId))
     private val collisionDebugRenderer = CollisionDebugRenderer()
     private val debugSettings = DebugSettings()
@@ -131,14 +132,14 @@ class RaceScreen(
                     stepResult.maxImpactSpeed * SHAKE_PER_IMPACT_SPEED,
                 )
                 game.audio.collision(
-                    stepResult.maxImpactSpeed / raceSession.carConfig.maxForwardSpeed,
+                    stepResult.maxImpactSpeed / raceSession.player.carConfig.maxForwardSpeed,
                 )
             }
         }
         cameraController.update(raceSession.player.state, frameDelta)
         game.audio.updateRace(
             speed = raceSession.player.state.speed,
-            maxSpeed = raceSession.carConfig.maxForwardSpeed,
+            maxSpeed = raceSession.player.carConfig.maxForwardSpeed,
             throttle = latestInput.throttle,
             brake = latestInput.brake,
             steering = latestInput.steering,
@@ -152,17 +153,17 @@ class RaceScreen(
 
     private fun renderWorld() {
         trackRenderer.render(worldViewport, worldCamera, track)
-        raceSession.opponents.forEachIndexed { index, opponent ->
-            opponentCarRenderers[index].render(
+        raceSession.opponents.forEach { opponent ->
+            carRenderers.getValue(opponent.carModel).render(
                 worldCamera,
                 opponent.state,
                 opponent.carConfig,
             )
         }
-        playerCarRenderer.render(
+        carRenderers.getValue(raceSession.player.carModel).render(
             worldCamera,
             raceSession.player.state,
-            raceSession.carConfig,
+            raceSession.player.carConfig,
         )
         if (debugSettings.showCollisions) {
             collisionDebugRenderer.render(
@@ -273,8 +274,8 @@ class RaceScreen(
 
     private fun createRaceSession(): RaceSession = RaceSession(
         track = track,
-        playerCarModel = playerModel,
-        opponentCarModels = opponentModels,
+        playerCarModel = selectedCarModel,
+        opponentCarModels = opponentModelsFor(selectedCarModel),
     )
 
     private fun updateCountdownAudio(phaseBeforeAdvance: RacePhase) {
@@ -332,8 +333,7 @@ class RaceScreen(
         game.audio.stopRaceLoops()
         touchInput.dispose()
         hud.dispose()
-        playerCarRenderer.dispose()
-        opponentCarRenderers.forEach(CarRenderer::dispose)
+        carRenderers.values.forEach(CarRenderer::dispose)
         trackRenderer.dispose()
         super.dispose()
     }

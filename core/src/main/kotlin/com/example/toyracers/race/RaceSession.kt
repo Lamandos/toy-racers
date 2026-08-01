@@ -41,12 +41,14 @@ internal class RaceSession(
     val player = RaceParticipant(
         id = PLAYER_ID,
         start = track.startGrid.first(),
+        carModel = playerCarModel,
         carConfig = playerCarModel.performance.applyTo(baseCarConfig),
     )
     val opponents: List<RaceParticipant> = track.startGrid.drop(1).mapIndexed { index, start ->
         RaceParticipant(
             id = "ai-$index",
             start = start,
+            carModel = opponentCarModels[index],
             carConfig = opponentCarModels[index].performance.applyTo(baseCarConfig),
             driver = AiDriver(
                 track.racingLine,
@@ -56,8 +58,6 @@ internal class RaceSession(
         )
     }
     val raceState = RaceState()
-    val carConfig: CarConfig
-        get() = player.carConfig
     val requiredLaps: Int
         get() = raceRules.requiredLaps
 
@@ -205,6 +205,7 @@ internal class RaceSession(
 internal class RaceParticipant(
     val id: String,
     start: StartGridPosition,
+    val carModel: CarModel,
     val carConfig: CarConfig,
     val driver: AiDriver? = null,
 ) {

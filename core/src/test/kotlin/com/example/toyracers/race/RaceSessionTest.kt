@@ -31,8 +31,10 @@ class RaceSessionTest {
             playerModel.performance.applyTo(),
             session.player.carConfig,
         )
+        assertEquals(playerModel, session.player.carModel)
         session.opponents.forEachIndexed { index, opponent ->
             assertEquals(opponents[index].performance.applyTo(), opponent.carConfig)
+            assertEquals(opponents[index], opponent.carModel)
         }
     }
 
@@ -63,7 +65,7 @@ class RaceSessionTest {
 
         session.advance(CarPhysics.FIXED_DELTA_SECONDS, PlayerInput.NONE)
 
-        val minimumCoordinate = session.carConfig.collisionRadius
+        val minimumCoordinate = session.player.carConfig.collisionRadius
         assertTrue(session.player.state.x >= minimumCoordinate)
         assertTrue(session.opponents.first().state.x >= minimumCoordinate)
     }

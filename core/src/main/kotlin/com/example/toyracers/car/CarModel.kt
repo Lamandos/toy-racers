@@ -60,12 +60,5 @@ data class CarPerformance(
     }
 }
 
-/** Maps 80% to one square and 110% to five squares. */
-internal fun performanceSquareCount(multiplier: Float): Int {
-    val normalized = (multiplier - CarPerformance.MIN_MULTIPLIER) /
-        (CarPerformance.MAX_MULTIPLIER - CarPerformance.MIN_MULTIPLIER)
-    return (1 + kotlin.math.round(normalized * 4f).toInt()).coerceIn(1, 5)
-}
-
 internal fun opponentModelsFor(playerModel: CarModel): List<CarModel> =
     CarModel.entries.filterNot { it == playerModel }

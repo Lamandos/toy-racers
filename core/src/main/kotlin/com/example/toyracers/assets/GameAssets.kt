@@ -4,7 +4,6 @@ import com.badlogic.gdx.assets.AssetManager
 import com.badlogic.gdx.audio.Music
 import com.badlogic.gdx.audio.Sound
 import com.badlogic.gdx.graphics.Texture
-import com.badlogic.gdx.graphics.g2d.TextureAtlas
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 import com.badlogic.gdx.utils.Disposable
 import com.example.toyracers.car.CarModel
@@ -23,11 +22,6 @@ class GameAssets(
     fun car(model: CarModel): TextureRegion {
         check(prepared) { "Assets must finish loading before they are accessed" }
         return TextureRegion(manager.get(model.assetPath, Texture::class.java))
-    }
-
-    val opponentCar: TextureRegion by lazy {
-        check(prepared) { "Assets must finish loading before they are accessed" }
-        manager.get(AssetPaths.GAME_ATLAS, TextureAtlas::class.java).findRegion(OPPONENT_CAR_REGION)
     }
 
     fun track(trackId: TrackId): Texture {
@@ -61,7 +55,6 @@ class GameAssets(
 
     fun queueLoading() {
         if (queued) return
-        manager.load(AssetPaths.GAME_ATLAS, TextureAtlas::class.java)
         manager.load(AssetPaths.TRACK_01, Texture::class.java)
         manager.load(AssetPaths.TRACK_02, Texture::class.java)
         CarModel.entries.forEach { manager.load(it.assetPath, Texture::class.java) }
@@ -105,9 +98,5 @@ class GameAssets(
     private fun sound(path: String): Sound {
         check(prepared) { "Assets must finish loading before they are accessed" }
         return manager.get(path, Sound::class.java)
-    }
-
-    private companion object {
-        const val OPPONENT_CAR_REGION = "ai-car"
     }
 }

@@ -1,11 +1,5 @@
 # Runtime assets
 
-## `sprites/player-car.png`
-
-- Original top-down toy car sprite created for Toy Racers with OpenAI image generation on 2026-07-21.
-- The generated source used a flat chroma-key background; the checked-in image has had that background removed and was resized to `64 × 128` pixels.
-- No third-party game artwork or vehicle branding was used as a reference.
-
 ## `audio/*.wav`
 
 - The UI cues and background loop were generated specifically for Toy Racers.
@@ -15,14 +9,6 @@
   The game uses one real engine loop with throttle-controlled volume, one brake loop, and the new
   tire, collision, gravel, grass, and countdown assets. Full provenance is in the repository-level
   `SOURCES.md`.
-
-## `sprites/ai-car-orange.png`
-
-- Original top-down toy car created for Toy Racers with OpenAI built-in image generation on
-  2026-07-27.
-- Generated on a chroma-key background and processed with
-  `tools/ProcessGeneratedSprite.java` into a transparent `64 × 128` sprite.
-- No brand, real vehicle, protected character, or third-party artwork was used as a reference.
 
 ## `sprites/cars/*.png`
 
@@ -35,10 +21,6 @@
   checkerboard background and fits them to transparent `64 × 128` runtime canvases.
 - The source sheet contains no visible vehicle branding; the user is responsible for its
   provenance and permission to use it.
-
-## `game.atlas`
-
-- Project-authored libGDX atlas descriptor collecting the two original car sprites.
 
 ## `tracks/track_01.png`
 

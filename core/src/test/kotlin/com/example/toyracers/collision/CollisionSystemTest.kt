@@ -6,6 +6,7 @@ import com.example.toyracers.track.TrackPoint
 import com.example.toyracers.track.TrackPolygon
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -157,6 +158,23 @@ class CollisionSystemTest {
         )
 
         assertTrue(result.collided)
+    }
+
+    @Test
+    fun `invalid capsule resolution does not leave car shifted`() {
+        val state = CarState(x = 4f, y = 6f, rotationDeg = 45f)
+
+        assertThrows(IllegalArgumentException::class.java) {
+            collisionSystem.resolveTrackCollision(
+                state = state,
+                radius = track.worldBounds.width,
+                longitudinalOffset = 1f,
+                track = trackWithoutObjects,
+            )
+        }
+
+        assertEquals(4f, state.x, TOLERANCE)
+        assertEquals(6f, state.y, TOLERANCE)
     }
 
     private companion object {

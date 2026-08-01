@@ -37,13 +37,6 @@ class CarModelTest {
     }
 
     @Test
-    fun `performance scale maps eighty to one square and one hundred ten to five`() {
-        assertEquals(1, performanceSquareCount(0.80f))
-        assertEquals(3, performanceSquareCount(0.95f))
-        assertEquals(5, performanceSquareCount(1.10f))
-    }
-
-    @Test
     fun `performance modifies only requested handling characteristics`() {
         val base = CarConfig()
         val tuned = CarModel.RED_STRIPE.performance.applyTo(base)

@@ -20,15 +20,12 @@ audio/surface/offtrack_gravel_loop.wav
 audio/tires/brake_hard.wav
 audio/tires/tire_drift_loop.wav
 audio/ui/start_countdown_3.wav
-game.atlas
 libgdx.png
-sprites/ai-car-orange.png
 sprites/cars/blue-stripe.png
 sprites/cars/green-racer.png
 sprites/cars/orange-truck.png
 sprites/cars/red-stripe.png
 sprites/cars/yellow-sport.png
-sprites/player-car.png
 tracks/track_01.png
 tracks/track_01.tmx
 tracks/track_02-collision-guide.md
