@@ -2,6 +2,10 @@ package com.example.toyracers.assets
 
 /** Central list of runtime asset paths. */
 object AssetPaths {
+    const val MAIN_MENU_BACKGROUND = "ui-main-background.png"
+    const val STEERING_WHEEL = "ui/controls/steering-wheel.png"
+    const val BRAKE_PEDAL = "ui/controls/brake-pedal.png"
+    const val THROTTLE_PEDAL = "ui/controls/throttle-pedal.png"
     const val TRACK_01 = "tracks/track_01.png"
     const val TRACK_02 = "tracks/track_02.png"
     const val ENGINE_LOOP = "audio/engine/engine_mid_loop.wav"

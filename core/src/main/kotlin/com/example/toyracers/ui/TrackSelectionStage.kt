@@ -11,7 +11,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
 import com.badlogic.gdx.utils.Disposable
 import com.badlogic.gdx.utils.Scaling
-import com.badlogic.gdx.utils.viewport.FitViewport
+import com.badlogic.gdx.utils.viewport.ExtendViewport
 import com.example.toyracers.ToyRacersGame
 import com.example.toyracers.track.TrackId
 
@@ -28,7 +28,7 @@ class TrackSelectionStage(
 
     private val skin = createGameUiSkin()
     private val stage = Stage(
-        FitViewport(ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT),
+        ExtendViewport(ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT),
     )
 
     val inputProcessor: InputProcessor
@@ -38,6 +38,8 @@ class TrackSelectionStage(
         val cardWidth = minOf(MAX_CARD_WIDTH, CARD_ROW_WIDTH / options.size)
         val content = Table().apply {
             setFillParent(true)
+            background = this@TrackSelectionStage.skin.panelDrawable()
+            pad(28f)
             add(Label("SELECT TRACK", this@TrackSelectionStage.skin).apply {
                 setFontScale(2.2f)
             }).colspan(options.size).height(100f)

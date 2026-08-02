@@ -8,7 +8,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
 import com.badlogic.gdx.utils.Disposable
-import com.badlogic.gdx.utils.viewport.FitViewport
+import com.badlogic.gdx.utils.viewport.ExtendViewport
 import com.example.toyracers.ToyRacersGame
 import com.example.toyracers.race.RaceResult
 
@@ -20,7 +20,7 @@ class ResultsStage(
 ) : Disposable {
     private val skin = createGameUiSkin()
     private val stage = Stage(
-        FitViewport(ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT),
+        ExtendViewport(ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT),
     )
 
     val inputProcessor: InputProcessor
@@ -29,6 +29,8 @@ class ResultsStage(
     init {
         val results = Table().apply {
             setFillParent(true)
+            background = this@ResultsStage.skin.panelDrawable()
+            pad(34f)
             add(label("RACE FINISHED", 2.4f)).width(470f).height(80f)
             row()
             add(label("POSITION ${result.finishPosition}/${result.competitorCount}", 1.7f))

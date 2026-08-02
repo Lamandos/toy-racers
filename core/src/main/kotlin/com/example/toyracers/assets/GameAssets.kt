@@ -33,6 +33,16 @@ class GameAssets(
         return manager.get(path, Texture::class.java)
     }
 
+    val mainMenuBackground: Texture
+        get() {
+            check(prepared) { "Assets must finish loading before they are accessed" }
+            return manager.get(AssetPaths.MAIN_MENU_BACKGROUND, Texture::class.java)
+        }
+
+    val steeringWheel: TextureRegion get() = textureRegion(AssetPaths.STEERING_WHEEL)
+    val brakePedal: TextureRegion get() = textureRegion(AssetPaths.BRAKE_PEDAL)
+    val throttlePedal: TextureRegion get() = textureRegion(AssetPaths.THROTTLE_PEDAL)
+
     val engineLoop: Sound get() = sound(AssetPaths.ENGINE_LOOP)
     val tireDriftLoop: Sound get() = sound(AssetPaths.TIRE_DRIFT_LOOP)
     val brakeLoop: Sound get() = sound(AssetPaths.BRAKE_LOOP)
@@ -55,6 +65,10 @@ class GameAssets(
 
     fun queueLoading() {
         if (queued) return
+        manager.load(AssetPaths.MAIN_MENU_BACKGROUND, Texture::class.java)
+        manager.load(AssetPaths.STEERING_WHEEL, Texture::class.java)
+        manager.load(AssetPaths.BRAKE_PEDAL, Texture::class.java)
+        manager.load(AssetPaths.THROTTLE_PEDAL, Texture::class.java)
         manager.load(AssetPaths.TRACK_01, Texture::class.java)
         manager.load(AssetPaths.TRACK_02, Texture::class.java)
         CarModel.entries.forEach { manager.load(it.assetPath, Texture::class.java) }
@@ -98,5 +112,10 @@ class GameAssets(
     private fun sound(path: String): Sound {
         check(prepared) { "Assets must finish loading before they are accessed" }
         return manager.get(path, Sound::class.java)
+    }
+
+    private fun textureRegion(path: String): TextureRegion {
+        check(prepared) { "Assets must finish loading before they are accessed" }
+        return TextureRegion(manager.get(path, Texture::class.java))
     }
 }

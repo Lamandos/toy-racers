@@ -8,7 +8,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
 import com.badlogic.gdx.utils.Disposable
-import com.badlogic.gdx.utils.viewport.FitViewport
+import com.badlogic.gdx.utils.viewport.ExtendViewport
 import com.example.toyracers.ToyRacersGame
 import com.example.toyracers.audio.AudioSettings
 
@@ -20,7 +20,7 @@ class AudioSettingsStage(
 ) : Disposable {
     private val skin = createGameUiSkin()
     private val stage = Stage(
-        FitViewport(ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT),
+        ExtendViewport(ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT),
     )
     private var settings = initialSettings
     private val masterLabel = Label("", skin)
@@ -33,6 +33,8 @@ class AudioSettingsStage(
     init {
         val table = Table().apply {
             setFillParent(true)
+            background = this@AudioSettingsStage.skin.panelDrawable()
+            pad(36f)
             add(Label("AUDIO SETTINGS", this@AudioSettingsStage.skin).apply {
                 setFontScale(2.2f)
             }).colspan(3).height(90f)
@@ -52,7 +54,8 @@ class AudioSettingsStage(
                 update(settings.copy(vibrationEnabled = !settings.vibrationEnabled))
             }).colspan(2).width(260f).height(64f)
             row()
-            add(button("BACK", onBack)).colspan(3).width(360f).height(72f).padTop(24f)
+            add(button("BACK", SECONDARY_BUTTON_STYLE, onBack))
+                .colspan(3).width(360f).height(72f).padTop(24f)
         }
         stage.addActor(table)
         refreshLabels()
@@ -87,8 +90,12 @@ class AudioSettingsStage(
         )
     }
 
-    private fun button(text: String, action: () -> Unit): TextButton =
-        TextButton(text, skin).apply {
+    private fun button(
+        text: String,
+        style: String = "default",
+        action: () -> Unit,
+    ): TextButton =
+        TextButton(text, skin, style).apply {
             addListener(object : ClickListener() {
                 override fun clicked(event: InputEvent, x: Float, y: Float) {
                     onButtonClick()

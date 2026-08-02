@@ -1,7 +1,6 @@
 package com.example.toyracers.ui
 
 import com.badlogic.gdx.InputProcessor
-import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.InputEvent
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.Label
@@ -9,10 +8,11 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
 import com.badlogic.gdx.utils.Disposable
-import com.badlogic.gdx.utils.viewport.FitViewport
+import com.badlogic.gdx.utils.viewport.ExtendViewport
 import com.example.toyracers.ToyRacersGame
 
 data class RaceHudSnapshot(
+    val speed: Float,
     val position: Int,
     val competitorCount: Int,
     val completedLaps: Int,
@@ -30,9 +30,10 @@ class RaceHudStage(
 ) : Disposable {
     private val skin = createGameUiSkin()
     private val stage = Stage(
-        FitViewport(ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT),
+        ExtendViewport(ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT),
     )
     private val positionLabel = Label("", skin)
+    private val speedLabel = Label("", skin)
     private val lapLabel = Label("", skin)
     private val timeLabel = Label("", skin)
     private val bestLapLabel = Label("", skin)
@@ -45,15 +46,16 @@ class RaceHudStage(
     init {
         val hud = Table()
         hud.setFillParent(true)
-        hud.top().pad(24f)
-        listOf(positionLabel, lapLabel, timeLabel, bestLapLabel).forEach {
+        hud.top().pad(18f)
+        listOf(positionLabel, speedLabel, lapLabel, timeLabel, bestLapLabel).forEach {
             it.setFontScale(1.45f)
         }
-        hud.add(positionLabel).width(210f)
-        hud.add(lapLabel).width(190f)
-        hud.add(timeLabel).width(240f)
-        hud.add(bestLapLabel).width(300f)
-        hud.add(pauseButton).width(150f).height(64f)
+        hud.add(instrument(positionLabel)).width(175f).height(72f).padRight(8f)
+        hud.add(instrument(speedLabel)).width(175f).height(72f).padRight(8f)
+        hud.add(instrument(lapLabel)).width(160f).height(72f).padRight(8f)
+        hud.add(instrument(timeLabel)).width(225f).height(72f).padRight(8f)
+        hud.add(instrument(bestLapLabel)).width(275f).height(72f).padRight(12f)
+        hud.add(pauseButton).width(115f).height(64f)
         stage.addActor(hud)
         stage.addActor(pauseMenu)
         showPause(false)
@@ -61,12 +63,18 @@ class RaceHudStage(
 
     fun update(snapshot: RaceHudSnapshot) {
         positionLabel.setText("POS ${snapshot.position}/${snapshot.competitorCount}")
+        speedLabel.setText("${(snapshot.speed.coerceAtLeast(0f) * SPEED_DISPLAY_SCALE).toInt()} KM/H")
         val displayedLap = (snapshot.completedLaps + 1).coerceAtMost(snapshot.requiredLaps)
         lapLabel.setText("LAP $displayedLap/${snapshot.requiredLaps}")
         timeLabel.setText("TIME ${formatRaceTime(snapshot.totalRaceTime)}")
         bestLapLabel.setText(
             "BEST ${snapshot.bestLapTime?.let(::formatRaceTime) ?: "--:--.---"}",
         )
+    }
+
+    private fun instrument(label: Label): Table = Table().apply {
+        background = this@RaceHudStage.skin.panelDrawable()
+        add(label).expand().center()
     }
 
     fun showPause(show: Boolean) {
@@ -97,10 +105,7 @@ class RaceHudStage(
         onQuitToMenu: () -> Unit,
     ): Table = Table().apply {
         setFillParent(true)
-        background = this@RaceHudStage.skin.newDrawable(
-            "white",
-            Color(0.03f, 0.05f, 0.09f, 0.88f),
-        )
+        background = this@RaceHudStage.skin.panelDrawable()
         val title = Label("PAUSED", this@RaceHudStage.skin).apply { setFontScale(2.2f) }
         add(title).width(360f).height(80f)
         row()
@@ -136,6 +141,7 @@ class RaceHudStage(
 
     private companion object {
         const val MAX_UI_DELTA = 0.1f
+        const val SPEED_DISPLAY_SCALE = 18f
     }
 }
 

@@ -6,7 +6,7 @@ import com.badlogic.gdx.InputMultiplexer
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.OrthographicCamera
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
-import com.badlogic.gdx.utils.viewport.FitViewport
+import com.badlogic.gdx.utils.viewport.ExtendViewport
 import com.example.toyracers.ToyRacersGame
 import com.example.toyracers.camera.CameraBounds
 import com.example.toyracers.camera.RaceCameraController
@@ -36,7 +36,7 @@ class RaceScreen(
     private val trackId: TrackId = TrackId.LIVING_ROOM,
 ) : ToyRacersScreen(game) {
     private val worldCamera = OrthographicCamera()
-    private val worldViewport = FitViewport(CAMERA_VIEW_WIDTH, CAMERA_VIEW_HEIGHT, worldCamera)
+    private val worldViewport = ExtendViewport(CAMERA_VIEW_WIDTH, CAMERA_VIEW_HEIGHT, worldCamera)
     private val track = TrackLoader().load(
         trackId = trackId,
         collisionMap = Gdx.files.internal(TrackLoader.tmxPath(trackId)).read(),
@@ -50,7 +50,11 @@ class RaceScreen(
     private val collisionDebugRenderer = CollisionDebugRenderer()
     private val debugSettings = DebugSettings()
     private val keyboardInput = KeyboardInputController()
-    private val touchInput = TouchInputController()
+    private val touchInput = TouchInputController(
+        steeringWheelTexture = game.assets.steeringWheel,
+        brakePedalTexture = game.assets.brakePedal,
+        throttlePedalTexture = game.assets.throttlePedal,
+    )
     private var pendingUiAction: RaceUiAction? = null
     private var latestInput = PlayerInput.NONE
     private var lastCountdownNumber = -1
@@ -240,6 +244,7 @@ class RaceScreen(
     }
 
     private fun createHudSnapshot(): RaceHudSnapshot = RaceHudSnapshot(
+        speed = raceSession.player.state.speed,
         position = raceSession.playerPosition,
         competitorCount = raceSession.opponents.size + 1,
         completedLaps = raceSession.player.progress.completedLaps,

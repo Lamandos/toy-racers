@@ -31,3 +31,7 @@ tracks/track_01.tmx
 tracks/track_02-collision-guide.md
 tracks/track_02.png
 tracks/track_02.tmx
+ui-main-background.png
+ui/controls/brake-pedal.png
+ui/controls/steering-wheel.png
+ui/controls/throttle-pedal.png

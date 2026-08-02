@@ -12,7 +12,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
 import com.badlogic.gdx.utils.Disposable
 import com.badlogic.gdx.utils.Scaling
-import com.badlogic.gdx.utils.viewport.FitViewport
+import com.badlogic.gdx.utils.viewport.ExtendViewport
 import com.example.toyracers.ToyRacersGame
 import com.example.toyracers.car.CarModel
 import com.example.toyracers.car.CarPerformance
@@ -33,7 +33,7 @@ class CarSelectionStage(
     }
 
     private val skin = createGameUiSkin()
-    private val stage = Stage(FitViewport(ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT))
+    private val stage = Stage(ExtendViewport(ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT))
     private val statusLabels = mutableMapOf<CarModel, Label>()
     private var selected = initiallySelected
 
@@ -43,6 +43,8 @@ class CarSelectionStage(
     init {
         val content = Table().apply {
             setFillParent(true)
+            background = this@CarSelectionStage.skin.panelDrawable()
+            pad(22f)
             add(Label("SELECT CAR", this@CarSelectionStage.skin).apply {
                 setFontScale(2.2f)
             }).colspan(options.size).height(105f)
@@ -51,8 +53,8 @@ class CarSelectionStage(
                 add(carCard(option)).width(CARD_WIDTH).height(410f).pad(8f)
             }
             row()
-            add(button("BACK", onBack)).width(260f).height(68f).padTop(18f)
-            add(button("START RACE", onStartRace))
+        add(button("BACK", SECONDARY_BUTTON_STYLE, onBack)).width(260f).height(68f).padTop(18f)
+            add(button("START RACE", action = onStartRace))
                 .colspan(options.size - 1)
                 .width(360f)
                 .height(68f)
@@ -130,7 +132,11 @@ class CarSelectionStage(
         }
     }
 
-    private fun button(text: String, action: () -> Unit): TextButton = TextButton(text, skin).apply {
+    private fun button(
+        text: String,
+        style: String = "default",
+        action: () -> Unit,
+    ): TextButton = TextButton(text, skin, style).apply {
         addListener(object : ClickListener() {
             override fun clicked(event: InputEvent, x: Float, y: Float) {
                 onButtonClick()

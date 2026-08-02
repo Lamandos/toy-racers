@@ -2,7 +2,6 @@ package com.example.toyracers.screen
 
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
-import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.utils.ScreenUtils
 import com.example.toyracers.ToyRacersGame
 import com.example.toyracers.ui.MainMenuStage
@@ -12,6 +11,7 @@ class MainMenuScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     private var playRequested = false
     private var settingsRequested = false
     private val menu = MainMenuStage(
+        background = game.assets.mainMenuBackground,
         onPlay = { playRequested = true },
         onSettings = { settingsRequested = true },
         onButtonClick = game.audio::buttonClick,
@@ -28,7 +28,7 @@ class MainMenuScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     }
 
     override fun render(delta: Float) {
-        ScreenUtils.clear(BACKGROUND)
+        ScreenUtils.clear(0.02f, 0.03f, 0.04f, 1f)
         menu.render(delta)
 
         if (!lifecyclePaused && (playRequested || startRequested())) {
@@ -53,9 +53,5 @@ class MainMenuScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
     override fun dispose() {
         menu.dispose()
         super.dispose()
-    }
-
-    private companion object {
-        val BACKGROUND = Color(0.07f, 0.12f, 0.18f, 1f)
     }
 }
