@@ -62,6 +62,36 @@ class AiObstacleDetector(private val config: AiConfig) {
         }
     }
 
+    /** Distance to the first car occupying the proposed passing corridor. */
+    fun passingClearance(
+        carState: CarState,
+        obstacles: List<AiObstacle>,
+        steeringDirection: Float,
+    ): Float {
+        require(steeringDirection != 0f) { "Passing direction must not be zero" }
+        val radians = Math.toRadians(carState.rotationDeg.toDouble())
+        val forwardX = cos(radians).toFloat()
+        val forwardY = sin(radians).toFloat()
+        val leftX = -forwardY
+        val leftY = forwardX
+        val targetLateral = if (steeringDirection < 0f) {
+            config.overtakeLaneOffset
+        } else {
+            -config.overtakeLaneOffset
+        }
+        return obstacles.asSequence().mapNotNull { obstacle ->
+            val deltaX = obstacle.x - carState.x
+            val deltaY = obstacle.y - carState.y
+            val forwardDistance = deltaX * forwardX + deltaY * forwardY
+            val lateralDistance = deltaX * leftX + deltaY * leftY
+            val corridorHalfWidth = config.overtakeLaneHalfWidth + obstacle.radius
+            forwardDistance.takeIf {
+                it in 0f..config.obstacleDetectionDistance &&
+                    kotlin.math.abs(lateralDistance - targetLateral) <= corridorHalfWidth
+            }
+        }.minOrNull() ?: config.obstacleDetectionDistance
+    }
+
     private fun Track.isBlocked(point: TrackPoint): Boolean {
         if (!worldBounds.contains(point)) return true
         if (innerObstacles.any { it.contains(point) }) return true
@@ -96,4 +126,10 @@ data class AiSensorRay(
     val end: TrackPoint,
     val hit: Boolean,
     val angleOffsetDeg: Float,
-)
+) {
+    fun distance(): Float {
+        val deltaX = end.x - start.x
+        val deltaY = end.y - start.y
+        return kotlin.math.sqrt(deltaX * deltaX + deltaY * deltaY)
+    }
+}

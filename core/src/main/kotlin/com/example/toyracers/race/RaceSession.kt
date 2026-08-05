@@ -30,6 +30,8 @@ internal class RaceSession(
     playerCarModel: CarModel = CarModel.RED_STRIPE,
     opponentCarModels: List<CarModel> = opponentModelsFor(playerCarModel),
     opponentDifficulty: AiDifficulty = AiDifficulty.NORMAL,
+    private val aiConfig: AiConfig = AiConfig(),
+    private val sessionConfig: RaceSessionConfig = RaceSessionConfig(),
     baseCarConfig: CarConfig = CarConfig(),
     carPhysics: CarPhysics = CarPhysics(),
     private val collisionSystem: CollisionSystem = CollisionSystem(),
@@ -58,7 +60,7 @@ internal class RaceSession(
             driver = AiDriver(
                 track.racingLine,
                 start.position,
-                AiConfig(waypointRadius = track.racingLineWaypointRadius),
+                aiConfig.copy(waypointRadius = track.racingLineWaypointRadius),
                 difficulty = opponentDifficulty,
                 racingLineBias = opponentRacingLineBias(index),
                 track = track,
@@ -192,7 +194,7 @@ internal class RaceSession(
             participant.driver != null &&
             track.surfaceAt(participant.state.x, participant.state.y) ==
             com.example.toyracers.track.SurfaceType.ASPHALT &&
-            kotlin.math.abs(participant.state.speed) >= SAFE_STATE_MIN_SPEED
+            kotlin.math.abs(participant.state.speed) >= sessionConfig.safeStateMinSpeed
         ) {
             participant.lastSafeState = participant.state.copy()
         }
@@ -243,6 +245,11 @@ internal class RaceSession(
             }
             .toList()
 
+    private fun opponentRacingLineBias(index: Int): Float =
+        sessionConfig.opponentRacingLineBiases[
+            index % sessionConfig.opponentRacingLineBiases.size
+        ]
+
     private fun CarState.position(): TrackPoint = TrackPoint(x, y)
 
     private data class ParticipantStepResult(
@@ -252,13 +259,17 @@ internal class RaceSession(
 
     private companion object {
         const val PLAYER_ID = "player"
-        const val SAFE_STATE_MIN_SPEED = 2f
+    }
+}
 
-        fun opponentRacingLineBias(index: Int): Float = when (index % 3) {
-            0 -> -0.65f
-            1 -> 0f
-            else -> 0.65f
-        }
+internal data class RaceSessionConfig(
+    val opponentRacingLineBiases: List<Float> = listOf(-0.65f, 0f, 0.65f),
+    val safeStateMinSpeed: Float = 2f,
+) {
+    init {
+        require(opponentRacingLineBiases.isNotEmpty())
+        require(opponentRacingLineBiases.all { it in -1f..1f })
+        require(safeStateMinSpeed >= 0f)
     }
 }
 

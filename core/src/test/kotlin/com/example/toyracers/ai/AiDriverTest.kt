@@ -94,8 +94,42 @@ class AiDriverTest {
         )
 
         assertEquals(AiBehaviorState.OVERTAKE, driver.behaviorState)
-        assertTrue(input.steering < 0f)
+        assertTrue(input.steering > 0f)
         assertEquals(AiBehaviorState.OVERTAKE, driver.debugSnapshot?.behaviorState)
+    }
+
+    @Test
+    fun `overtake selects the only passing corridor clear of other cars`() {
+        val driver = driverForTarget(TrackPoint(10f, 0f))
+        val input = driver.update(
+            carState = CarState(rotationDeg = 0f, speed = 8f),
+            deltaSeconds = FIXED_DELTA,
+            obstacles = listOf(
+                AiObstacle(x = 4f, y = 0.5f, radius = 0.5f, speed = 3f),
+                AiObstacle(x = 3f, y = -2f, radius = 0.5f, speed = 8f),
+            ),
+        )
+
+        assertEquals(AiBehaviorState.OVERTAKE, driver.behaviorState)
+        assertTrue("AI must use the clear left corridor", input.steering < 0f)
+    }
+
+    @Test
+    fun `blocked passing corridors prevent unsafe overtake`() {
+        val driver = driverForTarget(TrackPoint(10f, 0f))
+        val input = driver.update(
+            carState = CarState(rotationDeg = 0f, speed = 8f),
+            deltaSeconds = FIXED_DELTA,
+            obstacles = listOf(
+                AiObstacle(x = 4f, y = 0f, radius = 0.5f, speed = 3f),
+                AiObstacle(x = 2f, y = 2f, radius = 0.5f, speed = 8f),
+                AiObstacle(x = 2f, y = -2f, radius = 0.5f, speed = 8f),
+            ),
+        )
+
+        assertEquals(AiBehaviorState.AVOID, driver.behaviorState)
+        assertEquals(0f, input.steering, TOLERANCE)
+        assertEquals(1f, input.brake, TOLERANCE)
     }
 
     @Test
@@ -152,6 +186,33 @@ class AiDriverTest {
     }
 
     @Test
+    fun `driver reacts to a track boundary before immediate collision range`() {
+        val track = TrackLoader().load()
+        val position = TrackPoint(
+            x = track.worldBounds.maxX - 4f,
+            y = track.worldBounds.y + track.worldBounds.height / 2f,
+        )
+        val driver = AiDriver(
+            racingLine = listOf(
+                TrackPoint(position.x - 10f, position.y),
+                position,
+                TrackPoint(position.x + 10f, position.y),
+            ),
+            initialPosition = position,
+            track = track,
+        )
+
+        val input = driver.update(
+            CarState(x = position.x, y = position.y, rotationDeg = 0f, speed = 8f),
+            FIXED_DELTA,
+        )
+
+        assertEquals(AiBehaviorState.AVOID, driver.behaviorState)
+        assertTrue(kotlin.math.abs(input.steering) > 0f)
+        assertTrue(driver.debugSnapshot?.sensorRays?.any(AiSensorRay::hit) == true)
+    }
+
+    @Test
     fun `off track driver requests safe respawn without changing car coordinates`() {
         val driver = AiDriver(
             racingLine = testLine(TrackPoint(10f, 0f)),
@@ -171,36 +232,44 @@ class AiDriverTest {
     fun `all AI grid positions complete a valid lap on built in track`() {
         TrackId.entries.forEach { trackId ->
             val track = TrackLoader().load(trackId)
-            track.startGrid.drop(1).forEach { start ->
-                val state = CarState(
-                    x = start.position.x,
-                    y = start.position.y,
-                    rotationDeg = start.rotationDeg,
-                )
-                val driver = AiDriver(
-                    track.racingLine,
-                    start.position,
-                    AiConfig(waypointRadius = track.racingLineWaypointRadius),
-                )
-                val physics = CarPhysics()
-                val carConfig = CarConfig()
-                val collisions = CollisionSystem()
-                val rules = RaceRules(track, requiredLaps = 1)
-                val progress = RaceProgress()
+            AiDifficulty.entries.forEach { difficulty ->
+                track.startGrid.drop(1).forEach { start ->
+                    val state = CarState(
+                        x = start.position.x,
+                        y = start.position.y,
+                        rotationDeg = start.rotationDeg,
+                    )
+                    val driver = AiDriver(
+                        track.racingLine,
+                        start.position,
+                        AiConfig(waypointRadius = track.racingLineWaypointRadius),
+                        difficulty = difficulty,
+                    )
+                    val physics = CarPhysics()
+                    val carConfig = CarConfig()
+                    val collisions = CollisionSystem()
+                    val rules = RaceRules(track, requiredLaps = 1)
+                    val progress = RaceProgress()
 
-                repeat(MAX_LAP_SIMULATION_STEPS) {
-                    if (progress.finished) return@repeat
-                    val previous = TrackPoint(state.x, state.y)
-                    physics.update(state, carConfig, driver.update(state, FIXED_DELTA), FIXED_DELTA)
-                    collisions.resolveTrackCollision(state, carConfig.collisionRadius, track)
-                    rules.update(progress, previous, TrackPoint(state.x, state.y), FIXED_DELTA)
+                    repeat(MAX_LAP_SIMULATION_STEPS) {
+                        if (progress.finished) return@repeat
+                        val previous = TrackPoint(state.x, state.y)
+                        physics.update(
+                            state,
+                            carConfig,
+                            driver.update(state, FIXED_DELTA),
+                            FIXED_DELTA,
+                        )
+                        collisions.resolveTrackCollision(state, carConfig.collisionRadius, track)
+                        rules.update(progress, previous, TrackPoint(state.x, state.y), FIXED_DELTA)
+                    }
+
+                    assertTrue(
+                        "$difficulty AI from $start did not complete a valid lap: " +
+                            "state=$state progress=$progress waypoint=${driver.targetWaypointIndex}",
+                        progress.finished,
+                    )
                 }
-
-                assertTrue(
-                    "AI from $start did not complete a valid lap: state=$state progress=$progress " +
-                        "waypoint=${driver.targetWaypointIndex}",
-                    progress.finished,
-                )
             }
         }
     }

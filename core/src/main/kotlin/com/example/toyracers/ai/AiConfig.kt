@@ -14,8 +14,12 @@ data class AiConfig(
     val lookAheadPoints: Int = 1,
     val obstacleDetectionDistance: Float = 7f,
     val obstacleLaneHalfWidth: Float = 1.4f,
+    val staticObstacleReactionDistance: Float = 5f,
     val avoidanceSteering: Float = 0.7f,
     val overtakeSpeedAdvantage: Float = 1.5f,
+    val overtakeLaneOffset: Float = 2f,
+    val overtakeLaneHalfWidth: Float = 0.8f,
+    val overtakeMinimumClearance: Float = 3f,
     val wrongWayAngleDeg: Float = 110f,
     val wrongWayDurationSeconds: Float = 1.25f,
     val offTrackDurationSeconds: Float = 4f,
@@ -43,8 +47,12 @@ data class AiConfig(
         require(lookAheadPoints > 0)
         require(obstacleDetectionDistance > 0f)
         require(obstacleLaneHalfWidth > 0f)
+        require(staticObstacleReactionDistance in sensorRayStep..obstacleDetectionDistance)
         require(avoidanceSteering in 0f..1f)
         require(overtakeSpeedAdvantage >= 0f)
+        require(overtakeLaneOffset > 0f)
+        require(overtakeLaneHalfWidth > 0f)
+        require(overtakeMinimumClearance in 0f..obstacleDetectionDistance)
         require(wrongWayAngleDeg in 90f..180f)
         require(wrongWayDurationSeconds > 0f)
         require(offTrackDurationSeconds > 0f)
@@ -65,7 +73,9 @@ data class AiConfig(
             cornerSpeed = cornerSpeed * 0.85f,
             steeringResponse = steeringResponse * 0.65f,
             obstacleDetectionDistance = obstacleDetectionDistance * 0.75f,
+            staticObstacleReactionDistance = staticObstacleReactionDistance * 0.75f,
             avoidanceSteering = avoidanceSteering * 0.75f,
+            overtakeMinimumClearance = overtakeMinimumClearance * 0.75f,
             mistakeProbability = 0.18f,
             mistakeDurationSeconds = 0.4f,
             mistakeSteering = 0.28f,
@@ -76,7 +86,9 @@ data class AiConfig(
             cornerSpeed = cornerSpeed * 1.12f,
             steeringResponse = steeringResponse * 1.25f,
             obstacleDetectionDistance = obstacleDetectionDistance * 1.2f,
+            staticObstacleReactionDistance = staticObstacleReactionDistance * 1.2f,
             overtakeSpeedAdvantage = overtakeSpeedAdvantage * 0.75f,
+            overtakeMinimumClearance = overtakeMinimumClearance * 1.2f,
             mistakeProbability = 0.02f,
             mistakeDurationSeconds = 0.12f,
             mistakeSteering = 0.08f,

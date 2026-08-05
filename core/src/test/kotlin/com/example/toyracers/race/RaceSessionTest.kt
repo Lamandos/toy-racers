@@ -145,6 +145,49 @@ class RaceSessionTest {
         assertEquals(5, session.opponents.size)
     }
 
+    @Test
+    fun `five interacting AI complete a valid lap on every built in track`() {
+        TrackId.entries.forEach { trackId ->
+            val session = RaceSession(TrackLoader().load(trackId)).apply {
+                start()
+                advance(raceState.countdownDurationSeconds, PlayerInput.NONE)
+            }
+
+            session.advance(MAX_RACE_SIMULATION_SECONDS, PlayerInput.NONE)
+
+            session.opponents.forEach { opponent ->
+                assertTrue(
+                    "$trackId ${opponent.id} did not finish: state=${opponent.state}, " +
+                        "progress=${opponent.progress}, behavior=${opponent.driver?.behaviorState}",
+                    opponent.progress.finished,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `fixed simulation produces the same result for different frame rates`() {
+        val sixtyFps = racingSession()
+        val fifteenFps = racingSession()
+
+        repeat(12) {
+            sixtyFps.advance(CarPhysics.FIXED_DELTA_SECONDS, PlayerInput(throttle = 1f))
+        }
+        repeat(3) {
+            fifteenFps.advance(CarPhysics.FIXED_DELTA_SECONDS * 4f, PlayerInput(throttle = 1f))
+        }
+
+        (listOf(sixtyFps.player) + sixtyFps.opponents).zip(
+            listOf(fifteenFps.player) + fifteenFps.opponents,
+        ).forEach { (first, second) ->
+            assertEquals(first.state.x, second.state.x, TOLERANCE)
+            assertEquals(first.state.y, second.state.y, TOLERANCE)
+            assertEquals(first.state.rotationDeg, second.state.rotationDeg, TOLERANCE)
+            assertEquals(first.state.speed, second.state.speed, TOLERANCE)
+            assertEquals(first.progress, second.progress)
+        }
+    }
+
     private fun racingSession(withoutObjects: Boolean = false): RaceSession {
         val loadedTrack = TrackLoader().load()
         val track = if (withoutObjects) {
@@ -159,6 +202,7 @@ class RaceSessionTest {
     }
 
     private companion object {
+        const val MAX_RACE_SIMULATION_SECONDS = 240f
         const val TOLERANCE = 0.0001f
     }
 }

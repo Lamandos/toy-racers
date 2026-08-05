@@ -1,34 +1,20 @@
 package com.example.toyracers.ui
 
-import com.badlogic.gdx.InputProcessor
-import com.badlogic.gdx.scenes.scene2d.InputEvent
-import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton
-import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
-import com.badlogic.gdx.utils.Disposable
-import com.badlogic.gdx.utils.viewport.ExtendViewport
-import com.example.toyracers.ToyRacersGame
 import com.example.toyracers.audio.AudioSettings
 
 class AudioSettingsStage(
     initialSettings: AudioSettings,
     private val onSettingsChanged: (AudioSettings) -> Unit,
     onBack: () -> Unit,
-    private val onButtonClick: () -> Unit = {},
-) : Disposable {
-    private val skin = createGameUiSkin()
-    private val stage = Stage(
-        ExtendViewport(ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT),
-    )
+    onButtonClick: () -> Unit = {},
+) : GameUiStage(onButtonClick) {
     private var settings = initialSettings
     private val masterLabel = Label("", skin)
     private val musicLabel = Label("", skin)
     private val sfxLabel = Label("", skin)
     private val vibrationLabel = Label("", skin)
-
-    val inputProcessor: InputProcessor get() = stage
 
     init {
         val table = Table().apply {
@@ -90,34 +76,7 @@ class AudioSettingsStage(
         )
     }
 
-    private fun button(
-        text: String,
-        style: String = "default",
-        action: () -> Unit,
-    ): TextButton =
-        TextButton(text, skin, style).apply {
-            addListener(object : ClickListener() {
-                override fun clicked(event: InputEvent, x: Float, y: Float) {
-                    onButtonClick()
-                    action()
-                }
-            })
-        }
-
-    fun resize(width: Int, height: Int) = stage.viewport.update(width, height, true)
-
-    fun render(delta: Float) {
-        stage.act(delta.coerceAtMost(MAX_UI_DELTA))
-        stage.draw()
-    }
-
-    override fun dispose() {
-        stage.dispose()
-        skin.dispose()
-    }
-
     private companion object {
         const val STEP = 0.1f
-        const val MAX_UI_DELTA = 0.1f
     }
 }

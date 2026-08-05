@@ -53,14 +53,14 @@ class GameAudio(
     assets: GameAssets,
     settings: AudioSettings = AudioSettings(),
 ) : Disposable {
-    private val engine = assets.engineLoop
-    private val drift = assets.tireDriftLoop
-    private val braking = assets.brakeLoop
+    private val engine = LoopingSound(assets.engineLoop)
+    private val drift = LoopingSound(assets.tireDriftLoop)
+    private val braking = LoopingSound(assets.brakeLoop)
     private val collisionLight = assets.collisionLight
     private val collisionMedium = assets.collisionMedium
     private val collisionHeavy = assets.collisionHeavy
-    private val offtrackGravel = assets.offtrackGravelLoop
-    private val offtrackGrass = assets.offtrackGrassLoop
+    private val offtrackGravel = LoopingSound(assets.offtrackGravelLoop)
+    private val offtrackGrass = LoopingSound(assets.offtrackGrassLoop)
     private val gravelHits = assets.gravelHits
     private val countdown = assets.startCountdown
     private val go = assets.go
@@ -68,11 +68,7 @@ class GameAudio(
     private val finish = assets.finish
     private val buttonClick = assets.buttonClick
     private val music: Music = assets.backgroundMusic
-    private var engineId = NO_LOOP
-    private var brakeId = NO_LOOP
-    private var driftId = NO_LOOP
-    private var offtrackGravelId = NO_LOOP
-    private var offtrackGrassId = NO_LOOP
+    private val raceLoops = listOf(engine, braking, drift, offtrackGravel, offtrackGrass)
     private var wasOffRoad = false
     private var collisionVariant = 0
     private var gravelVariant = 0
@@ -96,11 +92,7 @@ class GameAudio(
     }
 
     fun startRaceLoops() {
-        if (engineId == NO_LOOP) engineId = engine.loop(0f)
-        if (brakeId == NO_LOOP) brakeId = braking.loop(0f)
-        if (driftId == NO_LOOP) driftId = drift.loop(0f)
-        if (offtrackGravelId == NO_LOOP) offtrackGravelId = offtrackGravel.loop(0f)
-        if (offtrackGrassId == NO_LOOP) offtrackGrassId = offtrackGrass.loop(0f)
+        raceLoops.forEach(LoopingSound::startMuted)
     }
 
     fun updateRace(
@@ -125,17 +117,17 @@ class GameAudio(
             sfxVolume = settings.effectiveSfxVolume * raceMixGain,
         )
         val speedRatio = (abs(speed) / maxSpeed).coerceIn(0f, 1f)
-        engine.setVolume(engineId, mix.engineVolume)
-        engine.setPitch(engineId, 0.96f + speedRatio * 0.08f)
-        drift.setVolume(driftId, mix.driftVolume)
-        drift.setPitch(driftId, mix.driftPitch)
-        braking.setVolume(brakeId, mix.brakingVolume)
+        engine.setVolume(mix.engineVolume)
+        engine.setPitch(0.96f + speedRatio * 0.08f)
+        drift.setVolume(mix.driftVolume)
+        drift.setPitch(mix.driftPitch)
+        braking.setVolume(mix.brakingVolume)
 
         val gravelVolume =
             if (offRoad && surface != SurfaceType.GRASS) mix.wheelspinVolume else 0f
         val grassVolume = if (surface == SurfaceType.GRASS) mix.wheelspinVolume else 0f
-        offtrackGravel.setVolume(offtrackGravelId, gravelVolume)
-        offtrackGrass.setVolume(offtrackGrassId, grassVolume)
+        offtrackGravel.setVolume(gravelVolume)
+        offtrackGrass.setVolume(grassVolume)
 
         if (racing && offRoad && !wasOffRoad && surface != SurfaceType.GRASS) {
             playNext(gravelHits, 0.65f, gravelVariant++)
@@ -174,11 +166,7 @@ class GameAudio(
 
     fun pauseRace() {
         paused = true
-        if (engineId != NO_LOOP) engine.setVolume(engineId, 0f)
-        if (brakeId != NO_LOOP) braking.setVolume(brakeId, 0f)
-        if (driftId != NO_LOOP) drift.setVolume(driftId, 0f)
-        if (offtrackGravelId != NO_LOOP) offtrackGravel.setVolume(offtrackGravelId, 0f)
-        if (offtrackGrassId != NO_LOOP) offtrackGrass.setVolume(offtrackGrassId, 0f)
+        raceLoops.forEach(LoopingSound::mute)
         music.pause()
     }
 
@@ -188,16 +176,7 @@ class GameAudio(
     }
 
     fun stopRaceLoops() {
-        if (engineId != NO_LOOP) engine.stop(engineId)
-        if (brakeId != NO_LOOP) braking.stop(brakeId)
-        if (driftId != NO_LOOP) drift.stop(driftId)
-        if (offtrackGravelId != NO_LOOP) offtrackGravel.stop(offtrackGravelId)
-        if (offtrackGrassId != NO_LOOP) offtrackGrass.stop(offtrackGrassId)
-        engineId = NO_LOOP
-        brakeId = NO_LOOP
-        driftId = NO_LOOP
-        offtrackGravelId = NO_LOOP
-        offtrackGrassId = NO_LOOP
+        raceLoops.forEach(LoopingSound::stop)
         wasOffRoad = false
         resetRaceMix()
     }
@@ -216,8 +195,32 @@ class GameAudio(
     }
 
     private companion object {
-        const val NO_LOOP = -1L
         const val RACE_FADE_SECONDS = 0.8f
+    }
+
+    private class LoopingSound(
+        private val sound: Sound,
+    ) {
+        private var id: Long? = null
+
+        fun startMuted() {
+            if (id == null) id = sound.loop(0f)
+        }
+
+        fun mute() = setVolume(0f)
+
+        fun setVolume(volume: Float) {
+            id?.let { sound.setVolume(it, volume) }
+        }
+
+        fun setPitch(pitch: Float) {
+            id?.let { sound.setPitch(it, pitch) }
+        }
+
+        fun stop() {
+            id?.let(sound::stop)
+            id = null
+        }
     }
 }
 

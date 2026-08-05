@@ -83,65 +83,82 @@ class AiDriver(
             AiRecoveryAction.NONE -> Unit
         }
 
-        val movingObstacle = obstacleDetector.nearestAhead(carState, obstacles)
-        val immediateObstacleDistance = config.obstacleLaneHalfWidth
-        val blockedRay = rays.filter { ray ->
-            ray.hit && ray.distanceSquared() <= immediateObstacleDistance * immediateObstacleDistance
-        }.minByOrNull { ray ->
-            val dx = ray.end.x - ray.start.x
-            val dy = ray.end.y - ray.start.y
-            dx * dx + dy * dy
-        }
         val routeSteering = (-headingError / config.fullSteeringAngleDeg).coerceIn(-1f, 1f)
-        val dynamicAvoidance = movingObstacle?.let {
-            val side = if (it.lateralDistance == 0f) racingLineBias.nonZeroSign()
-            else -it.lateralDistance.nonZeroSign()
-            side * config.avoidanceSteering
-        } ?: 0f
-        val staticThreat = blockedRay?.takeIf { abs(routeSteering) < config.routeTurnPriority }
-        val staticAvoidance = staticThreat?.let {
-            -it.angleOffsetDeg.nonZeroSign() * config.avoidanceSteering
-        } ?: 0f
-        behaviorState = when {
-            movingObstacle?.obstacle?.speed?.plus(config.overtakeSpeedAdvantage) != null &&
-                movingObstacle.obstacle.speed + config.overtakeSpeedAdvantage < carState.speed ->
-                AiBehaviorState.OVERTAKE
-            movingObstacle != null || staticThreat != null -> AiBehaviorState.AVOID
-            else -> AiBehaviorState.FOLLOW_ROUTE
-        }
-
-        updateMistake(deltaSeconds)
-        val mistakeSteering = if (mistakeTimeRemaining > 0f) config.mistakeSteering else 0f
-        val desiredSteering = (routeSteering + dynamicAvoidance + staticAvoidance + mistakeSteering)
-            .coerceIn(-1f, 1f)
-        val blend = (config.steeringResponse * deltaSeconds).coerceIn(0f, 1f)
-        smoothedSteering += (desiredSteering - smoothedSteering) * blend
-
-        val cornerAmount = (maxOf(abs(headingError), pathFollower.turnAheadDegrees(carState)) / 90f)
-            .coerceIn(0f, 1f)
-        val desiredSpeed = config.straightSpeed +
-            (config.cornerSpeed - config.straightSpeed) * cornerAmount
-        val obstacleDistance = movingObstacle?.forwardDistance ?: if (staticThreat != null) {
-            val dx = staticThreat.end.x - staticThreat.start.x
-            val dy = staticThreat.end.y - staticThreat.start.y
-            kotlin.math.sqrt(dx * dx + dy * dy)
-        } else null
-        val safeSpeed = obstacleDistance?.let {
-            val proximity = 1f - it / config.obstacleDetectionDistance
-            desiredSpeed * (1f - proximity.coerceIn(0f, 1f) * config.obstacleSpeedReduction)
-        } ?: desiredSpeed
-        val shouldBrake = carState.speed > safeSpeed + config.brakingMargin
+        val obstacleDecision = obstacleDecision(carState, obstacles, rays)
+        behaviorState = obstacleDecision.behaviorState
+        val steering = steeringDecision(routeSteering, obstacleDecision, deltaSeconds)
+        val shouldBrake = shouldBrake(carState, headingError, obstacleDecision)
         return publish(
             carState,
             PlayerInput(
                 throttle = if (shouldBrake) 0f else 1f,
                 brake = if (shouldBrake) 1f else 0f,
-                steering = smoothedSteering,
+                steering = steering,
             ),
             target,
-            movingObstacle,
+            obstacleDecision.movingObstacle,
             rays,
         )
+    }
+
+    private fun obstacleDecision(
+        carState: CarState,
+        obstacles: List<AiObstacle>,
+        rays: List<AiSensorRay>,
+    ): ObstacleDecision {
+        val movingObstacle = obstacleDetector.nearestAhead(carState, obstacles)
+        val staticThreat = rays.asSequence()
+            .filter { it.hit && it.distance() <= config.staticObstacleReactionDistance }
+            .minByOrNull(AiSensorRay::distance)
+        val passingDirection = movingObstacle?.let {
+            safestPassingDirection(carState, obstacles, rays, it)
+        }
+        val canOvertake = movingObstacle != null && passingDirection != null &&
+            movingObstacle.obstacle.speed + config.overtakeSpeedAdvantage < carState.speed
+        val behavior = when {
+            canOvertake -> AiBehaviorState.OVERTAKE
+            movingObstacle != null || staticThreat != null -> AiBehaviorState.AVOID
+            else -> AiBehaviorState.FOLLOW_ROUTE
+        }
+        return ObstacleDecision(movingObstacle, staticThreat, passingDirection, behavior, rays)
+    }
+
+    private fun steeringDecision(
+        routeSteering: Float,
+        obstacleDecision: ObstacleDecision,
+        deltaSeconds: Float,
+    ): Float {
+        updateMistake(deltaSeconds)
+        val routeContribution = if (
+            obstacleDecision.staticThreat != null && abs(routeSteering) < config.routeTurnPriority
+        ) 0f else routeSteering
+        val dynamicAvoidance = obstacleDecision.passingDirection
+            ?.times(config.avoidanceSteering) ?: 0f
+        val staticAvoidance = obstacleDecision.staticThreat?.let {
+            safestTrackDirection(obstacleDecision.rays) * config.avoidanceSteering
+        } ?: 0f
+        val mistakeSteering = if (mistakeTimeRemaining > 0f) config.mistakeSteering else 0f
+        val desired = (routeContribution + dynamicAvoidance + staticAvoidance + mistakeSteering)
+            .coerceIn(-1f, 1f)
+        val blend = (config.steeringResponse * deltaSeconds).coerceIn(0f, 1f)
+        smoothedSteering += (desired - smoothedSteering) * blend
+        return smoothedSteering
+    }
+
+    private fun shouldBrake(
+        carState: CarState,
+        headingError: Float,
+        obstacleDecision: ObstacleDecision,
+    ): Boolean {
+        val cornerAmount = (maxOf(abs(headingError), pathFollower.turnAheadDegrees(carState)) / 90f)
+            .coerceIn(0f, 1f)
+        val desiredSpeed = config.straightSpeed +
+            (config.cornerSpeed - config.straightSpeed) * cornerAmount
+        val safeSpeed = obstacleDecision.distance?.let { distance ->
+            val proximity = 1f - distance / config.obstacleDetectionDistance
+            desiredSpeed * (1f - proximity.coerceIn(0f, 1f) * config.obstacleSpeedReduction)
+        } ?: desiredSpeed
+        return carState.speed > safeSpeed + config.brakingMargin
     }
 
     private fun updateMistake(deltaSeconds: Float) {
@@ -153,6 +170,40 @@ class AiDriver(
             val sample = (randomState ushr 8).toFloat() / 0x01000000
             if (sample < config.mistakeProbability) mistakeTimeRemaining = config.mistakeDurationSeconds
         }
+    }
+
+    private fun safestPassingDirection(
+        carState: CarState,
+        obstacles: List<AiObstacle>,
+        rays: List<AiSensorRay>,
+        detected: DetectedObstacle,
+    ): Float? {
+        val preferred = when {
+            detected.lateralDistance > 0f -> 1f
+            detected.lateralDistance < 0f -> -1f
+            else -> -racingLineBias.nonZeroSign()
+        }
+        val candidates = listOf(preferred, -preferred).map { direction ->
+            direction to minOf(
+                obstacleDetector.passingClearance(carState, obstacles, direction),
+                trackClearance(rays, direction),
+            )
+        }
+        return candidates.maxByOrNull { it.second }?.takeIf {
+            it.second >= config.overtakeMinimumClearance
+        }?.first
+    }
+
+    private fun safestTrackDirection(rays: List<AiSensorRay>): Float {
+        val leftClearance = trackClearance(rays, -1f)
+        val rightClearance = trackClearance(rays, 1f)
+        return if (leftClearance >= rightClearance) -1f else 1f
+    }
+
+    private fun trackClearance(rays: List<AiSensorRay>, steeringDirection: Float): Float {
+        val wantedAngleSign = if (steeringDirection < 0f) 1 else -1
+        return rays.firstOrNull { ray -> ray.angleOffsetDeg.sign() == wantedAngleSign }
+            ?.distance() ?: config.obstacleDetectionDistance
     }
 
     private fun publish(
@@ -175,10 +226,21 @@ class AiDriver(
 
     private fun Float.nonZeroSign(): Float = if (this < 0f) -1f else 1f
 
-    private fun AiSensorRay.distanceSquared(): Float {
-        val dx = end.x - start.x
-        val dy = end.y - start.y
-        return dx * dx + dy * dy
+    private fun Float.sign(): Int = when {
+        this < 0f -> -1
+        this > 0f -> 1
+        else -> 0
+    }
+
+    private data class ObstacleDecision(
+        val movingObstacle: DetectedObstacle?,
+        val staticThreat: AiSensorRay?,
+        val passingDirection: Float?,
+        val behaviorState: AiBehaviorState,
+        val rays: List<AiSensorRay>,
+    ) {
+        val distance: Float?
+            get() = movingObstacle?.forwardDistance ?: staticThreat?.distance()
     }
 
 }

@@ -1,19 +1,12 @@
 package com.example.toyracers.ui
 
-import com.badlogic.gdx.InputProcessor
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.TextureRegion
-import com.badlogic.gdx.scenes.scene2d.InputEvent
-import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.Image
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton
-import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
-import com.badlogic.gdx.utils.Disposable
 import com.badlogic.gdx.utils.Scaling
-import com.badlogic.gdx.utils.viewport.ExtendViewport
-import com.example.toyracers.ToyRacersGame
 import com.example.toyracers.ai.AiDifficulty
 import com.example.toyracers.car.CarModel
 import com.example.toyracers.car.CarPerformance
@@ -28,22 +21,17 @@ class CarSelectionStage(
     private val onDifficultySelected: (AiDifficulty) -> Unit = {},
     onStartRace: () -> Unit,
     onBack: () -> Unit,
-    private val onButtonClick: () -> Unit = {},
-) : Disposable {
+    onButtonClick: () -> Unit = {},
+) : GameUiStage(onButtonClick) {
     init {
         require(options.isNotEmpty()) { "Car selection requires at least one option" }
         require(options.any { it.model == initiallySelected }) { "Selected car must be an option" }
     }
 
-    private val skin = createGameUiSkin()
-    private val stage = Stage(ExtendViewport(ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT))
     private val statusLabels = mutableMapOf<CarModel, Label>()
     private val difficultyButtons = mutableMapOf<AiDifficulty, TextButton>()
     private var selected = initiallySelected
     private var selectedDifficulty = initiallySelectedDifficulty
-
-    val inputProcessor: InputProcessor
-        get() = stage
 
     init {
         val content = Table().apply {
@@ -104,14 +92,11 @@ class CarSelectionStage(
             .padRight(8f)
         row()
         add(Label("", skin).also { statusLabels[option.model] = it }).height(42f)
-        addListener(object : ClickListener() {
-            override fun clicked(event: InputEvent, x: Float, y: Float) {
-                onButtonClick()
-                selected = option.model
-                onCarSelected(option.model)
-                refreshStatuses()
-            }
-        })
+        onClick {
+            selected = option.model
+            onCarSelected(option.model)
+            refreshStatuses()
+        }
     }
 
     private fun performanceTable(performance: CarPerformance): Table = Table().apply {
@@ -164,33 +149,7 @@ class CarSelectionStage(
         }
     }
 
-    private fun button(
-        text: String,
-        style: String = "default",
-        action: () -> Unit,
-    ): TextButton = TextButton(text, skin, style).apply {
-        addListener(object : ClickListener() {
-            override fun clicked(event: InputEvent, x: Float, y: Float) {
-                onButtonClick()
-                action()
-            }
-        })
-    }
-
-    fun resize(width: Int, height: Int) = stage.viewport.update(width, height, true)
-
-    fun render(delta: Float) {
-        stage.act(delta.coerceAtMost(MAX_UI_DELTA))
-        stage.draw()
-    }
-
-    override fun dispose() {
-        stage.dispose()
-        skin.dispose()
-    }
-
     private companion object {
-        const val MAX_UI_DELTA = 0.1f
         const val CARD_WIDTH = 230f
         const val STAT_SQUARE_COUNT = 5
         const val STAT_COLUMN_COUNT = STAT_SQUARE_COUNT + 1
