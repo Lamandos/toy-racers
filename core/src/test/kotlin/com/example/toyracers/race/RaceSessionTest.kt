@@ -1,5 +1,6 @@
 package com.example.toyracers.race
 
+import com.example.toyracers.ai.AiConfig
 import com.example.toyracers.ai.AiDifficulty
 import com.example.toyracers.car.CarPhysics
 import com.example.toyracers.car.CarModel
@@ -95,6 +96,28 @@ class RaceSessionTest {
         session.advance(CarPhysics.FIXED_DELTA_SECONDS, PlayerInput.NONE)
 
         assertEquals(lastSafeState, opponent.lastSafeState)
+    }
+
+    @Test
+    fun `AI respawn clears off-road speed reduction`() {
+        val session = RaceSession(
+            track = TrackLoader().load().copy(collisionShapes = emptyList()),
+            aiConfig = AiConfig(offTrackDurationSeconds = CarPhysics.FIXED_DELTA_SECONDS),
+        ).apply {
+            start()
+            advance(raceState.countdownDurationSeconds, PlayerInput.NONE)
+        }
+        val opponent = session.opponents.first()
+        val safeState = opponent.lastSafeState.copy()
+        opponent.state.x = -10f
+        opponent.state.y = -10f
+        opponent.surfaceSpeedState.speedMultiplier = 0.3f
+
+        session.advance(CarPhysics.FIXED_DELTA_SECONDS, PlayerInput.NONE)
+
+        assertEquals(safeState.x, opponent.state.x, TOLERANCE)
+        assertEquals(safeState.y, opponent.state.y, TOLERANCE)
+        assertEquals(1f, opponent.surfaceSpeedState.speedMultiplier, TOLERANCE)
     }
 
     @Test

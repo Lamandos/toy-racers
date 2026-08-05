@@ -211,6 +211,7 @@ internal class RaceSession(
         participant.state.velocityX = 0f
         participant.state.velocityY = 0f
         participant.state.angularVelocity = 0f
+        participant.surfaceSpeedState.speedMultiplier = 1f
         participant.driver?.reset(TrackPoint(safe.x, safe.y))
     }
 
