@@ -85,6 +85,19 @@ class RaceSessionTest {
     }
 
     @Test
+    fun `AI driving the wrong way does not overwrite its last safe state`() {
+        val session = racingSession(withoutObjects = true)
+        val opponent = session.opponents.first()
+        val lastSafeState = opponent.lastSafeState.copy()
+        opponent.state.rotationDeg += 180f
+        opponent.state.speed = 3f
+
+        session.advance(CarPhysics.FIXED_DELTA_SECONDS, PlayerInput.NONE)
+
+        assertEquals(lastSafeState, opponent.lastSafeState)
+    }
+
+    @Test
     fun `paused session does not advance participants or race time`() {
         val session = racingSession()
         session.advance(CarPhysics.FIXED_DELTA_SECONDS, PlayerInput(throttle = 1f))

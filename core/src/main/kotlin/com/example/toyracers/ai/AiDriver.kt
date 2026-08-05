@@ -51,6 +51,9 @@ class AiDriver(
 
     fun consumeRespawnRequest(): Boolean = respawnRequested.also { respawnRequested = false }
 
+    internal fun isFacingRoute(carState: CarState): Boolean =
+        abs(pathFollower.headingError(carState)) <= config.wrongWayAngleDeg
+
     fun update(
         carState: CarState,
         deltaSeconds: Float,

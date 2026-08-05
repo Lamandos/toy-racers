@@ -195,7 +195,8 @@ internal class RaceSession(
         if (
             participant.driver != null &&
             track.surfaceAt(participant.state.x, participant.state.y).isRoad &&
-            kotlin.math.abs(participant.state.speed) >= sessionConfig.safeStateMinSpeed
+            kotlin.math.abs(participant.state.speed) >= sessionConfig.safeStateMinSpeed &&
+            participant.driver.isFacingRoute(participant.state)
         ) {
             participant.lastSafeState = participant.state.copy()
         }
