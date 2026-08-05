@@ -1,5 +1,6 @@
 package com.example.toyracers.race
 
+import com.example.toyracers.ai.AiDifficulty
 import com.example.toyracers.car.CarPhysics
 import com.example.toyracers.car.CarModel
 import com.example.toyracers.car.opponentModelsFor
@@ -35,6 +36,19 @@ class RaceSessionTest {
         session.opponents.forEachIndexed { index, opponent ->
             assertEquals(opponents[index].performance.applyTo(), opponent.carConfig)
             assertEquals(opponents[index], opponent.carModel)
+        }
+    }
+
+    @Test
+    fun `selected difficulty is applied to every opponent`() {
+        val session = RaceSession(
+            track = TrackLoader().load(),
+            opponentDifficulty = AiDifficulty.HARD,
+        )
+
+        assertTrue(session.opponents.isNotEmpty())
+        session.opponents.forEach { opponent ->
+            assertEquals(AiDifficulty.HARD, opponent.driver?.difficulty)
         }
     }
 

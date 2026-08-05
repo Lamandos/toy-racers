@@ -14,6 +14,7 @@ import com.badlogic.gdx.utils.Disposable
 import com.badlogic.gdx.utils.Scaling
 import com.badlogic.gdx.utils.viewport.ExtendViewport
 import com.example.toyracers.ToyRacersGame
+import com.example.toyracers.ai.AiDifficulty
 import com.example.toyracers.car.CarModel
 import com.example.toyracers.car.CarPerformance
 import kotlin.math.roundToInt
@@ -22,7 +23,9 @@ import kotlin.math.roundToInt
 class CarSelectionStage(
     options: List<CarSelectionOption>,
     initiallySelected: CarModel,
+    initiallySelectedDifficulty: AiDifficulty = AiDifficulty.NORMAL,
     private val onCarSelected: (CarModel) -> Unit,
+    private val onDifficultySelected: (AiDifficulty) -> Unit = {},
     onStartRace: () -> Unit,
     onBack: () -> Unit,
     private val onButtonClick: () -> Unit = {},
@@ -35,7 +38,9 @@ class CarSelectionStage(
     private val skin = createGameUiSkin()
     private val stage = Stage(ExtendViewport(ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT))
     private val statusLabels = mutableMapOf<CarModel, Label>()
+    private val difficultyButtons = mutableMapOf<AiDifficulty, TextButton>()
     private var selected = initiallySelected
+    private var selectedDifficulty = initiallySelectedDifficulty
 
     val inputProcessor: InputProcessor
         get() = stage
@@ -50,18 +55,36 @@ class CarSelectionStage(
             }).colspan(options.size).height(105f)
             row()
             options.forEach { option ->
-                add(carCard(option)).width(CARD_WIDTH).height(410f).pad(8f)
+                add(carCard(option)).width(CARD_WIDTH).height(360f).pad(8f)
             }
             row()
-        add(button("BACK", SECONDARY_BUTTON_STYLE, onBack)).width(260f).height(68f).padTop(18f)
+            add(difficultySelector()).colspan(options.size).height(78f).growX().padTop(4f)
+            row()
+            add(button("BACK", SECONDARY_BUTTON_STYLE, onBack))
+                .width(260f).height(68f).padTop(10f)
             add(button("START RACE", action = onStartRace))
                 .colspan(options.size - 1)
                 .width(360f)
                 .height(68f)
-                .padTop(18f)
+                .padTop(10f)
         }
         stage.addActor(content)
         refreshStatuses()
+        refreshDifficultyButtons()
+    }
+
+    private fun difficultySelector(): Table = Table().apply {
+        add(Label("OPPONENTS", this@CarSelectionStage.skin).apply { setFontScale(0.9f) })
+            .width(150f)
+        AiDifficulty.entries.forEach { difficulty ->
+            val difficultyButton = button(difficulty.displayName) {
+                selectedDifficulty = difficulty
+                onDifficultySelected(difficulty)
+                refreshDifficultyButtons()
+            }
+            difficultyButtons[difficulty] = difficultyButton
+            add(difficultyButton).width(180f).height(56f).padLeft(10f)
+        }
     }
 
     private fun carCard(option: CarSelectionOption): TextButton = TextButton("", skin).apply {
@@ -132,6 +155,15 @@ class CarSelectionStage(
         }
     }
 
+    private fun refreshDifficultyButtons() {
+        difficultyButtons.forEach { (difficulty, button) ->
+            button.setText(
+                if (difficulty == selectedDifficulty) "${difficulty.displayName}  ✓"
+                else difficulty.displayName,
+            )
+        }
+    }
+
     private fun button(
         text: String,
         style: String = "default",
@@ -174,6 +206,13 @@ data class CarSelectionOption(
     val model: CarModel,
     val preview: TextureRegion,
 )
+
+private val AiDifficulty.displayName: String
+    get() = when (this) {
+        AiDifficulty.EASY -> "EASY"
+        AiDifficulty.NORMAL -> "NORMAL"
+        AiDifficulty.HARD -> "HARD"
+    }
 
 /** Maps the supported performance range onto the five-square selection UI. */
 internal fun performanceSquareCount(multiplier: Float): Int {

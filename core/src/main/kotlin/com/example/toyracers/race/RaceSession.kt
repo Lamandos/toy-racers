@@ -28,6 +28,7 @@ internal class RaceSession(
     private val track: Track,
     playerCarModel: CarModel = CarModel.RED_STRIPE,
     opponentCarModels: List<CarModel> = opponentModelsFor(playerCarModel),
+    opponentDifficulty: AiDifficulty = AiDifficulty.NORMAL,
     baseCarConfig: CarConfig = CarConfig(),
     private val carPhysics: CarPhysics = CarPhysics(),
     private val collisionSystem: CollisionSystem = CollisionSystem(),
@@ -56,7 +57,7 @@ internal class RaceSession(
                 track.racingLine,
                 start.position,
                 AiConfig(waypointRadius = track.racingLineWaypointRadius),
-                difficulty = AiDifficulty.entries[index % AiDifficulty.entries.size],
+                difficulty = opponentDifficulty,
                 racingLineBias = opponentRacingLineBias(index),
             ),
         )

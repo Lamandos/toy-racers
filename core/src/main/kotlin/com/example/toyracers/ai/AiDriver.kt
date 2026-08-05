@@ -11,7 +11,7 @@ class AiDriver(
     private val racingLine: List<TrackPoint>,
     initialPosition: TrackPoint,
     config: AiConfig = AiConfig(),
-    difficulty: AiDifficulty = AiDifficulty.NORMAL,
+    val difficulty: AiDifficulty = AiDifficulty.NORMAL,
     /** Stable per-car variation: negative prefers left, positive prefers right. */
     private val racingLineBias: Float = 0f,
 ) {

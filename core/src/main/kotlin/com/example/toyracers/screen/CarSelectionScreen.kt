@@ -20,7 +20,9 @@ class CarSelectionScreen(
     private val selection = CarSelectionStage(
         options = CarModel.entries.map { CarSelectionOption(it, game.assets.car(it)) },
         initiallySelected = game.selectedCar,
+        initiallySelectedDifficulty = game.selectedAiDifficulty,
         onCarSelected = game::selectCar,
+        onDifficultySelected = game::selectAiDifficulty,
         onStartRace = { startRequested = true },
         onBack = { backRequested = true },
         onButtonClick = game.audio::buttonClick,

@@ -281,6 +281,7 @@ class RaceScreen(
         track = track,
         playerCarModel = selectedCarModel,
         opponentCarModels = opponentModelsFor(selectedCarModel),
+        opponentDifficulty = game.selectedAiDifficulty,
     )
 
     private fun updateCountdownAudio(phaseBeforeAdvance: RacePhase) {
