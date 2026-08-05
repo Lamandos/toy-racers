@@ -68,31 +68,37 @@ data class AiConfig(
     }
 
     fun forDifficulty(difficulty: AiDifficulty): AiConfig = when (difficulty) {
-        AiDifficulty.EASY -> copy(
-            straightSpeed = straightSpeed * 0.78f,
-            cornerSpeed = cornerSpeed * 0.85f,
-            steeringResponse = steeringResponse * 0.65f,
-            obstacleDetectionDistance = obstacleDetectionDistance * 0.75f,
-            staticObstacleReactionDistance = staticObstacleReactionDistance * 0.75f,
-            avoidanceSteering = avoidanceSteering * 0.75f,
-            overtakeMinimumClearance = overtakeMinimumClearance * 0.75f,
-            mistakeProbability = 0.18f,
-            mistakeDurationSeconds = 0.4f,
-            mistakeSteering = 0.28f,
-        )
+        AiDifficulty.EASY -> {
+            val adjustedStraightSpeed = straightSpeed * 0.78f
+            copy(
+                straightSpeed = adjustedStraightSpeed,
+                cornerSpeed = minOf(cornerSpeed * 0.85f, adjustedStraightSpeed),
+                steeringResponse = steeringResponse * 0.65f,
+                obstacleDetectionDistance = obstacleDetectionDistance * 0.75f,
+                staticObstacleReactionDistance = staticObstacleReactionDistance * 0.75f,
+                avoidanceSteering = avoidanceSteering * 0.75f,
+                overtakeMinimumClearance = overtakeMinimumClearance * 0.75f,
+                mistakeProbability = 0.18f,
+                mistakeDurationSeconds = 0.4f,
+                mistakeSteering = 0.28f,
+            )
+        }
         AiDifficulty.NORMAL -> this
-        AiDifficulty.HARD -> copy(
-            straightSpeed = straightSpeed * 1.08f,
-            cornerSpeed = cornerSpeed * 1.12f,
-            steeringResponse = steeringResponse * 1.25f,
-            obstacleDetectionDistance = obstacleDetectionDistance * 1.2f,
-            staticObstacleReactionDistance = staticObstacleReactionDistance * 1.2f,
-            overtakeSpeedAdvantage = overtakeSpeedAdvantage * 0.75f,
-            overtakeMinimumClearance = overtakeMinimumClearance * 1.2f,
-            mistakeProbability = 0.02f,
-            mistakeDurationSeconds = 0.12f,
-            mistakeSteering = 0.08f,
-        )
+        AiDifficulty.HARD -> {
+            val adjustedStraightSpeed = straightSpeed * 1.08f
+            copy(
+                straightSpeed = adjustedStraightSpeed,
+                cornerSpeed = minOf(cornerSpeed * 1.12f, adjustedStraightSpeed),
+                steeringResponse = steeringResponse * 1.25f,
+                obstacleDetectionDistance = obstacleDetectionDistance * 1.2f,
+                staticObstacleReactionDistance = staticObstacleReactionDistance * 1.2f,
+                overtakeSpeedAdvantage = overtakeSpeedAdvantage * 0.75f,
+                overtakeMinimumClearance = overtakeMinimumClearance * 1.2f,
+                mistakeProbability = 0.02f,
+                mistakeDurationSeconds = 0.12f,
+                mistakeSteering = 0.08f,
+            )
+        }
     }
 }
 

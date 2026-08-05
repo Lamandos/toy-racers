@@ -181,6 +181,20 @@ class AiDriverTest {
     }
 
     @Test
+    fun `difficulty profiles preserve speed invariants for tuned config`() {
+        val tuned = AiConfig(straightSpeed = 10f, cornerSpeed = 10f)
+
+        AiDifficulty.entries.forEach { difficulty ->
+            val adjusted = tuned.forDifficulty(difficulty)
+
+            assertTrue(
+                "$difficulty corner speed exceeds straight speed: $adjusted",
+                adjusted.cornerSpeed <= adjusted.straightSpeed,
+            )
+        }
+    }
+
+    @Test
     fun `track sensor rays detect the world boundary`() {
         val track = TrackLoader().load()
         val detector = AiObstacleDetector(AiConfig(obstacleDetectionDistance = 5f))
