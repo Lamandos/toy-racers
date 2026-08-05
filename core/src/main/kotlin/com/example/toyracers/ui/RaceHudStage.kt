@@ -1,15 +1,7 @@
 package com.example.toyracers.ui
 
-import com.badlogic.gdx.InputProcessor
-import com.badlogic.gdx.scenes.scene2d.InputEvent
-import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton
-import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
-import com.badlogic.gdx.utils.Disposable
-import com.badlogic.gdx.utils.viewport.ExtendViewport
-import com.example.toyracers.ToyRacersGame
 
 data class RaceHudSnapshot(
     val speed: Float,
@@ -26,12 +18,8 @@ class RaceHudStage(
     onResume: () -> Unit,
     onRestart: () -> Unit,
     onQuitToMenu: () -> Unit,
-    private val onButtonClick: () -> Unit = {},
-) : Disposable {
-    private val skin = createGameUiSkin()
-    private val stage = Stage(
-        ExtendViewport(ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT),
-    )
+    onButtonClick: () -> Unit = {},
+) : GameUiStage(onButtonClick) {
     private val positionLabel = Label("", skin)
     private val speedLabel = Label("", skin)
     private val lapLabel = Label("", skin)
@@ -39,9 +27,6 @@ class RaceHudStage(
     private val bestLapLabel = Label("", skin)
     private val pauseButton = button("PAUSE", onPause)
     private val pauseMenu = createPauseMenu(onResume, onRestart, onQuitToMenu)
-
-    val inputProcessor: InputProcessor
-        get() = stage
 
     init {
         val hud = Table()
@@ -87,18 +72,6 @@ class RaceHudStage(
         pauseButton.isVisible = !show
     }
 
-    fun resize(
-        width: Int,
-        height: Int,
-    ) {
-        stage.viewport.update(width, height, true)
-    }
-
-    fun render(delta: Float) {
-        stage.act(delta.coerceAtMost(MAX_UI_DELTA))
-        stage.draw()
-    }
-
     private fun createPauseMenu(
         onResume: () -> Unit,
         onRestart: () -> Unit,
@@ -113,34 +86,10 @@ class RaceHudStage(
         row()
         add(button("RESTART", onRestart)).width(360f).height(72f).pad(8f)
         row()
-        add(button("SETTINGS (SOON)") {}).width(360f).height(72f).pad(8f)
-        row()
         add(button("QUIT TO MENU", onQuitToMenu)).width(360f).height(72f).pad(8f)
     }
 
-    private fun button(
-        text: String,
-        action: () -> Unit,
-    ): TextButton = TextButton(text, skin).apply {
-        addListener(object : ClickListener() {
-            override fun clicked(
-                event: InputEvent,
-                x: Float,
-                y: Float,
-            ) {
-                onButtonClick()
-                action()
-            }
-        })
-    }
-
-    override fun dispose() {
-        stage.dispose()
-        skin.dispose()
-    }
-
     private companion object {
-        const val MAX_UI_DELTA = 0.1f
         const val SPEED_DISPLAY_SCALE = 18f
     }
 }

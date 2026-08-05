@@ -1,5 +1,6 @@
 package com.example.toyracers.track
 
+import com.example.toyracers.car.CarConfig
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -15,7 +16,7 @@ class TrackLoaderTest {
         assertTrue(track.roadOuter != null)
         assertTrue(track.roadInner != null)
         assertTrue(track.checkpoints.isNotEmpty())
-        assertEquals(5, track.startGrid.size)
+        assertEquals(6, track.startGrid.size)
         assertTrue(track.racingLine.size >= 3)
         assertTrue(track.worldBounds.contains(track.cameraBounds))
         assertTrue(track.worldBounds.contains(track.outerBoundary))
@@ -33,6 +34,26 @@ class TrackLoaderTest {
         }
         track.racingLine.forEach {
             assertEquals(SurfaceType.ASPHALT, track.surfaceAt(it))
+        }
+    }
+
+    @Test
+    fun `start grid positions do not overlap`() {
+        val minimumDistanceSquared = CarConfig().collisionRadius.let { radius ->
+            radius * 2f * radius * 2f
+        }
+
+        listOf(track, bathroom).forEach { builtInTrack ->
+            builtInTrack.startGrid.forEachIndexed { index, first ->
+                builtInTrack.startGrid.drop(index + 1).forEach { second ->
+                    val deltaX = first.position.x - second.position.x
+                    val deltaY = first.position.y - second.position.y
+                    assertTrue(
+                        "Overlapping start positions on ${builtInTrack.id}: $first and $second",
+                        deltaX * deltaX + deltaY * deltaY >= minimumDistanceSquared,
+                    )
+                }
+            }
         }
     }
 
@@ -61,7 +82,7 @@ class TrackLoaderTest {
         assertTrue(bathroom.collisionShapes.isNotEmpty())
         assertTrue(bathroom.roadOuter != null)
         assertTrue(bathroom.roadInner != null)
-        assertEquals(5, bathroom.startGrid.size)
+        assertEquals(6, bathroom.startGrid.size)
         assertTrue(bathroom.checkpoints.size >= 3)
         assertTrue(bathroom.racingLine.size >= 20)
         bathroom.startGrid.forEach {

@@ -76,6 +76,8 @@ The game uses landscape orientation.
 - `D` or Right Arrow: steer right
 - `Escape`: pause
 - `R`: restart the race
+- `F3`: toggle collision geometry
+- `F4`: toggle the AI route, target, obstacle rays, behavior, speed, and commands
 
 Desktop controls support development and testing; the Android touch layout is the primary MVP interface.
 

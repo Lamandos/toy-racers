@@ -1,5 +1,7 @@
 package com.example.toyracers.race
 
+import com.example.toyracers.ai.AiConfig
+import com.example.toyracers.ai.AiDifficulty
 import com.example.toyracers.car.CarPhysics
 import com.example.toyracers.car.CarModel
 import com.example.toyracers.car.opponentModelsFor
@@ -13,8 +15,8 @@ import org.junit.Test
 
 class RaceSessionTest {
     @Test
-    fun `race uses four opponents for the five car roster`() {
-        assertEquals(4, racingSession().opponents.size)
+    fun `race supports five simultaneous AI opponents`() {
+        assertEquals(5, racingSession().opponents.size)
     }
 
     @Test
@@ -35,6 +37,19 @@ class RaceSessionTest {
         session.opponents.forEachIndexed { index, opponent ->
             assertEquals(opponents[index].performance.applyTo(), opponent.carConfig)
             assertEquals(opponents[index], opponent.carModel)
+        }
+    }
+
+    @Test
+    fun `selected difficulty is applied to every opponent`() {
+        val session = RaceSession(
+            track = TrackLoader().load(),
+            opponentDifficulty = AiDifficulty.HARD,
+        )
+
+        assertTrue(session.opponents.isNotEmpty())
+        session.opponents.forEach { opponent ->
+            assertEquals(AiDifficulty.HARD, opponent.driver?.difficulty)
         }
     }
 
@@ -71,6 +86,41 @@ class RaceSessionTest {
     }
 
     @Test
+    fun `AI driving the wrong way does not overwrite its last safe state`() {
+        val session = racingSession(withoutObjects = true)
+        val opponent = session.opponents.first()
+        val lastSafeState = opponent.lastSafeState.copy()
+        opponent.state.rotationDeg += 180f
+        opponent.state.speed = 3f
+
+        session.advance(CarPhysics.FIXED_DELTA_SECONDS, PlayerInput.NONE)
+
+        assertEquals(lastSafeState, opponent.lastSafeState)
+    }
+
+    @Test
+    fun `AI respawn clears off-road speed reduction`() {
+        val session = RaceSession(
+            track = TrackLoader().load().copy(collisionShapes = emptyList()),
+            aiConfig = AiConfig(offTrackDurationSeconds = CarPhysics.FIXED_DELTA_SECONDS),
+        ).apply {
+            start()
+            advance(raceState.countdownDurationSeconds, PlayerInput.NONE)
+        }
+        val opponent = session.opponents.first()
+        val safeState = opponent.lastSafeState.copy()
+        opponent.state.x = -10f
+        opponent.state.y = -10f
+        opponent.surfaceSpeedState.speedMultiplier = 0.3f
+
+        session.advance(CarPhysics.FIXED_DELTA_SECONDS, PlayerInput.NONE)
+
+        assertEquals(safeState.x, opponent.state.x, TOLERANCE)
+        assertEquals(safeState.y, opponent.state.y, TOLERANCE)
+        assertEquals(1f, opponent.surfaceSpeedState.speedMultiplier, TOLERANCE)
+    }
+
+    @Test
     fun `paused session does not advance participants or race time`() {
         val session = racingSession()
         session.advance(CarPhysics.FIXED_DELTA_SECONDS, PlayerInput(throttle = 1f))
@@ -97,6 +147,11 @@ class RaceSessionTest {
         val startY = opponent.state.y
 
         session.advance(120f, PlayerInput.NONE)
+        repeat(180) {
+            if (track.surfaceAt(opponent.state.x, opponent.state.y) != SurfaceType.ASPHALT) {
+                session.advance(CarPhysics.FIXED_DELTA_SECONDS, PlayerInput.NONE)
+            }
+        }
 
         val movementSquared =
             (opponent.state.x - startX) * (opponent.state.x - startX) +
@@ -107,9 +162,66 @@ class RaceSessionTest {
             track.surfaceAt(opponent.state.x, opponent.state.y),
         )
         assertTrue(
+            "AI did not advance: state=${opponent.state}, progress=${opponent.progress}, " +
+                "behavior=${opponent.driver?.behaviorState}",
             opponent.progress.completedLaps > 0 ||
                 opponent.progress.currentCheckpointIndex > 0,
         )
+    }
+
+    @Test
+    fun `five AI remain within real time simulation budget`() {
+        val session = racingSession()
+        val startedAt = System.nanoTime()
+
+        session.advance(10f, PlayerInput.NONE)
+
+        val elapsedSeconds = (System.nanoTime() - startedAt) / 1_000_000_000.0
+        assertTrue("10 simulated seconds took $elapsedSeconds real seconds", elapsedSeconds < 5.0)
+        assertEquals(5, session.opponents.size)
+    }
+
+    @Test
+    fun `five interacting AI complete a valid lap on every built in track`() {
+        TrackId.entries.forEach { trackId ->
+            val session = RaceSession(TrackLoader().load(trackId)).apply {
+                start()
+                advance(raceState.countdownDurationSeconds, PlayerInput.NONE)
+            }
+
+            session.advance(MAX_RACE_SIMULATION_SECONDS, PlayerInput.NONE)
+
+            session.opponents.forEach { opponent ->
+                assertTrue(
+                    "$trackId ${opponent.id} did not finish: state=${opponent.state}, " +
+                        "progress=${opponent.progress}, behavior=${opponent.driver?.behaviorState}",
+                    opponent.progress.finished,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `fixed simulation produces the same result for different frame rates`() {
+        val sixtyFps = racingSession()
+        val fifteenFps = racingSession()
+
+        repeat(12) {
+            sixtyFps.advance(CarPhysics.FIXED_DELTA_SECONDS, PlayerInput(throttle = 1f))
+        }
+        repeat(3) {
+            fifteenFps.advance(CarPhysics.FIXED_DELTA_SECONDS * 4f, PlayerInput(throttle = 1f))
+        }
+
+        (listOf(sixtyFps.player) + sixtyFps.opponents).zip(
+            listOf(fifteenFps.player) + fifteenFps.opponents,
+        ).forEach { (first, second) ->
+            assertEquals(first.state.x, second.state.x, TOLERANCE)
+            assertEquals(first.state.y, second.state.y, TOLERANCE)
+            assertEquals(first.state.rotationDeg, second.state.rotationDeg, TOLERANCE)
+            assertEquals(first.state.speed, second.state.speed, TOLERANCE)
+            assertEquals(first.progress, second.progress)
+        }
     }
 
     private fun racingSession(withoutObjects: Boolean = false): RaceSession {
@@ -126,6 +238,7 @@ class RaceSessionTest {
     }
 
     private companion object {
+        const val MAX_RACE_SIMULATION_SECONDS = 240f
         const val TOLERANCE = 0.0001f
     }
 }

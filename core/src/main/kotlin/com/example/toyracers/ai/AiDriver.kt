@@ -2,155 +2,277 @@ package com.example.toyracers.ai
 
 import com.example.toyracers.car.CarState
 import com.example.toyracers.input.PlayerInput
+import com.example.toyracers.track.Track
 import com.example.toyracers.track.TrackPoint
 import kotlin.math.abs
-import kotlin.math.atan2
 
-/**
- * Produces ordinary car input while following a closed racing line.
- *
- * The driver never changes simulation state directly, so AI cars obey the same physics as the
- * player.
- */
+/** Coordinates path, obstacle, recovery and difficulty decisions without mutating car state. */
 class AiDriver(
-    private val racingLine: List<TrackPoint>,
+    racingLine: List<TrackPoint>,
     initialPosition: TrackPoint,
-    private val config: AiConfig = AiConfig(),
+    config: AiConfig = AiConfig(),
+    val difficulty: AiDifficulty = AiDifficulty.NORMAL,
+    private val racingLineBias: Float = 0f,
+    private val track: Track? = null,
 ) {
-    var targetWaypointIndex: Int
+    private val config = config.forDifficulty(difficulty)
+    private val pathFollower = AiPathFollower(
+        validateRacingLine(racingLine),
+        initialPosition,
+        this.config,
+        racingLineBias,
+    )
+    private val obstacleDetector = AiObstacleDetector(this.config)
+    private val recoveryController = AiRecoveryController(this.config)
+    private var smoothedSteering = 0f
+    private var mistakeCheckAccumulator = 0f
+    private var mistakeTimeRemaining = 0f
+    private var randomState = initialPosition.x.toBits() xor initialPosition.y.toBits() xor
+        racingLineBias.toBits()
+
+    var behaviorState: AiBehaviorState = AiBehaviorState.FOLLOW_ROUTE
+        private set
+    var debugSnapshot: AiDebugSnapshot? = null
+        private set
+    var respawnRequested: Boolean = false
         private set
 
-    private var stuckTime = 0f
-    private var recoveryTimeRemaining = 0f
+    val targetWaypointIndex: Int
+        get() = pathFollower.targetWaypointIndex
 
     init {
-        require(racingLine.size >= MIN_RACING_LINE_POINTS) {
-            "Racing line must contain at least $MIN_RACING_LINE_POINTS points"
-        }
-        targetWaypointIndex = waypointAfterNearest(initialPosition)
+        require(racingLineBias in -1f..1f) { "Racing line bias must be normalized" }
     }
 
     fun reset(position: TrackPoint) {
-        targetWaypointIndex = waypointAfterNearest(position)
-        stuckTime = 0f
-        recoveryTimeRemaining = 0f
+        pathFollower.reset(position)
+        recoveryController.reset()
+        smoothedSteering = 0f
+        respawnRequested = false
+        behaviorState = AiBehaviorState.FOLLOW_ROUTE
+        debugSnapshot = null
     }
+
+    fun consumeRespawnRequest(): Boolean = respawnRequested.also { respawnRequested = false }
+
+    internal fun isFacingRoute(carState: CarState): Boolean =
+        abs(pathFollower.headingError(carState)) <= config.wrongWayAngleDeg
 
     fun update(
         carState: CarState,
         deltaSeconds: Float,
+        obstacles: List<AiObstacle> = emptyList(),
+        finished: Boolean = false,
+        isOnTrack: Boolean = true,
     ): PlayerInput {
         require(deltaSeconds >= 0f) { "Delta time must not be negative" }
-        advanceReachedWaypoints(carState)
-
-        if (recoveryTimeRemaining > 0f) {
-            recoveryTimeRemaining = (recoveryTimeRemaining - deltaSeconds).coerceAtLeast(0f)
-            return recoveryInput(carState)
-        }
-
-        if (abs(carState.speed) < config.stuckSpeed) {
-            stuckTime += deltaSeconds
-            if (stuckTime >= config.stuckDurationSeconds) {
-                stuckTime = 0f
-                recoveryTimeRemaining = config.recoveryDurationSeconds
-                return recoveryInput(carState)
+        pathFollower.update(TrackPoint(carState.x, carState.y))
+        val target = pathFollower.target()
+        val rays = obstacleDetector.scanTrack(carState, track)
+        if (finished) {
+            if (!isOnTrack) respawnRequested = true
+            behaviorState = AiBehaviorState.FINISHED
+            val input = if (carState.speed > FINISHED_BRAKING_MIN_SPEED) {
+                PlayerInput(brake = 1f)
+            } else {
+                PlayerInput.NONE
             }
-        } else {
-            stuckTime = 0f
+            return publish(carState, input, target, null, rays)
         }
 
-        val headingError = headingErrorDegrees(carState, racingLine[targetWaypointIndex])
-        val steering = (-headingError / config.fullSteeringAngleDeg).coerceIn(-1f, 1f)
-        val turnAhead = turnAheadDegrees(carState)
-        val cornerAmount =
-            (maxOf(abs(headingError), turnAhead) / RIGHT_ANGLE_DEGREES).coerceIn(0f, 1f)
-        val desiredSpeed =
-            config.straightSpeed + (config.cornerSpeed - config.straightSpeed) * cornerAmount
-        val shouldBrake = carState.speed > desiredSpeed + config.brakingMargin
+        val headingError = pathFollower.headingError(carState, target)
+        when (recoveryController.update(carState, headingError, isOnTrack, deltaSeconds)) {
+            AiRecoveryAction.REVERSE -> {
+                behaviorState = AiBehaviorState.RECOVER
+                val steering = (-headingError / config.fullSteeringAngleDeg).coerceIn(-1f, 1f)
+                return publish(carState, PlayerInput(brake = 1f, steering = steering), target, null, rays)
+            }
+            AiRecoveryAction.RESPAWN -> {
+                respawnRequested = true
+                behaviorState = AiBehaviorState.RECOVER
+                return publish(carState, PlayerInput.NONE, target, null, rays)
+            }
+            AiRecoveryAction.NONE -> Unit
+        }
 
-        return PlayerInput(
-            throttle = if (shouldBrake) 0f else 1f,
-            brake = if (shouldBrake) 1f else 0f,
-            steering = steering,
+        val routeSteering = (-headingError / config.fullSteeringAngleDeg).coerceIn(-1f, 1f)
+        val obstacleDecision = obstacleDecision(carState, obstacles, rays)
+        behaviorState = obstacleDecision.behaviorState
+        val steering = steeringDecision(routeSteering, obstacleDecision, deltaSeconds)
+        val shouldBrake = shouldBrake(carState, headingError, obstacleDecision)
+        return publish(
+            carState,
+            PlayerInput(
+                throttle = if (shouldBrake) 0f else 1f,
+                brake = if (shouldBrake) 1f else 0f,
+                steering = steering,
+            ),
+            target,
+            obstacleDecision.movingObstacle,
+            rays,
         )
     }
 
-    private fun recoveryInput(carState: CarState): PlayerInput {
-        val headingError = headingErrorDegrees(carState, racingLine[targetWaypointIndex])
-        val steering = (-headingError / config.fullSteeringAngleDeg).coerceIn(-1f, 1f)
-        return PlayerInput(brake = 1f, steering = steering)
+    private fun obstacleDecision(
+        carState: CarState,
+        obstacles: List<AiObstacle>,
+        rays: List<AiSensorRay>,
+    ): ObstacleDecision {
+        val movingObstacle = obstacleDetector.nearestAhead(carState, obstacles)
+        val staticThreat = rays.asSequence()
+            .filter { it.hit && it.distance() <= config.staticObstacleReactionDistance }
+            .minByOrNull(AiSensorRay::distance)
+        val passingDirection = movingObstacle?.let {
+            safestPassingDirection(carState, obstacles, rays, it)
+        }
+        val canOvertake = movingObstacle != null && passingDirection != null &&
+            movingObstacle.obstacle.speed + config.overtakeSpeedAdvantage < carState.speed
+        val behavior = when {
+            canOvertake -> AiBehaviorState.OVERTAKE
+            movingObstacle != null || staticThreat != null -> AiBehaviorState.AVOID
+            else -> AiBehaviorState.FOLLOW_ROUTE
+        }
+        return ObstacleDecision(movingObstacle, staticThreat, passingDirection, behavior, rays)
     }
 
-    private fun advanceReachedWaypoints(carState: CarState) {
-        var checkedWaypoints = 0
-        while (
-            checkedWaypoints < racingLine.size &&
-            distanceSquared(carState.x, carState.y, racingLine[targetWaypointIndex]) <=
-            config.waypointRadius * config.waypointRadius
-        ) {
-            targetWaypointIndex = (targetWaypointIndex + 1) % racingLine.size
-            checkedWaypoints++
+    private fun steeringDecision(
+        routeSteering: Float,
+        obstacleDecision: ObstacleDecision,
+        deltaSeconds: Float,
+    ): Float {
+        updateMistake(deltaSeconds)
+        val routeContribution = if (
+            obstacleDecision.staticThreat != null && abs(routeSteering) < config.routeTurnPriority
+        ) 0f else routeSteering
+        val dynamicAvoidance = obstacleDecision.passingDirection
+            ?.times(config.avoidanceSteering) ?: 0f
+        val staticAvoidance = obstacleDecision.staticThreat?.let {
+            safestTrackDirection(obstacleDecision.rays) * config.avoidanceSteering
+        } ?: 0f
+        val mistakeSteering = if (mistakeTimeRemaining > 0f) config.mistakeSteering else 0f
+        val desired = (routeContribution + dynamicAvoidance + staticAvoidance + mistakeSteering)
+            .coerceIn(-1f, 1f)
+        val blend = (config.steeringResponse * deltaSeconds).coerceIn(0f, 1f)
+        smoothedSteering += (desired - smoothedSteering) * blend
+        return smoothedSteering
+    }
+
+    private fun shouldBrake(
+        carState: CarState,
+        headingError: Float,
+        obstacleDecision: ObstacleDecision,
+    ): Boolean {
+        val cornerAmount = (maxOf(abs(headingError), pathFollower.turnAheadDegrees(carState)) / 90f)
+            .coerceIn(0f, 1f)
+        val desiredSpeed = config.straightSpeed +
+            (config.cornerSpeed - config.straightSpeed) * cornerAmount
+        val safeSpeed = obstacleDecision.distance?.let { distance ->
+            val proximity = 1f - distance / config.obstacleDetectionDistance
+            desiredSpeed * (1f - proximity.coerceIn(0f, 1f) * config.obstacleSpeedReduction)
+        } ?: desiredSpeed
+        return carState.speed > safeSpeed + config.brakingMargin
+    }
+
+    private fun updateMistake(deltaSeconds: Float) {
+        mistakeTimeRemaining = (mistakeTimeRemaining - deltaSeconds).coerceAtLeast(0f)
+        mistakeCheckAccumulator += deltaSeconds
+        while (mistakeCheckAccumulator >= config.mistakeCheckIntervalSeconds) {
+            mistakeCheckAccumulator -= config.mistakeCheckIntervalSeconds
+            randomState = randomState * 1664525 + 1013904223
+            val sample = (randomState ushr 8).toFloat() / 0x01000000
+            if (sample < config.mistakeProbability) mistakeTimeRemaining = config.mistakeDurationSeconds
         }
     }
 
-    private fun waypointAfterNearest(position: TrackPoint): Int {
-        val nearestIndex = racingLine.indices.minByOrNull {
-            distanceSquared(position.x, position.y, racingLine[it])
-        } ?: 0
-        return (nearestIndex + 1) % racingLine.size
-    }
-
-    private fun headingErrorDegrees(
+    private fun safestPassingDirection(
         carState: CarState,
+        obstacles: List<AiObstacle>,
+        rays: List<AiSensorRay>,
+        detected: DetectedObstacle,
+    ): Float? {
+        val preferred = when {
+            detected.lateralDistance > 0f -> 1f
+            detected.lateralDistance < 0f -> -1f
+            else -> -racingLineBias.nonZeroSign()
+        }
+        val candidates = listOf(preferred, -preferred).map { direction ->
+            direction to minOf(
+                obstacleDetector.passingClearance(carState, obstacles, direction),
+                trackClearance(rays, direction),
+            )
+        }
+        return candidates.maxByOrNull { it.second }?.takeIf {
+            it.second >= config.overtakeMinimumClearance
+        }?.first
+    }
+
+    private fun safestTrackDirection(rays: List<AiSensorRay>): Float {
+        val leftClearance = trackClearance(rays, -1f)
+        val rightClearance = trackClearance(rays, 1f)
+        return if (leftClearance >= rightClearance) -1f else 1f
+    }
+
+    private fun trackClearance(rays: List<AiSensorRay>, steeringDirection: Float): Float {
+        val wantedAngleSign = if (steeringDirection < 0f) 1 else -1
+        return rays.firstOrNull { ray -> ray.angleOffsetDeg.sign() == wantedAngleSign }
+            ?.distance() ?: config.obstacleDetectionDistance
+    }
+
+    private fun publish(
+        carState: CarState,
+        input: PlayerInput,
         target: TrackPoint,
-    ): Float {
-        val targetAngle = Math.toDegrees(
-            atan2(
-                (target.y - carState.y).toDouble(),
-                (target.x - carState.x).toDouble(),
-            ),
-        ).toFloat()
-        return normalizeSignedDegrees(targetAngle - carState.rotationDeg)
+        obstacle: DetectedObstacle?,
+        rays: List<AiSensorRay>,
+    ): PlayerInput = input.normalized().also {
+        debugSnapshot = AiDebugSnapshot(
+            position = TrackPoint(carState.x, carState.y),
+            speed = carState.speed,
+            targetPoint = target,
+            behaviorState = behaviorState,
+            detectedObstacle = obstacle,
+            sensorRays = rays,
+            input = it,
+        )
     }
 
-    private fun turnAheadDegrees(carState: CarState): Float {
-        val target = racingLine[targetWaypointIndex]
-        val next = racingLine[(targetWaypointIndex + 1) % racingLine.size]
-        val approachAngle = Math.toDegrees(
-            atan2(
-                (target.y - carState.y).toDouble(),
-                (target.x - carState.x).toDouble(),
-            ),
-        ).toFloat()
-        val exitAngle = Math.toDegrees(
-            atan2(
-                (next.y - target.y).toDouble(),
-                (next.x - target.x).toDouble(),
-            ),
-        ).toFloat()
-        return abs(normalizeSignedDegrees(exitAngle - approachAngle))
-    }
+    private fun Float.nonZeroSign(): Float = if (this < 0f) -1f else 1f
 
-    private fun normalizeSignedDegrees(degrees: Float): Float {
-        val wrapped = (degrees + HALF_CIRCLE_DEGREES) % FULL_CIRCLE_DEGREES
-        val positive = if (wrapped < 0f) wrapped + FULL_CIRCLE_DEGREES else wrapped
-        return positive - HALF_CIRCLE_DEGREES
-    }
-
-    private fun distanceSquared(
-        x: Float,
-        y: Float,
-        point: TrackPoint,
-    ): Float {
-        val deltaX = point.x - x
-        val deltaY = point.y - y
-        return deltaX * deltaX + deltaY * deltaY
+    private fun Float.sign(): Int = when {
+        this < 0f -> -1
+        this > 0f -> 1
+        else -> 0
     }
 
     private companion object {
-        const val MIN_RACING_LINE_POINTS = 3
-        const val RIGHT_ANGLE_DEGREES = 90f
-        const val HALF_CIRCLE_DEGREES = 180f
-        const val FULL_CIRCLE_DEGREES = 360f
+        const val FINISHED_BRAKING_MIN_SPEED = 0.01f
+
+        fun validateRacingLine(racingLine: List<TrackPoint>): List<TrackPoint> = racingLine.also {
+            require(it.size >= 3) { "Racing line must contain at least 3 points" }
+        }
     }
+
+    private data class ObstacleDecision(
+        val movingObstacle: DetectedObstacle?,
+        val staticThreat: AiSensorRay?,
+        val passingDirection: Float?,
+        val behaviorState: AiBehaviorState,
+        val rays: List<AiSensorRay>,
+    ) {
+        val distance: Float?
+            get() = movingObstacle?.forwardDistance ?: staticThreat?.distance()
+    }
+
 }
+
+enum class AiBehaviorState { FOLLOW_ROUTE, AVOID, OVERTAKE, RECOVER, FINISHED }
+
+data class AiDebugSnapshot(
+    val position: TrackPoint,
+    val speed: Float,
+    val targetPoint: TrackPoint,
+    val behaviorState: AiBehaviorState,
+    val detectedObstacle: DetectedObstacle?,
+    val sensorRays: List<AiSensorRay>,
+    val input: PlayerInput,
+)

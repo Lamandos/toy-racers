@@ -3,6 +3,7 @@ package com.example.toyracers
 import com.badlogic.gdx.Game
 import com.badlogic.gdx.Screen
 import com.example.toyracers.assets.GameAssets
+import com.example.toyracers.ai.AiDifficulty
 import com.example.toyracers.audio.GameAudio
 import com.example.toyracers.car.CarModel
 import com.example.toyracers.race.RaceResult
@@ -22,6 +23,8 @@ class ToyRacersGame : Game() {
     lateinit var audio: GameAudio
         private set
     var selectedCar: CarModel = CarModel.RED_STRIPE
+        private set
+    var selectedAiDifficulty: AiDifficulty = AiDifficulty.NORMAL
         private set
 
     override fun create() {
@@ -45,6 +48,10 @@ class ToyRacersGame : Game() {
 
     fun selectCar(model: CarModel) {
         selectedCar = model
+    }
+
+    fun selectAiDifficulty(difficulty: AiDifficulty) {
+        selectedAiDifficulty = difficulty
     }
 
     fun startRace(trackId: TrackId = TrackId.LIVING_ROOM) {

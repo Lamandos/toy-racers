@@ -17,7 +17,7 @@ class CarModelTest {
         CarModel.entries.forEach { playerModel ->
             val opponents = opponentModelsFor(playerModel)
 
-            assertEquals(4, opponents.size)
+            assertEquals(5, opponents.size)
             assertFalse(opponents.contains(playerModel))
             assertEquals(CarModel.entries.toSet() - playerModel, opponents.toSet())
         }

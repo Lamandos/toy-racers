@@ -61,4 +61,5 @@ data class CarPerformance(
 }
 
 internal fun opponentModelsFor(playerModel: CarModel): List<CarModel> =
-    CarModel.entries.filterNot { it == playerModel }
+    CarModel.entries.filterNot { it == playerModel } +
+        CarModel.entries.first { it != playerModel }
