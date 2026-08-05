@@ -4,6 +4,7 @@ import com.example.toyracers.car.CarConfig
 import com.example.toyracers.car.CarPhysics
 import com.example.toyracers.car.CarState
 import com.example.toyracers.collision.CollisionSystem
+import com.example.toyracers.input.PlayerInput
 import com.example.toyracers.race.RaceProgress
 import com.example.toyracers.race.RaceRules
 import com.example.toyracers.track.TrackPoint
@@ -154,6 +155,16 @@ class AiDriverTest {
         assertEquals(AiBehaviorState.FINISHED, driver.behaviorState)
         assertEquals(0f, input.throttle, TOLERANCE)
         assertEquals(1f, input.brake, TOLERANCE)
+    }
+
+    @Test
+    fun `finished driver releases brake after stopping`() {
+        val driver = driverForTarget(TrackPoint(10f, 0f))
+
+        val input = driver.update(CarState(speed = 0f), FIXED_DELTA, finished = true)
+
+        assertEquals(AiBehaviorState.FINISHED, driver.behaviorState)
+        assertEquals(PlayerInput.NONE, input)
     }
 
     @Test

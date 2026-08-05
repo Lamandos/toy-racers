@@ -65,7 +65,12 @@ class AiDriver(
         if (finished) {
             if (!isOnTrack) respawnRequested = true
             behaviorState = AiBehaviorState.FINISHED
-            return publish(carState, PlayerInput(brake = 1f), target, null, rays)
+            val input = if (carState.speed > FINISHED_BRAKING_MIN_SPEED) {
+                PlayerInput(brake = 1f)
+            } else {
+                PlayerInput.NONE
+            }
+            return publish(carState, input, target, null, rays)
         }
 
         val headingError = pathFollower.headingError(carState, target)
@@ -230,6 +235,10 @@ class AiDriver(
         this < 0f -> -1
         this > 0f -> 1
         else -> 0
+    }
+
+    private companion object {
+        const val FINISHED_BRAKING_MIN_SPEED = 0.01f
     }
 
     private data class ObstacleDecision(

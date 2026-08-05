@@ -119,8 +119,10 @@ internal class RaceSession(
                         CarPhysics.FIXED_DELTA_SECONDS,
                         obstacles = obstaclesFor(participant),
                         finished = participant.progress.finished,
-                        isOnTrack = track.surfaceAt(participant.state.x, participant.state.y) ==
-                            com.example.toyracers.track.SurfaceType.ASPHALT,
+                        isOnTrack = track.surfaceAt(
+                            participant.state.x,
+                            participant.state.y,
+                        ).isRoad,
                     ) ?: playerControlConfig.applyTo(playerInput)
                     if (participant.driver?.consumeRespawnRequest() == true) {
                         restoreLastSafeState(participant)
@@ -192,8 +194,7 @@ internal class RaceSession(
     private fun updateLastSafeState(participant: RaceParticipant) {
         if (
             participant.driver != null &&
-            track.surfaceAt(participant.state.x, participant.state.y) ==
-            com.example.toyracers.track.SurfaceType.ASPHALT &&
+            track.surfaceAt(participant.state.x, participant.state.y).isRoad &&
             kotlin.math.abs(participant.state.speed) >= sessionConfig.safeStateMinSpeed
         ) {
             participant.lastSafeState = participant.state.copy()
