@@ -82,6 +82,58 @@ class AiDriverTest {
     }
 
     @Test
+    fun `slow obstacle ahead triggers deterministic overtake away from obstacle`() {
+        val driver = driverForTarget(TrackPoint(10f, 0f))
+        val car = CarState(rotationDeg = 0f, speed = 8f)
+
+        val input = driver.update(
+            carState = car,
+            deltaSeconds = FIXED_DELTA,
+            obstacles = listOf(AiObstacle(x = 4f, y = 0.5f, radius = 0.5f, speed = 3f)),
+        )
+
+        assertEquals(AiBehaviorState.OVERTAKE, driver.behaviorState)
+        assertTrue(input.steering < 0f)
+        assertEquals(AiBehaviorState.OVERTAKE, driver.debugSnapshot?.behaviorState)
+    }
+
+    @Test
+    fun `nearby obstacle outside lane does not alter route behavior`() {
+        val driver = driverForTarget(TrackPoint(10f, 0f))
+
+        driver.update(
+            carState = CarState(rotationDeg = 0f, speed = 8f),
+            deltaSeconds = FIXED_DELTA,
+            obstacles = listOf(AiObstacle(x = 3f, y = 5f, radius = 0.5f)),
+        )
+
+        assertEquals(AiBehaviorState.FOLLOW_ROUTE, driver.behaviorState)
+    }
+
+    @Test
+    fun `finished driver brakes and enters finished state`() {
+        val driver = driverForTarget(TrackPoint(10f, 0f))
+
+        val input = driver.update(CarState(speed = 8f), FIXED_DELTA, finished = true)
+
+        assertEquals(AiBehaviorState.FINISHED, driver.behaviorState)
+        assertEquals(0f, input.throttle, TOLERANCE)
+        assertEquals(1f, input.brake, TOLERANCE)
+    }
+
+    @Test
+    fun `difficulty profiles have visibly different speed and reaction settings`() {
+        val base = AiConfig()
+        val easy = base.forDifficulty(AiDifficulty.EASY)
+        val hard = base.forDifficulty(AiDifficulty.HARD)
+
+        assertTrue(easy.straightSpeed < base.straightSpeed)
+        assertTrue(easy.steeringResponse < base.steeringResponse)
+        assertTrue(hard.straightSpeed > base.straightSpeed)
+        assertTrue(hard.obstacleDetectionDistance > base.obstacleDetectionDistance)
+    }
+
+    @Test
     fun `all AI grid positions complete a valid lap on built in track`() {
         val track = TrackLoader().load()
         track.startGrid.drop(1).forEach { start ->

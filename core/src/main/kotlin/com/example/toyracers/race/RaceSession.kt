@@ -1,7 +1,9 @@
 package com.example.toyracers.race
 
 import com.example.toyracers.ai.AiConfig
+import com.example.toyracers.ai.AiDifficulty
 import com.example.toyracers.ai.AiDriver
+import com.example.toyracers.ai.AiObstacle
 import com.example.toyracers.car.CarConfig
 import com.example.toyracers.car.CarModel
 import com.example.toyracers.car.CarPhysics
@@ -54,6 +56,8 @@ internal class RaceSession(
                 track.racingLine,
                 start.position,
                 AiConfig(waypointRadius = track.racingLineWaypointRadius),
+                difficulty = AiDifficulty.entries[index % AiDifficulty.entries.size],
+                racingLineBias = opponentRacingLineBias(index),
             ),
         )
     }
@@ -106,6 +110,8 @@ internal class RaceSession(
                     val input = participant.driver?.update(
                         participant.state,
                         CarPhysics.FIXED_DELTA_SECONDS,
+                        obstacles = obstaclesFor(participant),
+                        finished = participant.progress.finished,
                     ) ?: playerControlConfig.applyTo(playerInput)
                     val stepResult = updateParticipant(participant, input)
                     if (participant === player) {
@@ -190,6 +196,19 @@ internal class RaceSession(
         return maxImpactSpeed
     }
 
+    private fun obstaclesFor(participant: RaceParticipant): List<AiObstacle> =
+        participants.asSequence()
+            .filterNot { it === participant }
+            .map {
+                AiObstacle(
+                    x = it.state.x,
+                    y = it.state.y,
+                    radius = it.carConfig.collisionRadius,
+                    speed = it.state.speed,
+                )
+            }
+            .toList()
+
     private fun CarState.position(): TrackPoint = TrackPoint(x, y)
 
     private data class ParticipantStepResult(
@@ -199,6 +218,12 @@ internal class RaceSession(
 
     private companion object {
         const val PLAYER_ID = "player"
+
+        fun opponentRacingLineBias(index: Int): Float = when (index % 3) {
+            0 -> -0.65f
+            1 -> 0f
+            else -> 0.65f
+        }
     }
 }
 
