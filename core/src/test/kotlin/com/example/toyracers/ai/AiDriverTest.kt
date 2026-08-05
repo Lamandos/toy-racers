@@ -11,10 +11,20 @@ import com.example.toyracers.track.TrackPoint
 import com.example.toyracers.track.TrackLoader
 import com.example.toyracers.track.TrackId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AiDriverTest {
+    @Test
+    fun `invalid racing line reports validation error before creating path follower`() {
+        val error = assertThrows(IllegalArgumentException::class.java) {
+            AiDriver(emptyList(), initialPosition = TrackPoint(0f, 0f))
+        }
+
+        assertEquals("Racing line must contain at least 3 points", error.message)
+    }
+
     @Test
     fun `driver steers toward waypoint using player input convention`() {
         val leftDriver = driverForTarget(TrackPoint(10f, 10f))

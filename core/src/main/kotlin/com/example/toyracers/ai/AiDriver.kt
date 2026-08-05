@@ -16,7 +16,12 @@ class AiDriver(
     private val track: Track? = null,
 ) {
     private val config = config.forDifficulty(difficulty)
-    private val pathFollower = AiPathFollower(racingLine, initialPosition, this.config, racingLineBias)
+    private val pathFollower = AiPathFollower(
+        validateRacingLine(racingLine),
+        initialPosition,
+        this.config,
+        racingLineBias,
+    )
     private val obstacleDetector = AiObstacleDetector(this.config)
     private val recoveryController = AiRecoveryController(this.config)
     private var smoothedSteering = 0f
@@ -36,7 +41,6 @@ class AiDriver(
         get() = pathFollower.targetWaypointIndex
 
     init {
-        require(racingLine.size >= 3) { "Racing line must contain at least 3 points" }
         require(racingLineBias in -1f..1f) { "Racing line bias must be normalized" }
     }
 
@@ -242,6 +246,10 @@ class AiDriver(
 
     private companion object {
         const val FINISHED_BRAKING_MIN_SPEED = 0.01f
+
+        fun validateRacingLine(racingLine: List<TrackPoint>): List<TrackPoint> = racingLine.also {
+            require(it.size >= 3) { "Racing line must contain at least 3 points" }
+        }
     }
 
     private data class ObstacleDecision(
