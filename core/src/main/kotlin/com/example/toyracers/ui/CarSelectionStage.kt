@@ -16,12 +16,12 @@ import kotlin.math.roundToInt
 class CarSelectionStage(
     options: List<CarSelectionOption>,
     initiallySelected: CarModel,
-    initiallySelectedDifficulty: AiDifficulty = AiDifficulty.NORMAL,
     private val onCarSelected: (CarModel) -> Unit,
-    private val onDifficultySelected: (AiDifficulty) -> Unit = {},
     onStartRace: () -> Unit,
     onBack: () -> Unit,
     onButtonClick: () -> Unit = {},
+    initiallySelectedDifficulty: AiDifficulty = AiDifficulty.NORMAL,
+    private val onDifficultySelected: (AiDifficulty) -> Unit = {},
 ) : GameUiStage(onButtonClick) {
     init {
         require(options.isNotEmpty()) { "Car selection requires at least one option" }
