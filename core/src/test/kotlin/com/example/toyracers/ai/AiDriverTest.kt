@@ -181,8 +181,15 @@ class AiDriverTest {
     }
 
     @Test
-    fun `difficulty profiles preserve speed invariants for tuned config`() {
-        val tuned = AiConfig(straightSpeed = 10f, cornerSpeed = 10f)
+    fun `difficulty profiles preserve tuned config invariants`() {
+        val tuned = AiConfig(
+            straightSpeed = 10f,
+            cornerSpeed = 10f,
+            obstacleDetectionDistance = 1f,
+            staticObstacleReactionDistance = 1f,
+            overtakeMinimumClearance = 1f,
+            sensorRayStep = 1f,
+        )
 
         AiDifficulty.entries.forEach { difficulty ->
             val adjusted = tuned.forDifficulty(difficulty)
@@ -190,6 +197,11 @@ class AiDriverTest {
             assertTrue(
                 "$difficulty corner speed exceeds straight speed: $adjusted",
                 adjusted.cornerSpeed <= adjusted.straightSpeed,
+            )
+            assertTrue(
+                "$difficulty reaction distance is outside sensor range: $adjusted",
+                adjusted.staticObstacleReactionDistance in
+                    adjusted.sensorRayStep..adjusted.obstacleDetectionDistance,
             )
         }
     }

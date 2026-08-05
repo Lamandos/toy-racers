@@ -70,12 +70,17 @@ data class AiConfig(
     fun forDifficulty(difficulty: AiDifficulty): AiConfig = when (difficulty) {
         AiDifficulty.EASY -> {
             val adjustedStraightSpeed = straightSpeed * 0.78f
+            val adjustedDetectionDistance = maxOf(
+                obstacleDetectionDistance * 0.75f,
+                sensorRayStep,
+            )
             copy(
                 straightSpeed = adjustedStraightSpeed,
                 cornerSpeed = minOf(cornerSpeed * 0.85f, adjustedStraightSpeed),
                 steeringResponse = steeringResponse * 0.65f,
-                obstacleDetectionDistance = obstacleDetectionDistance * 0.75f,
-                staticObstacleReactionDistance = staticObstacleReactionDistance * 0.75f,
+                obstacleDetectionDistance = adjustedDetectionDistance,
+                staticObstacleReactionDistance = (staticObstacleReactionDistance * 0.75f)
+                    .coerceIn(sensorRayStep, adjustedDetectionDistance),
                 avoidanceSteering = avoidanceSteering * 0.75f,
                 overtakeMinimumClearance = overtakeMinimumClearance * 0.75f,
                 mistakeProbability = 0.18f,
