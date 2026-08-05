@@ -28,8 +28,11 @@ class AiRecoveryController(private val config: AiConfig) {
             return if (recoveryTimeRemaining > 0f) {
                 AiRecoveryAction.REVERSE
             } else {
+                val recovered = abs(carState.speed) >= config.stuckSpeed &&
+                    abs(headingErrorDegrees) <= config.wrongWayAngleDeg &&
+                    isOnTrack
                 reset()
-                AiRecoveryAction.RESPAWN
+                if (recovered) AiRecoveryAction.NONE else AiRecoveryAction.RESPAWN
             }
         }
 
