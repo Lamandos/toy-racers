@@ -27,6 +27,7 @@ data class AiConfig(
     val mistakeProbability: Float = 0.08f,
     val mistakeDurationSeconds: Float = 0.25f,
     val mistakeSteering: Float = 0.18f,
+    val routeTurnPriority: Float = 0.25f,
 ) {
     init {
         require(waypointRadius > 0f)
@@ -55,6 +56,7 @@ data class AiConfig(
         require(mistakeProbability in 0f..1f)
         require(mistakeDurationSeconds >= 0f)
         require(mistakeSteering in 0f..1f)
+        require(routeTurnPriority in 0f..1f)
     }
 
     fun forDifficulty(difficulty: AiDifficulty): AiConfig = when (difficulty) {

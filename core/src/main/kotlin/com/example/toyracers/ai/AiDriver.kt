@@ -98,7 +98,7 @@ class AiDriver(
             else -it.lateralDistance.nonZeroSign()
             side * config.avoidanceSteering
         } ?: 0f
-        val staticThreat = blockedRay?.takeIf { abs(routeSteering) < ROUTE_TURN_PRIORITY }
+        val staticThreat = blockedRay?.takeIf { abs(routeSteering) < config.routeTurnPriority }
         val staticAvoidance = staticThreat?.let {
             -it.angleOffsetDeg.nonZeroSign() * config.avoidanceSteering
         } ?: 0f
@@ -181,9 +181,6 @@ class AiDriver(
         return dx * dx + dy * dy
     }
 
-    private companion object {
-        const val ROUTE_TURN_PRIORITY = 0.25f
-    }
 }
 
 enum class AiBehaviorState { FOLLOW_ROUTE, AVOID, OVERTAKE, RECOVER, FINISHED }
