@@ -5,6 +5,7 @@ import com.example.toyracers.ai.AiDifficulty
 import com.example.toyracers.ai.AiDriver
 import com.example.toyracers.ai.AiObstacle
 import com.example.toyracers.car.CarConfig
+import com.example.toyracers.car.CarController
 import com.example.toyracers.car.CarModel
 import com.example.toyracers.car.CarPhysics
 import com.example.toyracers.car.CarState
@@ -30,11 +31,12 @@ internal class RaceSession(
     opponentCarModels: List<CarModel> = opponentModelsFor(playerCarModel),
     opponentDifficulty: AiDifficulty = AiDifficulty.NORMAL,
     baseCarConfig: CarConfig = CarConfig(),
-    private val carPhysics: CarPhysics = CarPhysics(),
+    carPhysics: CarPhysics = CarPhysics(),
     private val collisionSystem: CollisionSystem = CollisionSystem(),
     private val surfaceSpeedSystem: SurfaceSpeedSystem = SurfaceSpeedSystem(),
     private val playerControlConfig: PlayerControlConfig = PlayerControlConfig(),
 ) {
+    private val carController = CarController(carPhysics)
     init {
         require(track.startGrid.size == opponentCarModels.size + 1) {
             "Start grid must contain one position for every race participant"
@@ -59,6 +61,7 @@ internal class RaceSession(
                 AiConfig(waypointRadius = track.racingLineWaypointRadius),
                 difficulty = opponentDifficulty,
                 racingLineBias = opponentRacingLineBias(index),
+                track = track,
             ),
         )
     }
@@ -108,12 +111,19 @@ internal class RaceSession(
             accumulator += simulationDelta
             while (accumulator >= CarPhysics.FIXED_DELTA_SECONDS) {
                 participants.forEach { participant ->
-                    val input = participant.driver?.update(
+                    updateLastSafeState(participant)
+                    var input = participant.driver?.update(
                         participant.state,
                         CarPhysics.FIXED_DELTA_SECONDS,
                         obstacles = obstaclesFor(participant),
                         finished = participant.progress.finished,
+                        isOnTrack = track.surfaceAt(participant.state.x, participant.state.y) ==
+                            com.example.toyracers.track.SurfaceType.ASPHALT,
                     ) ?: playerControlConfig.applyTo(playerInput)
+                    if (participant.driver?.consumeRespawnRequest() == true) {
+                        restoreLastSafeState(participant)
+                        input = PlayerInput.NONE
+                    }
                     val stepResult = updateParticipant(participant, input)
                     if (participant === player) {
                         maxImpactSpeed = maxOf(maxImpactSpeed, stepResult.impactSpeed)
@@ -145,10 +155,10 @@ internal class RaceSession(
         input: PlayerInput,
     ): ParticipantStepResult {
         val previousPosition = participant.state.position()
-        carPhysics.update(
+        carController.update(
             state = participant.state,
             config = participant.carConfig,
-            rawInput = input,
+            input = input,
             deltaSeconds = CarPhysics.FIXED_DELTA_SECONDS,
         )
         val collision = collisionSystem.resolveTrackCollision(
@@ -175,6 +185,29 @@ internal class RaceSession(
             checkpointPassed = participant.progress.currentCheckpointIndex > checkpointBefore,
             impactSpeed = collision.maxImpactSpeed,
         )
+    }
+
+    private fun updateLastSafeState(participant: RaceParticipant) {
+        if (
+            participant.driver != null &&
+            track.surfaceAt(participant.state.x, participant.state.y) ==
+            com.example.toyracers.track.SurfaceType.ASPHALT &&
+            kotlin.math.abs(participant.state.speed) >= SAFE_STATE_MIN_SPEED
+        ) {
+            participant.lastSafeState = participant.state.copy()
+        }
+    }
+
+    private fun restoreLastSafeState(participant: RaceParticipant) {
+        val safe = participant.lastSafeState
+        participant.state.x = safe.x
+        participant.state.y = safe.y
+        participant.state.rotationDeg = safe.rotationDeg
+        participant.state.speed = 0f
+        participant.state.velocityX = 0f
+        participant.state.velocityY = 0f
+        participant.state.angularVelocity = 0f
+        participant.driver?.reset(TrackPoint(safe.x, safe.y))
     }
 
     private fun resolveCarCollisions(): Float {
@@ -219,6 +252,7 @@ internal class RaceSession(
 
     private companion object {
         const val PLAYER_ID = "player"
+        const val SAFE_STATE_MIN_SPEED = 2f
 
         fun opponentRacingLineBias(index: Int): Float = when (index % 3) {
             0 -> -0.65f
@@ -242,6 +276,7 @@ internal class RaceParticipant(
     )
     val surfaceSpeedState = SurfaceSpeedState()
     val progress = RaceProgress()
+    var lastSafeState = state.copy()
 }
 
 internal data class RaceStepResult(

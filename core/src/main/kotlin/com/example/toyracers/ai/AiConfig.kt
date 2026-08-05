@@ -18,6 +18,15 @@ data class AiConfig(
     val overtakeSpeedAdvantage: Float = 1.5f,
     val wrongWayAngleDeg: Float = 110f,
     val wrongWayDurationSeconds: Float = 1.25f,
+    val offTrackDurationSeconds: Float = 4f,
+    val sensorRayAngleDeg: Float = 32f,
+    val sensorRayStep: Float = 0.35f,
+    val racingLineBiasDistance: Float = 0.45f,
+    val obstacleSpeedReduction: Float = 0.65f,
+    val mistakeCheckIntervalSeconds: Float = 1f,
+    val mistakeProbability: Float = 0.08f,
+    val mistakeDurationSeconds: Float = 0.25f,
+    val mistakeSteering: Float = 0.18f,
 ) {
     init {
         require(waypointRadius > 0f)
@@ -37,6 +46,15 @@ data class AiConfig(
         require(overtakeSpeedAdvantage >= 0f)
         require(wrongWayAngleDeg in 90f..180f)
         require(wrongWayDurationSeconds > 0f)
+        require(offTrackDurationSeconds > 0f)
+        require(sensorRayAngleDeg in 0f..90f)
+        require(sensorRayStep > 0f)
+        require(racingLineBiasDistance >= 0f)
+        require(obstacleSpeedReduction in 0f..1f)
+        require(mistakeCheckIntervalSeconds > 0f)
+        require(mistakeProbability in 0f..1f)
+        require(mistakeDurationSeconds >= 0f)
+        require(mistakeSteering in 0f..1f)
     }
 
     fun forDifficulty(difficulty: AiDifficulty): AiConfig = when (difficulty) {
@@ -46,6 +64,9 @@ data class AiConfig(
             steeringResponse = steeringResponse * 0.65f,
             obstacleDetectionDistance = obstacleDetectionDistance * 0.75f,
             avoidanceSteering = avoidanceSteering * 0.75f,
+            mistakeProbability = 0.18f,
+            mistakeDurationSeconds = 0.4f,
+            mistakeSteering = 0.28f,
         )
         AiDifficulty.NORMAL -> this
         AiDifficulty.HARD -> copy(
@@ -54,6 +75,9 @@ data class AiConfig(
             steeringResponse = steeringResponse * 1.25f,
             obstacleDetectionDistance = obstacleDetectionDistance * 1.2f,
             overtakeSpeedAdvantage = overtakeSpeedAdvantage * 0.75f,
+            mistakeProbability = 0.02f,
+            mistakeDurationSeconds = 0.12f,
+            mistakeSteering = 0.08f,
         )
     }
 }

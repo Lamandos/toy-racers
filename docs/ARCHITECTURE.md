@@ -97,6 +97,10 @@ This is a target structure, not a requirement to create empty placeholder classe
 - `CollisionSystem` detects and resolves contacts, returning explicit results.
 - Race services validate checkpoints, laps, positions, and finish conditions.
 - AI produces the same command type used by the player rather than moving cars directly.
+- `AiDriver` coordinates focused `AiPathFollower`, `AiObstacleDetector`, and
+  `AiRecoveryController` services. `CarController` consumes the shared `CarInput` command type.
+- `RaceSession` performs a recovery respawn only after the AI requests it, restoring the last
+  asphalt position without granting checkpoint progress for the move.
 - Renderers read state and draw it. They must not mutate the simulation.
 - UI stages display state and emit user intentions; they do not calculate gameplay outcomes.
 

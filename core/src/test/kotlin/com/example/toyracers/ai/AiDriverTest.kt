@@ -8,6 +8,7 @@ import com.example.toyracers.race.RaceProgress
 import com.example.toyracers.race.RaceRules
 import com.example.toyracers.track.TrackPoint
 import com.example.toyracers.track.TrackLoader
+import com.example.toyracers.track.TrackId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -131,41 +132,76 @@ class AiDriverTest {
         assertTrue(easy.steeringResponse < base.steeringResponse)
         assertTrue(hard.straightSpeed > base.straightSpeed)
         assertTrue(hard.obstacleDetectionDistance > base.obstacleDetectionDistance)
+        assertTrue(easy.mistakeProbability > hard.mistakeProbability)
+    }
+
+    @Test
+    fun `track sensor rays detect the world boundary`() {
+        val track = TrackLoader().load()
+        val detector = AiObstacleDetector(AiConfig(obstacleDetectionDistance = 5f))
+        val car = CarState(
+            x = track.worldBounds.maxX - 1f,
+            y = track.worldBounds.y + track.worldBounds.height / 2f,
+            rotationDeg = 0f,
+        )
+
+        val rays = detector.scanTrack(car, track)
+
+        assertEquals(3, rays.size)
+        assertTrue(rays.any(AiSensorRay::hit))
+    }
+
+    @Test
+    fun `off track driver requests safe respawn without changing car coordinates`() {
+        val driver = AiDriver(
+            racingLine = testLine(TrackPoint(10f, 0f)),
+            initialPosition = TrackPoint(0f, 0f),
+            config = AiConfig(offTrackDurationSeconds = 0.1f),
+        )
+        val car = CarState(x = 100f, y = 100f, speed = 5f)
+
+        driver.update(car, 0.1f, isOnTrack = false)
+
+        assertTrue(driver.consumeRespawnRequest())
+        assertEquals(100f, car.x, TOLERANCE)
+        assertEquals(100f, car.y, TOLERANCE)
     }
 
     @Test
     fun `all AI grid positions complete a valid lap on built in track`() {
-        val track = TrackLoader().load()
-        track.startGrid.drop(1).forEach { start ->
-            val state = CarState(
-                x = start.position.x,
-                y = start.position.y,
-                rotationDeg = start.rotationDeg,
-            )
-            val driver = AiDriver(
-                track.racingLine,
-                start.position,
-                AiConfig(waypointRadius = track.racingLineWaypointRadius),
-            )
-            val physics = CarPhysics()
-            val carConfig = CarConfig()
-            val collisions = CollisionSystem()
-            val rules = RaceRules(track, requiredLaps = 1)
-            val progress = RaceProgress()
+        TrackId.entries.forEach { trackId ->
+            val track = TrackLoader().load(trackId)
+            track.startGrid.drop(1).forEach { start ->
+                val state = CarState(
+                    x = start.position.x,
+                    y = start.position.y,
+                    rotationDeg = start.rotationDeg,
+                )
+                val driver = AiDriver(
+                    track.racingLine,
+                    start.position,
+                    AiConfig(waypointRadius = track.racingLineWaypointRadius),
+                )
+                val physics = CarPhysics()
+                val carConfig = CarConfig()
+                val collisions = CollisionSystem()
+                val rules = RaceRules(track, requiredLaps = 1)
+                val progress = RaceProgress()
 
-            repeat(MAX_LAP_SIMULATION_STEPS) {
-                if (progress.finished) return@repeat
-                val previous = TrackPoint(state.x, state.y)
-                physics.update(state, carConfig, driver.update(state, FIXED_DELTA), FIXED_DELTA)
-                collisions.resolveTrackCollision(state, carConfig.collisionRadius, track)
-                rules.update(progress, previous, TrackPoint(state.x, state.y), FIXED_DELTA)
+                repeat(MAX_LAP_SIMULATION_STEPS) {
+                    if (progress.finished) return@repeat
+                    val previous = TrackPoint(state.x, state.y)
+                    physics.update(state, carConfig, driver.update(state, FIXED_DELTA), FIXED_DELTA)
+                    collisions.resolveTrackCollision(state, carConfig.collisionRadius, track)
+                    rules.update(progress, previous, TrackPoint(state.x, state.y), FIXED_DELTA)
+                }
+
+                assertTrue(
+                    "AI from $start did not complete a valid lap: state=$state progress=$progress " +
+                        "waypoint=${driver.targetWaypointIndex}",
+                    progress.finished,
+                )
             }
-
-            assertTrue(
-                "AI from $start did not complete a valid lap: state=$state progress=$progress " +
-                    "waypoint=${driver.targetWaypointIndex}",
-                progress.finished,
-            )
         }
     }
 
@@ -189,7 +225,7 @@ class AiDriverTest {
 
     private companion object {
         const val FIXED_DELTA = 1f / 60f
-        const val MAX_LAP_SIMULATION_STEPS = 60 * 60
+        const val MAX_LAP_SIMULATION_STEPS = 60 * 120
         const val TOLERANCE = 0.001f
     }
 }

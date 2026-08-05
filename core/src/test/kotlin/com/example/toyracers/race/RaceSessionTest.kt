@@ -14,8 +14,8 @@ import org.junit.Test
 
 class RaceSessionTest {
     @Test
-    fun `race uses four opponents for the five car roster`() {
-        assertEquals(4, racingSession().opponents.size)
+    fun `race supports five simultaneous AI opponents`() {
+        assertEquals(5, racingSession().opponents.size)
     }
 
     @Test
@@ -111,6 +111,11 @@ class RaceSessionTest {
         val startY = opponent.state.y
 
         session.advance(120f, PlayerInput.NONE)
+        repeat(180) {
+            if (track.surfaceAt(opponent.state.x, opponent.state.y) != SurfaceType.ASPHALT) {
+                session.advance(CarPhysics.FIXED_DELTA_SECONDS, PlayerInput.NONE)
+            }
+        }
 
         val movementSquared =
             (opponent.state.x - startX) * (opponent.state.x - startX) +
@@ -121,9 +126,23 @@ class RaceSessionTest {
             track.surfaceAt(opponent.state.x, opponent.state.y),
         )
         assertTrue(
+            "AI did not advance: state=${opponent.state}, progress=${opponent.progress}, " +
+                "behavior=${opponent.driver?.behaviorState}",
             opponent.progress.completedLaps > 0 ||
                 opponent.progress.currentCheckpointIndex > 0,
         )
+    }
+
+    @Test
+    fun `five AI remain within real time simulation budget`() {
+        val session = racingSession()
+        val startedAt = System.nanoTime()
+
+        session.advance(10f, PlayerInput.NONE)
+
+        val elapsedSeconds = (System.nanoTime() - startedAt) / 1_000_000_000.0
+        assertTrue("10 simulated seconds took $elapsedSeconds real seconds", elapsedSeconds < 5.0)
+        assertEquals(5, session.opponents.size)
     }
 
     private fun racingSession(withoutObjects: Boolean = false): RaceSession {

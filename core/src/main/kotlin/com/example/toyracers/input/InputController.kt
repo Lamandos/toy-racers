@@ -1,6 +1,4 @@
 package com.example.toyracers.input
 
 /** Converts a platform-specific input source into a portable driving command. */
-interface InputController {
-    fun readInput(): PlayerInput
-}
+interface InputController : CarInputProvider

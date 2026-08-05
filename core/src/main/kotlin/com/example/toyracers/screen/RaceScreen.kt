@@ -13,6 +13,7 @@ import com.example.toyracers.camera.RaceCameraController
 import com.example.toyracers.car.CarModel
 import com.example.toyracers.car.CarPhysics
 import com.example.toyracers.car.opponentModelsFor
+import com.example.toyracers.debug.AiDebugRenderer
 import com.example.toyracers.debug.CollisionDebugRenderer
 import com.example.toyracers.debug.DebugCar
 import com.example.toyracers.debug.DebugSettings
@@ -48,6 +49,7 @@ class RaceScreen(
     }
     private val trackRenderer = TrackRenderer(game.assets.track(trackId))
     private val collisionDebugRenderer = CollisionDebugRenderer()
+    private val aiDebugRenderer = AiDebugRenderer()
     private val debugSettings = DebugSettings()
     private val keyboardInput = KeyboardInputController()
     private val touchInput = TouchInputController(
@@ -117,6 +119,9 @@ class RaceScreen(
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.F3)) {
             debugSettings.showCollisions = !debugSettings.showCollisions
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F4)) {
+            debugSettings.showAi = !debugSettings.showAi
         }
     }
 
@@ -188,6 +193,15 @@ class RaceScreen(
                         it.carConfig.collisionLongitudinalOffset,
                     )
                 },
+            )
+        }
+        if (debugSettings.showAi) {
+            aiDebugRenderer.render(
+                viewport = worldViewport,
+                camera = worldCamera,
+                shapes = shapes,
+                racingLine = track.racingLine,
+                snapshots = raceSession.opponents.mapNotNull { it.driver?.debugSnapshot },
             )
         }
     }
@@ -341,6 +355,7 @@ class RaceScreen(
         hud.dispose()
         carRenderers.values.forEach(CarRenderer::dispose)
         trackRenderer.dispose()
+        aiDebugRenderer.dispose()
         super.dispose()
     }
 
