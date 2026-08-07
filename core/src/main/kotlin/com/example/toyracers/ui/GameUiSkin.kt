@@ -17,7 +17,9 @@ internal fun createGameUiSkin(): Skin {
     skin.add(WHITE_TEXTURE, Texture(pixmap))
     pixmap.dispose()
 
-    val font = BitmapFont()
+    val font = BitmapFont().apply {
+        region.texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear)
+    }
     skin.add(DEFAULT_FONT, font)
     skin.add(DEFAULT_LABEL_STYLE, Label.LabelStyle(font, Color.WHITE))
     skin.add(
@@ -45,7 +47,7 @@ internal fun Skin.panelDrawable() = newDrawable(WHITE_TEXTURE, PANEL_COLOR)
 
 internal const val SECONDARY_BUTTON_STYLE = "secondary"
 
-private const val WHITE_TEXTURE = "white"
+internal const val WHITE_TEXTURE = "white"
 private const val DEFAULT_FONT = "default-font"
 private const val DEFAULT_LABEL_STYLE = "default"
 private const val DEFAULT_BUTTON_STYLE = "default"
