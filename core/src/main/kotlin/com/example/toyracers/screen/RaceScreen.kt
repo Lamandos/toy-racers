@@ -258,7 +258,6 @@ class RaceScreen(
     }
 
     private fun createHudSnapshot(): RaceHudSnapshot = RaceHudSnapshot(
-        speed = raceSession.player.state.speed,
         position = raceSession.playerPosition,
         competitorCount = raceSession.opponents.size + 1,
         completedLaps = raceSession.player.progress.completedLaps,
