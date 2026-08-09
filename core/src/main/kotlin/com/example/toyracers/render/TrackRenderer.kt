@@ -11,18 +11,16 @@ import com.example.toyracers.track.Track
 /** Draws the authored track image without owning or changing gameplay state. */
 class TrackRenderer(
     private val texture: Texture,
-    private val batch: SpriteBatch = SpriteBatch(),
+    /** Retains the previous public parameter name and default-argument constructor ABI. */
+    batch: SpriteBatch? = null,
 ) : Disposable {
+    private var compatibilityBatch: SpriteBatch? = batch
+
+    /** Draws into an already active shared batch. */
     fun render(
-        viewport: Viewport,
-        camera: Camera,
+        batch: SpriteBatch,
         track: Track,
     ) {
-        ScreenUtils.clear(0f, 0f, 0f, 1f)
-        viewport.apply()
-        camera.update()
-        batch.projectionMatrix = camera.combined
-        batch.begin()
         batch.draw(
             texture,
             track.worldBounds.x,
@@ -30,11 +28,27 @@ class TrackRenderer(
             track.worldBounds.width,
             track.worldBounds.height,
         )
+    }
+
+    /** Compatibility path for presentation code that still uses a dedicated track batch. */
+    fun render(
+        viewport: Viewport,
+        camera: Camera,
+        track: Track,
+    ) {
+        val batch = compatibilityBatch ?: SpriteBatch().also { compatibilityBatch = it }
+        ScreenUtils.clear(0f, 0f, 0f, 1f)
+        viewport.apply()
+        camera.update()
+        batch.projectionMatrix = camera.combined
+        batch.begin()
+        render(batch, track)
         batch.end()
     }
 
     override fun dispose() {
-        batch.dispose()
+        compatibilityBatch?.dispose()
+        compatibilityBatch = null
     }
 
 }

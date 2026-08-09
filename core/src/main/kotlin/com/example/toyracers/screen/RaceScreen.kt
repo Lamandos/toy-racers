@@ -5,9 +5,12 @@ import com.badlogic.gdx.Input
 import com.badlogic.gdx.InputMultiplexer
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.OrthographicCamera
+import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
+import com.badlogic.gdx.utils.ScreenUtils
 import com.badlogic.gdx.utils.viewport.ExtendViewport
 import com.example.toyracers.ToyRacersGame
+import com.example.toyracers.ai.AiDebugSnapshot
 import com.example.toyracers.camera.CameraBounds
 import com.example.toyracers.camera.RaceCameraController
 import com.example.toyracers.car.CarModel
@@ -17,16 +20,22 @@ import com.example.toyracers.debug.AiDebugRenderer
 import com.example.toyracers.debug.CollisionDebugRenderer
 import com.example.toyracers.debug.DebugCar
 import com.example.toyracers.debug.DebugSettings
+import com.example.toyracers.debug.FrameTelemetry
+import com.example.toyracers.debug.FrameTelemetryRenderer
+import com.example.toyracers.debug.FrameTelemetrySample
+import com.example.toyracers.debug.FrameTelemetrySnapshot
 import com.example.toyracers.input.KeyboardInputController
 import com.example.toyracers.input.PlayerInput
 import com.example.toyracers.input.TouchInputController
 import com.example.toyracers.race.RacePhase
+import com.example.toyracers.race.RaceParticipant
 import com.example.toyracers.race.RaceResult
 import com.example.toyracers.race.RaceSession
 import com.example.toyracers.render.CarRenderer
 import com.example.toyracers.render.TrackRenderer
 import com.example.toyracers.track.TrackLoader
 import com.example.toyracers.track.TrackId
+import com.example.toyracers.track.TrackPoint
 import com.example.toyracers.ui.RaceHudSnapshot
 import com.example.toyracers.ui.RaceHudStage
 import kotlin.math.min
@@ -48,9 +57,14 @@ class RaceScreen(
         CarRenderer(game.assets.car(model))
     }
     private val trackRenderer = TrackRenderer(game.assets.track(trackId))
+    private val worldBatch = SpriteBatch()
     private val collisionDebugRenderer = CollisionDebugRenderer()
     private val aiDebugRenderer = AiDebugRenderer()
     private val debugSettings = DebugSettings()
+    private val frameTelemetry = FrameTelemetry()
+    private val frameTelemetryRenderer = FrameTelemetryRenderer()
+    private var telemetryPreviousFrameStartNanos: Long? = null
+    private var pendingTelemetrySample: FrameTelemetrySample? = null
     private val keyboardInput = KeyboardInputController()
     private val touchInput = TouchInputController(
         steeringWheelTexture = game.assets.steeringWheel,
@@ -81,7 +95,7 @@ class RaceScreen(
 
     override fun show() {
         super.show()
-        cameraController.snapTo(raceSession.player.state)
+        cameraController.snapTo(raceSession.renderStateOf(raceSession.player))
         Gdx.input.inputProcessor = inputProcessor
         raceSession.start()
         game.audio.startRaceLoops()
@@ -98,11 +112,55 @@ class RaceScreen(
         if (handlePendingUiAction()) return
         handleKeyboardActions()
 
+        val measureTimings = debugSettings.showPerformanceOverlay
+        val completedTelemetry = if (measureTimings) {
+            recordCompletedTelemetryFrame(System.nanoTime())
+        } else {
+            null
+        }
         val frameDelta = min(delta, CarPhysics.MAX_FRAME_DELTA_SECONDS)
+        val audioFadeStartedAt = if (measureTimings) System.nanoTime() else 0L
         game.audio.advanceRaceFadeOut(frameDelta)
-        updateRace(frameDelta)
-        renderWorld()
+        var audioDurationNanos = if (measureTimings) System.nanoTime() - audioFadeStartedAt else 0L
+
+        val raceUpdate = updateRace(frameDelta, measureTimings)
+        audioDurationNanos += raceUpdate.audioDurationNanos
+
+        val worldRenderStartedAt = if (measureTimings) System.nanoTime() else 0L
+        val worldRender = renderWorld()
+        val worldRenderDurationNanos = if (measureTimings) {
+            System.nanoTime() - worldRenderStartedAt
+        } else {
+            0L
+        }
+
+        val interfaceStartedAt = if (measureTimings) System.nanoTime() else 0L
         renderInterface(delta)
+        val interfaceDurationNanos = if (measureTimings) {
+            System.nanoTime() - interfaceStartedAt
+        } else {
+            0L
+        }
+
+        if (measureTimings) {
+            pendingTelemetrySample = FrameTelemetrySample(
+                frameDurationNanos = 0L,
+                simulationDurationNanos = raceUpdate.simulationDurationNanos,
+                collisionDurationNanos = raceUpdate.collisionDurationNanos,
+                worldRenderDurationNanos = worldRenderDurationNanos,
+                interfaceDurationNanos = interfaceDurationNanos,
+                audioDurationNanos = audioDurationNanos,
+                physicalSteps = raceUpdate.physicalSteps,
+                worldDrawCalls = worldRender.drawCalls,
+                carFlushes = worldRender.carFlushes,
+                framesPerSecond = Gdx.graphics.framesPerSecond,
+                refreshRateHz = Gdx.graphics.displayMode?.refreshRate?.takeIf { it > 0 },
+            )
+            completedTelemetry?.let { snapshot ->
+                frameTelemetryRenderer.render(viewport, camera, snapshot)
+            }
+        }
+
         showResultsIfFinished()
     }
 
@@ -123,12 +181,34 @@ class RaceScreen(
         if (Gdx.input.isKeyJustPressed(Input.Keys.F4)) {
             debugSettings.showAi = !debugSettings.showAi
         }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F5)) {
+            debugSettings.showPerformanceOverlay = !debugSettings.showPerformanceOverlay
+            resetTelemetry()
+        }
     }
 
-    private fun updateRace(frameDelta: Float) {
+    private fun updateRace(
+        frameDelta: Float,
+        measureTimings: Boolean,
+    ): RaceUpdateMetrics {
+        var simulationDurationNanos = 0L
+        var collisionDurationNanos = 0L
+        var physicalSteps = 0
+        var audioDurationNanos = 0L
         if (!lifecyclePaused) {
             val playerInput = keyboardInput.readInput().combinedWith(touchInput.readInput())
-            val stepResult = raceSession.advance(frameDelta, playerInput)
+            val simulationStartedAt = if (measureTimings) System.nanoTime() else 0L
+            val stepResult = raceSession.advance(
+                frameDeltaSeconds = frameDelta,
+                playerInput = playerInput,
+                measureTimings = measureTimings,
+            )
+            if (measureTimings) {
+                simulationDurationNanos = System.nanoTime() - simulationStartedAt
+                collisionDurationNanos = stepResult.collisionDurationNanos
+            }
+            physicalSteps = stepResult.physicalSteps
+            val audioEventsStartedAt = if (measureTimings) System.nanoTime() else 0L
             updateCountdownAudio(stepResult.phaseBeforeAdvance)
             if (raceSession.raceState.phase == RacePhase.RACING) {
                 latestInput = playerInput
@@ -144,36 +224,76 @@ class RaceScreen(
                     stepResult.maxImpactSpeed / raceSession.player.carConfig.maxForwardSpeed,
                 )
             }
+            if (measureTimings) {
+                audioDurationNanos += System.nanoTime() - audioEventsStartedAt
+            }
         }
-        cameraController.update(raceSession.player.state, frameDelta)
+        val renderedPlayerState = raceSession.renderStateOf(raceSession.player)
+        cameraController.update(renderedPlayerState, frameDelta)
+        val physicalPlayerState = raceSession.player.state
+        val audioMixStartedAt = if (measureTimings) System.nanoTime() else 0L
         game.audio.updateRace(
-            speed = raceSession.player.state.speed,
+            speed = physicalPlayerState.speed,
             maxSpeed = raceSession.player.carConfig.maxForwardSpeed,
             throttle = latestInput.throttle,
             brake = latestInput.brake,
             steering = latestInput.steering,
             racing = raceSession.raceState.phase == RacePhase.RACING,
             surface = track.surfaceAt(
-                raceSession.player.state.x,
-                raceSession.player.state.y,
+                physicalPlayerState.x,
+                physicalPlayerState.y,
             ),
+        )
+        if (measureTimings) {
+            audioDurationNanos += System.nanoTime() - audioMixStartedAt
+        }
+        return RaceUpdateMetrics(
+            simulationDurationNanos = simulationDurationNanos,
+            collisionDurationNanos = collisionDurationNanos,
+            audioDurationNanos = audioDurationNanos,
+            physicalSteps = physicalSteps,
         )
     }
 
-    private fun renderWorld() {
-        trackRenderer.render(worldViewport, worldCamera, track)
-        raceSession.opponents.forEach { opponent ->
-            carRenderers.getValue(opponent.carModel).render(
-                worldCamera,
-                opponent.state,
-                opponent.carConfig,
-            )
-        }
-        carRenderers.getValue(raceSession.player.carModel).render(
-            worldCamera,
-            raceSession.player.state,
-            raceSession.player.carConfig,
+    /**
+     * Publishes the completed callback's breakdown with the interval ending at this callback.
+     *
+     * The next callback is the first point where the previous callback's wait-for-vsync interval is
+     * known, so the sample is intentionally one callback behind its collection.
+     */
+    private fun recordCompletedTelemetryFrame(frameStartNanos: Long): FrameTelemetrySnapshot? {
+        val previousFrameStartNanos = telemetryPreviousFrameStartNanos
+        telemetryPreviousFrameStartNanos = frameStartNanos
+        val pendingSample = pendingTelemetrySample ?: return null
+        val frameDurationNanos = previousFrameStartNanos?.let { frameStartNanos - it } ?: return null
+        return frameTelemetry.record(
+            pendingSample.copy(frameDurationNanos = frameDurationNanos),
         )
+    }
+
+    private fun resetTelemetry() {
+        frameTelemetry.clear()
+        telemetryPreviousFrameStartNanos = null
+        pendingTelemetrySample = null
+    }
+
+    private fun renderWorld(): WorldRenderMetrics {
+        ScreenUtils.clear(0f, 0f, 0f, 1f)
+        worldViewport.apply()
+        worldCamera.update()
+        worldBatch.projectionMatrix = worldCamera.combined
+        worldBatch.begin()
+        trackRenderer.render(worldBatch, track)
+        (raceSession.opponents.sortedBy { it.carModel.ordinal } + raceSession.player)
+            .forEach { participant ->
+                carRenderers.getValue(participant.carModel).render(
+                    batch = worldBatch,
+                    state = raceSession.renderStateOf(participant),
+                    config = participant.carConfig,
+                )
+            }
+        worldBatch.end()
+        val worldDrawCalls = worldBatch.renderCalls
         if (debugSettings.showCollisions) {
             collisionDebugRenderer.render(
                 viewport = worldViewport,
@@ -182,13 +302,13 @@ class RaceScreen(
                 track = track,
                 cars = listOf(
                     DebugCar(
-                        raceSession.player.state,
+                        raceSession.renderStateOf(raceSession.player),
                         raceSession.player.carConfig.collisionRadius,
                         raceSession.player.carConfig.collisionLongitudinalOffset,
                     ),
                 ) + raceSession.opponents.map {
                     DebugCar(
-                        it.state,
+                        raceSession.renderStateOf(it),
                         it.carConfig.collisionRadius,
                         it.carConfig.collisionLongitudinalOffset,
                     )
@@ -201,9 +321,30 @@ class RaceScreen(
                 camera = worldCamera,
                 shapes = shapes,
                 racingLine = track.racingLine,
-                snapshots = raceSession.opponents.mapNotNull { it.driver?.debugSnapshot },
+                snapshots = raceSession.opponents.mapNotNull(::displayAiDebugSnapshot),
             )
         }
+        return WorldRenderMetrics(
+            drawCalls = worldDrawCalls,
+            carFlushes = (worldDrawCalls - TRACK_DRAW_CALLS).coerceAtLeast(0),
+        )
+    }
+
+    /** Moves AI diagnostics with the interpolated car while retaining the physical sensor sample. */
+    private fun displayAiDebugSnapshot(participant: RaceParticipant): AiDebugSnapshot? {
+        val snapshot = participant.driver?.debugSnapshot ?: return null
+        val renderedState = raceSession.renderStateOf(participant)
+        val offsetX = renderedState.x - snapshot.position.x
+        val offsetY = renderedState.y - snapshot.position.y
+        return snapshot.copy(
+            position = TrackPoint(renderedState.x, renderedState.y),
+            sensorRays = snapshot.sensorRays.map { ray ->
+                ray.copy(
+                    start = TrackPoint(ray.start.x + offsetX, ray.start.y + offsetY),
+                    end = TrackPoint(ray.end.x + offsetX, ray.end.y + offsetY),
+                )
+            },
+        )
     }
 
     private fun renderInterface(delta: Float) {
@@ -274,7 +415,7 @@ class RaceScreen(
         game.audio.resetRaceMix()
         game.audio.resumeRace()
         touchInput.reset()
-        cameraController.snapTo(raceSession.player.state)
+        cameraController.snapTo(raceSession.renderStateOf(raceSession.player))
     }
 
     private fun renderCountdown() {
@@ -352,9 +493,11 @@ class RaceScreen(
         game.audio.stopRaceLoops()
         touchInput.dispose()
         hud.dispose()
+        worldBatch.dispose()
         carRenderers.values.forEach(CarRenderer::dispose)
         trackRenderer.dispose()
         aiDebugRenderer.dispose()
+        frameTelemetryRenderer.dispose()
         super.dispose()
     }
 
@@ -364,6 +507,7 @@ class RaceScreen(
         const val MIN_SHAKE_IMPACT_SPEED = 3f
         const val SHAKE_PER_IMPACT_SPEED = 0.025f
         const val COUNTDOWN_START_NUMBER = 3
+        const val TRACK_DRAW_CALLS = 1
         val COUNTDOWN_ACTIVE = Color(0.95f, 0.28f, 0.18f, 1f)
         val COUNTDOWN_INACTIVE = Color(0.25f, 0.27f, 0.31f, 1f)
     }
@@ -374,4 +518,16 @@ class RaceScreen(
         RESTART,
         QUIT_TO_MENU,
     }
+
+    private data class RaceUpdateMetrics(
+        val simulationDurationNanos: Long,
+        val collisionDurationNanos: Long,
+        val audioDurationNanos: Long,
+        val physicalSteps: Int,
+    )
+
+    private data class WorldRenderMetrics(
+        val drawCalls: Int,
+        val carFlushes: Int,
+    )
 }

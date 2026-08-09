@@ -9,6 +9,7 @@ import com.example.toyracers.car.CarController
 import com.example.toyracers.car.CarModel
 import com.example.toyracers.car.CarPhysics
 import com.example.toyracers.car.CarState
+import com.example.toyracers.car.interpolateCarState
 import com.example.toyracers.car.opponentModelsFor
 import com.example.toyracers.collision.CollisionSystem
 import com.example.toyracers.input.PlayerControlConfig
@@ -87,6 +88,15 @@ internal class RaceSession(
             },
         ).getValue(player.id)
 
+    /**
+     * Returns a visual-only state between the last two fixed simulation steps.
+     *
+     * Calling this function never mutates the state that physics, race rules, collisions, or AI
+     * consume.
+     */
+    fun renderStateOf(participant: RaceParticipant): CarState =
+        participant.renderState(accumulator / CarPhysics.FIXED_DELTA_SECONDS)
+
     fun start() {
         raceState.markReady()
         raceState.startCountdown()
@@ -103,15 +113,19 @@ internal class RaceSession(
     fun advance(
         frameDeltaSeconds: Float,
         playerInput: PlayerInput,
+        measureTimings: Boolean = false,
     ): RaceStepResult {
         val phaseBeforeAdvance = raceState.phase
         val simulationDelta = raceState.advance(frameDeltaSeconds)
         var playerCheckpointPassed = false
         var maxImpactSpeed = 0f
+        var physicalSteps = 0
+        var collisionDurationNanos = 0L
 
         if (simulationDelta > 0f) {
             accumulator += simulationDelta
             while (accumulator >= CarPhysics.FIXED_DELTA_SECONDS) {
+                participants.forEach(RaceParticipant::captureStateForRendering)
                 participants.forEach { participant ->
                     updateLastSafeState(participant)
                     var input = participant.driver?.update(
@@ -128,7 +142,10 @@ internal class RaceSession(
                         restoreLastSafeState(participant)
                         input = PlayerInput.NONE
                     }
-                    val stepResult = updateParticipant(participant, input)
+                    val stepResult = updateParticipant(participant, input, measureTimings)
+                    if (measureTimings) {
+                        collisionDurationNanos += stepResult.collisionDurationNanos
+                    }
                     if (participant === player) {
                         maxImpactSpeed = maxOf(maxImpactSpeed, stepResult.impactSpeed)
                         if (stepResult.checkpointPassed) {
@@ -137,9 +154,15 @@ internal class RaceSession(
                     }
                 }
 
+                val collisionStartedAt = if (measureTimings) System.nanoTime() else 0L
                 maxImpactSpeed = maxOf(maxImpactSpeed, resolveCarCollisions())
+                if (measureTimings) {
+                    collisionDurationNanos += System.nanoTime() - collisionStartedAt
+                }
+                physicalSteps++
                 accumulator -= CarPhysics.FIXED_DELTA_SECONDS
                 if (player.progress.finished) {
+                    participants.forEach(RaceParticipant::captureStateForRendering)
                     raceState.finish()
                     accumulator = 0f
                     break
@@ -151,12 +174,15 @@ internal class RaceSession(
             phaseBeforeAdvance = phaseBeforeAdvance,
             playerCheckpointPassed = playerCheckpointPassed,
             maxImpactSpeed = maxImpactSpeed,
+            physicalSteps = physicalSteps,
+            collisionDurationNanos = collisionDurationNanos,
         )
     }
 
     private fun updateParticipant(
         participant: RaceParticipant,
         input: PlayerInput,
+        measureTimings: Boolean,
     ): ParticipantStepResult {
         val previousPosition = participant.state.position()
         carController.update(
@@ -165,12 +191,18 @@ internal class RaceSession(
             input = input,
             deltaSeconds = CarPhysics.FIXED_DELTA_SECONDS,
         )
+        val collisionStartedAt = if (measureTimings) System.nanoTime() else 0L
         val collision = collisionSystem.resolveTrackCollision(
             state = participant.state,
             radius = participant.carConfig.collisionRadius,
             longitudinalOffset = participant.carConfig.collisionLongitudinalOffset,
             track = track,
         )
+        val collisionDurationNanos = if (measureTimings) {
+            System.nanoTime() - collisionStartedAt
+        } else {
+            0L
+        }
         surfaceSpeedSystem.update(
             carState = participant.state,
             carConfig = participant.carConfig,
@@ -188,6 +220,7 @@ internal class RaceSession(
         return ParticipantStepResult(
             checkpointPassed = participant.progress.currentCheckpointIndex > checkpointBefore,
             impactSpeed = collision.maxImpactSpeed,
+            collisionDurationNanos = collisionDurationNanos,
         )
     }
 
@@ -213,6 +246,7 @@ internal class RaceSession(
         participant.state.angularVelocity = 0f
         participant.surfaceSpeedState.speedMultiplier = 1f
         participant.driver?.reset(TrackPoint(safe.x, safe.y))
+        participant.captureStateForRendering()
     }
 
     private fun resolveCarCollisions(): Float {
@@ -258,6 +292,7 @@ internal class RaceSession(
     private data class ParticipantStepResult(
         val checkpointPassed: Boolean,
         val impactSpeed: Float,
+        val collisionDurationNanos: Long,
     )
 
     private companion object {
@@ -291,10 +326,19 @@ internal class RaceParticipant(
     val surfaceSpeedState = SurfaceSpeedState()
     val progress = RaceProgress()
     var lastSafeState = state.copy()
+    private var previousState = state.copy()
+
+    fun captureStateForRendering() {
+        previousState = state.copy()
+    }
+
+    fun renderState(alpha: Float): CarState = interpolateCarState(previousState, state, alpha)
 }
 
 internal data class RaceStepResult(
     val phaseBeforeAdvance: RacePhase,
     val playerCheckpointPassed: Boolean,
     val maxImpactSpeed: Float,
+    val physicalSteps: Int,
+    val collisionDurationNanos: Long,
 )

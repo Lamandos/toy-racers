@@ -71,6 +71,35 @@ class RaceSessionTest {
     }
 
     @Test
+    fun `finished race renders the state produced by the finishing step`() {
+        val track = TrackLoader().load().copy(collisionShapes = emptyList())
+        val session = RaceSession(track).apply {
+            start()
+            advance(raceState.countdownDurationSeconds, PlayerInput.NONE)
+        }
+        val startLineCenterX = track.startLine.bounds.x + track.startLine.bounds.width / 2f
+        val startLineCenterY = track.startLine.bounds.y + track.startLine.bounds.height / 2f
+        session.player.progress.currentCheckpointIndex = track.checkpoints.size
+        session.player.progress.completedLaps = RaceRules.DEFAULT_LAP_COUNT - 1
+        session.player.state.x = startLineCenterX - 0.1f
+        session.player.state.y = startLineCenterY
+        session.player.state.speed = 10f
+        session.player.state.velocityX = 10f
+
+        session.advance(CarPhysics.FIXED_DELTA_SECONDS, PlayerInput.NONE)
+
+        assertEquals(RacePhase.FINISHED, session.raceState.phase)
+        val renderedState = session.renderStateOf(session.player)
+        assertEquals(session.player.state.x, renderedState.x, TOLERANCE)
+        assertEquals(session.player.state.y, renderedState.y, TOLERANCE)
+        assertEquals(session.player.state.rotationDeg, renderedState.rotationDeg, TOLERANCE)
+        assertEquals(session.player.state.speed, renderedState.speed, TOLERANCE)
+        assertEquals(session.player.state.velocityX, renderedState.velocityX, TOLERANCE)
+        assertEquals(session.player.state.velocityY, renderedState.velocityY, TOLERANCE)
+        assertEquals(session.player.state.angularVelocity, renderedState.angularVelocity, TOLERANCE)
+    }
+
+    @Test
     fun `shared pipeline applies track collision to every participant`() {
         val session = racingSession(withoutObjects = true)
         session.player.state.x = -10f
