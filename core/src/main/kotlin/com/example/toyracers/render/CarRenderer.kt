@@ -11,19 +11,26 @@ import com.example.toyracers.car.CarState
 /** Draws a car from simulation state without modifying that state. */
 class CarRenderer(
     private val texture: TextureRegion,
-    private val batch: SpriteBatch = SpriteBatch(),
 ) : Disposable {
+    private var compatibilityBatch: SpriteBatch? = null
+
+    /** Retained for callers that still render a car in its own pass. */
+    constructor(
+        texture: TextureRegion,
+        batch: SpriteBatch,
+    ) : this(texture) {
+        compatibilityBatch = batch
+    }
+
+    /** Draws into an already active shared batch. */
     fun render(
-        camera: Camera,
+        batch: SpriteBatch,
         state: CarState,
         config: CarConfig,
         tint: Color = Color.WHITE,
     ) {
         val bounds = calculateCarRenderBounds(state, config)
-
-        batch.projectionMatrix = camera.combined
         batch.color = tint
-        batch.begin()
         batch.draw(
             texture,
             bounds.x,
@@ -36,12 +43,29 @@ class CarRenderer(
             1f,
             state.rotationDeg - TEXTURE_FORWARD_DEGREES,
         )
-        batch.end()
         batch.color = Color.WHITE
     }
 
+    /**
+     * Compatibility path for presentation code that has not adopted a shared world batch yet.
+     * RaceScreen uses the overload above so it does not allocate one SpriteBatch per car model.
+     */
+    fun render(
+        camera: Camera,
+        state: CarState,
+        config: CarConfig,
+        tint: Color = Color.WHITE,
+    ) {
+        val batch = compatibilityBatch ?: SpriteBatch().also { compatibilityBatch = it }
+        batch.projectionMatrix = camera.combined
+        batch.begin()
+        render(batch, state, config, tint)
+        batch.end()
+    }
+
     override fun dispose() {
-        batch.dispose()
+        compatibilityBatch?.dispose()
+        compatibilityBatch = null
     }
 
     private companion object {

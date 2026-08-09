@@ -4,4 +4,5 @@ package com.example.toyracers.debug
 class DebugSettings(
     var showCollisions: Boolean = false,
     var showAi: Boolean = false,
+    var showPerformanceOverlay: Boolean = false,
 )
