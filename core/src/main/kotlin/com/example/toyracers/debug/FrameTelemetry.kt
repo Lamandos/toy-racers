@@ -82,7 +82,8 @@ class FrameTelemetry(
     private fun percentile(percentile: Float): Float {
         check(sampleCount > 0) { "Cannot calculate a percentile without samples" }
         val sorted = frameTimesMs.copyOf(sampleCount).sortedArray()
-        val index = ceil((sampleCount - 1) * percentile.coerceIn(0f, 1f)).toInt()
+        val rank = ceil(sampleCount * percentile.coerceIn(0f, 1f)).toInt().coerceAtLeast(1)
+        val index = (rank - 1).coerceAtMost(sampleCount - 1)
         return sorted[index]
     }
 

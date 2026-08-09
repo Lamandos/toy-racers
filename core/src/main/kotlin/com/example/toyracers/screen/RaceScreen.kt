@@ -107,7 +107,11 @@ class RaceScreen(
         handleKeyboardActions()
 
         val measureTimings = debugSettings.showPerformanceOverlay
-        val frameStartedAt = if (measureTimings) System.nanoTime() else 0L
+        val frameDurationNanos = if (measureTimings) {
+            (delta * NANOSECONDS_PER_SECOND).toLong()
+        } else {
+            0L
+        }
         val frameDelta = min(delta, CarPhysics.MAX_FRAME_DELTA_SECONDS)
         val audioFadeStartedAt = if (measureTimings) System.nanoTime() else 0L
         game.audio.advanceRaceFadeOut(frameDelta)
@@ -135,7 +139,7 @@ class RaceScreen(
         if (measureTimings) {
             val snapshot = frameTelemetry.record(
                 FrameTelemetrySample(
-                    frameDurationNanos = System.nanoTime() - frameStartedAt,
+                    frameDurationNanos = frameDurationNanos,
                     simulationDurationNanos = raceUpdate.simulationDurationNanos,
                     collisionDurationNanos = raceUpdate.collisionDurationNanos,
                     worldRenderDurationNanos = worldRenderDurationNanos,
@@ -252,8 +256,7 @@ class RaceScreen(
         worldBatch.projectionMatrix = worldCamera.combined
         worldBatch.begin()
         trackRenderer.render(worldBatch, track)
-        (raceSession.opponents + raceSession.player)
-            .sortedBy { it.carModel.ordinal }
+        (raceSession.opponents.sortedBy { it.carModel.ordinal } + raceSession.player)
             .forEach { participant ->
                 carRenderers.getValue(participant.carModel).render(
                     batch = worldBatch,
@@ -271,13 +274,13 @@ class RaceScreen(
                 track = track,
                 cars = listOf(
                     DebugCar(
-                        raceSession.player.state,
+                        raceSession.renderStateOf(raceSession.player),
                         raceSession.player.carConfig.collisionRadius,
                         raceSession.player.carConfig.collisionLongitudinalOffset,
                     ),
                 ) + raceSession.opponents.map {
                     DebugCar(
-                        it.state,
+                        raceSession.renderStateOf(it),
                         it.carConfig.collisionRadius,
                         it.carConfig.collisionLongitudinalOffset,
                     )
@@ -460,6 +463,7 @@ class RaceScreen(
         const val SHAKE_PER_IMPACT_SPEED = 0.025f
         const val COUNTDOWN_START_NUMBER = 3
         const val TRACK_DRAW_CALLS = 1
+        const val NANOSECONDS_PER_SECOND = 1_000_000_000f
         val COUNTDOWN_ACTIVE = Color(0.95f, 0.28f, 0.18f, 1f)
         val COUNTDOWN_INACTIVE = Color(0.25f, 0.27f, 0.31f, 1f)
     }

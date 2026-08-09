@@ -11,16 +11,9 @@ import com.example.toyracers.track.Track
 /** Draws the authored track image without owning or changing gameplay state. */
 class TrackRenderer(
     private val texture: Texture,
+    /** Retains the previous default-argument constructor ABI for legacy callers. */
+    private var compatibilityBatch: SpriteBatch? = null,
 ) : Disposable {
-    private var compatibilityBatch: SpriteBatch? = null
-
-    /** Retained for callers that still render the track in a dedicated pass. */
-    constructor(
-        texture: Texture,
-        batch: SpriteBatch,
-    ) : this(texture) {
-        compatibilityBatch = batch
-    }
 
     /** Draws into an already active shared batch. */
     fun render(

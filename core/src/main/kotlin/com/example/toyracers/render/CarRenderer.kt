@@ -11,16 +11,9 @@ import com.example.toyracers.car.CarState
 /** Draws a car from simulation state without modifying that state. */
 class CarRenderer(
     private val texture: TextureRegion,
+    /** Retains the previous default-argument constructor ABI for legacy callers. */
+    private var compatibilityBatch: SpriteBatch? = null,
 ) : Disposable {
-    private var compatibilityBatch: SpriteBatch? = null
-
-    /** Retained for callers that still render a car in its own pass. */
-    constructor(
-        texture: TextureRegion,
-        batch: SpriteBatch,
-    ) : this(texture) {
-        compatibilityBatch = batch
-    }
 
     /** Draws into an already active shared batch. */
     fun render(

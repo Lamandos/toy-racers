@@ -142,7 +142,10 @@ internal class RaceSession(
                         restoreLastSafeState(participant)
                         input = PlayerInput.NONE
                     }
-                    val stepResult = updateParticipant(participant, input)
+                    val stepResult = updateParticipant(participant, input, measureTimings)
+                    if (measureTimings) {
+                        collisionDurationNanos += stepResult.collisionDurationNanos
+                    }
                     if (participant === player) {
                         maxImpactSpeed = maxOf(maxImpactSpeed, stepResult.impactSpeed)
                         if (stepResult.checkpointPassed) {
@@ -159,6 +162,7 @@ internal class RaceSession(
                 physicalSteps++
                 accumulator -= CarPhysics.FIXED_DELTA_SECONDS
                 if (player.progress.finished) {
+                    participants.forEach(RaceParticipant::captureStateForRendering)
                     raceState.finish()
                     accumulator = 0f
                     break
@@ -178,6 +182,7 @@ internal class RaceSession(
     private fun updateParticipant(
         participant: RaceParticipant,
         input: PlayerInput,
+        measureTimings: Boolean,
     ): ParticipantStepResult {
         val previousPosition = participant.state.position()
         carController.update(
@@ -186,12 +191,18 @@ internal class RaceSession(
             input = input,
             deltaSeconds = CarPhysics.FIXED_DELTA_SECONDS,
         )
+        val collisionStartedAt = if (measureTimings) System.nanoTime() else 0L
         val collision = collisionSystem.resolveTrackCollision(
             state = participant.state,
             radius = participant.carConfig.collisionRadius,
             longitudinalOffset = participant.carConfig.collisionLongitudinalOffset,
             track = track,
         )
+        val collisionDurationNanos = if (measureTimings) {
+            System.nanoTime() - collisionStartedAt
+        } else {
+            0L
+        }
         surfaceSpeedSystem.update(
             carState = participant.state,
             carConfig = participant.carConfig,
@@ -209,6 +220,7 @@ internal class RaceSession(
         return ParticipantStepResult(
             checkpointPassed = participant.progress.currentCheckpointIndex > checkpointBefore,
             impactSpeed = collision.maxImpactSpeed,
+            collisionDurationNanos = collisionDurationNanos,
         )
     }
 
@@ -280,6 +292,7 @@ internal class RaceSession(
     private data class ParticipantStepResult(
         val checkpointPassed: Boolean,
         val impactSpeed: Float,
+        val collisionDurationNanos: Long,
     )
 
     private companion object {
