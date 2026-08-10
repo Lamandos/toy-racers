@@ -20,7 +20,7 @@ internal fun calculateRaceAudioMix(
     maxSpeed: Float,
     throttle: Float,
     brake: Float,
-    steering: Float,
+    driftAmount: Float,
     racing: Boolean,
     offRoad: Boolean,
     paused: Boolean,
@@ -34,7 +34,7 @@ internal fun calculateRaceAudioMix(
         } else {
             (IDLE_VOLUME + throttle.coerceIn(0f, 1f) * THROTTLE_VOLUME) * sfxVolume
         },
-        driftVolume = abs(steering).coerceIn(0f, 1f) * speedRatio * activeRaceVolume,
+        driftVolume = driftAmount.coerceIn(0f, 1f) * speedRatio * activeRaceVolume,
         driftPitch = 0.9f + speedRatio * 0.25f,
         wheelspinVolume = if (offRoad) {
             throttle.coerceIn(0f, 1f) * activeRaceVolume
@@ -100,7 +100,7 @@ class GameAudio(
         maxSpeed: Float,
         throttle: Float,
         brake: Float,
-        steering: Float,
+        driftAmount: Float,
         racing: Boolean,
         surface: SurfaceType,
     ) {
@@ -110,7 +110,7 @@ class GameAudio(
             maxSpeed = maxSpeed,
             throttle = throttle,
             brake = brake,
-            steering = steering,
+            driftAmount = driftAmount,
             racing = racing,
             offRoad = offRoad,
             paused = paused,

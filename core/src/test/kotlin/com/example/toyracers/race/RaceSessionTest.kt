@@ -99,7 +99,7 @@ class RaceSessionTest {
     }
 
     @Test
-    fun `AI respawn clears off-road speed reduction`() {
+    fun `AI respawn clears off-road speed reduction and drift state`() {
         val session = RaceSession(
             track = TrackLoader().load().copy(collisionShapes = emptyList()),
             aiConfig = AiConfig(offTrackDurationSeconds = CarPhysics.FIXED_DELTA_SECONDS),
@@ -111,6 +111,8 @@ class RaceSessionTest {
         val safeState = opponent.lastSafeState.copy()
         opponent.state.x = -10f
         opponent.state.y = -10f
+        opponent.state.lateralSpeed = 8f
+        opponent.state.driftAmount = 0.75f
         opponent.surfaceSpeedState.speedMultiplier = 0.3f
 
         session.advance(CarPhysics.FIXED_DELTA_SECONDS, PlayerInput.NONE)
@@ -118,6 +120,8 @@ class RaceSessionTest {
         assertEquals(safeState.x, opponent.state.x, TOLERANCE)
         assertEquals(safeState.y, opponent.state.y, TOLERANCE)
         assertEquals(1f, opponent.surfaceSpeedState.speedMultiplier, TOLERANCE)
+        assertEquals(0f, opponent.state.lateralSpeed, TOLERANCE)
+        assertEquals(0f, opponent.state.driftAmount, TOLERANCE)
     }
 
     @Test

@@ -6,12 +6,12 @@ import org.junit.Test
 
 class GameAudioMixTest {
     @Test
-    fun `drift follows steering while the car is moving`() {
-        val straight = mix(steering = 0f)
-        val turning = mix(steering = 0.5f)
+    fun `drift follows actual slip rather than steering`() {
+        val turningWithoutSlip = mix(driftAmount = 0f)
+        val slidingWithoutSteering = mix(driftAmount = 0.5f)
 
-        assertEquals(0f, straight.driftVolume, TOLERANCE)
-        assertTrue(turning.driftVolume > 0f)
+        assertEquals(0f, turningWithoutSlip.driftVolume, TOLERANCE)
+        assertTrue(slidingWithoutSteering.driftVolume > 0f)
     }
 
     @Test
@@ -29,8 +29,8 @@ class GameAudioMixTest {
 
     @Test
     fun `race sounds use only the sfx volume`() {
-        val quiet = mix(sfxVolume = 0.2f, throttle = 1f, steering = 1f, offRoad = true)
-        val loud = mix(sfxVolume = 0.8f, throttle = 1f, steering = 1f, offRoad = true)
+        val quiet = mix(sfxVolume = 0.2f, throttle = 1f, driftAmount = 1f, offRoad = true)
+        val loud = mix(sfxVolume = 0.8f, throttle = 1f, driftAmount = 1f, offRoad = true)
 
         assertTrue(loud.engineVolume > quiet.engineVolume)
         assertTrue(loud.driftVolume > quiet.driftVolume)
@@ -41,7 +41,7 @@ class GameAudioMixTest {
         speed: Float = 8f,
         throttle: Float = 0f,
         brake: Float = 0f,
-        steering: Float = 0f,
+        driftAmount: Float = 0f,
         offRoad: Boolean = false,
         sfxVolume: Float = 0.8f,
     ): RaceAudioMix = calculateRaceAudioMix(
@@ -49,7 +49,7 @@ class GameAudioMixTest {
         maxSpeed = 16f,
         throttle = throttle,
         brake = brake,
-        steering = steering,
+        driftAmount = driftAmount,
         racing = true,
         offRoad = offRoad,
         paused = false,

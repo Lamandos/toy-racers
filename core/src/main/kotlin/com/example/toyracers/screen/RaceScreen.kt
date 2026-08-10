@@ -151,7 +151,7 @@ class RaceScreen(
             maxSpeed = raceSession.player.carConfig.maxForwardSpeed,
             throttle = latestInput.throttle,
             brake = latestInput.brake,
-            steering = latestInput.steering,
+            driftAmount = raceSession.player.state.driftAmount,
             racing = raceSession.raceState.phase == RacePhase.RACING,
             surface = track.surfaceAt(
                 raceSession.player.state.x,

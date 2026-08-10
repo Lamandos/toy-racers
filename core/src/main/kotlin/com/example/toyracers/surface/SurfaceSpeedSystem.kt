@@ -53,12 +53,15 @@ class SurfaceSpeedSystem(
             -carConfig.maxReverseSpeed * speedMultiplier,
             carConfig.maxForwardSpeed * speedMultiplier,
         )
+        val lateralSpeedLimit = carConfig.maxForwardSpeed * speedMultiplier
+        val limitedLateralSpeed = lateralSpeed.coerceIn(-lateralSpeedLimit, lateralSpeedLimit)
 
         state.velocityX =
-            forwardX * limitedLongitudinalSpeed + rightX * lateralSpeed
+            forwardX * limitedLongitudinalSpeed + rightX * limitedLateralSpeed
         state.velocityY =
-            forwardY * limitedLongitudinalSpeed + rightY * lateralSpeed
+            forwardY * limitedLongitudinalSpeed + rightY * limitedLateralSpeed
         state.speed = limitedLongitudinalSpeed
+        state.lateralSpeed = limitedLateralSpeed
     }
 
     private fun moveToward(

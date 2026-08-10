@@ -364,6 +364,7 @@ class CollisionSystem(
         speed = source.speed
         velocityX = source.velocityX
         velocityY = source.velocityY
+        lateralSpeed = source.lateralSpeed
     }
 
     private fun resolveOuterBoundary(
@@ -419,13 +420,15 @@ class CollisionSystem(
 
     private fun updateLongitudinalSpeed(state: CarState) {
         val radians = Math.toRadians(state.rotationDeg.toDouble())
-        state.speed =
-            state.velocityX * cos(radians).toFloat() +
-            state.velocityY * sin(radians).toFloat()
+        val forwardX = cos(radians).toFloat()
+        val forwardY = sin(radians).toFloat()
+        state.speed = state.velocityX * forwardX + state.velocityY * forwardY
+        state.lateralSpeed = state.velocityX * -forwardY + state.velocityY * forwardX
         if (hypot(state.velocityX, state.velocityY) < MIN_DISTANCE) {
             state.velocityX = 0f
             state.velocityY = 0f
             state.speed = 0f
+            state.lateralSpeed = 0f
         }
     }
 
