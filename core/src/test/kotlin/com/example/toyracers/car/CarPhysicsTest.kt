@@ -81,6 +81,121 @@ class CarPhysicsTest {
         physics.update(state, config, PlayerInput.NONE, CarPhysics.FIXED_DELTA_SECONDS)
 
         assertTrue(abs(state.velocityY) < 10f)
+        assertEquals(state.velocityY, state.lateralSpeed, EPSILON)
+    }
+
+    @Test
+    fun `strong steering below drift entry speed does not activate drift`() {
+        val state = CarState(
+            velocityX = config.driftEntrySpeed - 0.1f,
+            speed = config.driftEntrySpeed - 0.1f,
+        )
+
+        simulate(state, PlayerInput(steering = 1f), seconds = 0.5f)
+
+        assertEquals(0f, state.driftAmount, EPSILON)
+    }
+
+    @Test
+    fun `drift preserves more lateral speed than normal grip`() {
+        val drifting = CarState(velocityX = 24f, speed = 24f)
+        val normalGrip = drifting.copy()
+        val driftConfig = config.copy(rollingResistance = 0f, driftDrag = 0f)
+        val noDriftConfig = driftConfig.copy(driftEntrySpeed = 100f)
+
+        physics.update(
+            drifting,
+            driftConfig,
+            PlayerInput(steering = 1f),
+            CarPhysics.FIXED_DELTA_SECONDS,
+        )
+        physics.update(
+            normalGrip,
+            noDriftConfig,
+            PlayerInput(steering = 1f),
+            CarPhysics.FIXED_DELTA_SECONDS,
+        )
+
+        assertTrue(drifting.driftAmount > 0f)
+        assertTrue(abs(drifting.lateralSpeed) > abs(normalGrip.lateralSpeed))
+    }
+
+    @Test
+    fun `drift entry and release are smooth`() {
+        val state = CarState(velocityX = 24f, speed = 24f)
+
+        repeat(3) {
+            physics.update(state, config, PlayerInput(steering = 1f), CarPhysics.FIXED_DELTA_SECONDS)
+        }
+        val driftBeforeRelease = state.driftAmount
+
+        physics.update(state, config, PlayerInput.NONE, CarPhysics.FIXED_DELTA_SECONDS)
+
+        assertTrue(driftBeforeRelease in 0f..<1f)
+        assertTrue(state.driftAmount in 0f..<driftBeforeRelease)
+
+        simulate(state, PlayerInput.NONE, seconds = 1f)
+        assertEquals(0f, state.driftAmount, EPSILON)
+    }
+
+    @Test
+    fun `throttle sustains drift through a turn`() {
+        val state = CarState(velocityX = 20f, speed = 20f)
+
+        simulate(state, PlayerInput(throttle = 1f, steering = 1f), seconds = 1f)
+
+        assertTrue(state.driftAmount > 0f)
+        assertTrue(state.speed > config.driftEntrySpeed)
+    }
+
+    @Test
+    fun `countersteering ends drift`() {
+        val state = CarState(velocityX = 24f, speed = 24f)
+
+        simulate(state, PlayerInput(steering = 1f), seconds = 0.4f)
+        val driftBeforeCountersteer = state.driftAmount
+        repeat(4) {
+            physics.update(state, config, PlayerInput(steering = -1f), CarPhysics.FIXED_DELTA_SECONDS)
+        }
+
+        assertTrue(driftBeforeCountersteer > 0f)
+        assertTrue(state.driftAmount < driftBeforeCountersteer)
+        simulate(state, PlayerInput.NONE, seconds = 1f)
+        assertEquals(0f, state.driftAmount, EPSILON)
+    }
+
+    @Test
+    fun `drift does not add kinetic energy without engine force`() {
+        val state = CarState(velocityX = 24f, speed = 24f)
+        val initialVelocity = velocityMagnitude(state)
+
+        simulate(state, PlayerInput(steering = 1f), seconds = 2f)
+
+        assertTrue(velocityMagnitude(state) <= initialVelocity + EPSILON)
+    }
+
+    @Test
+    fun `reverse steering does not activate drift`() {
+        val state = CarState(velocityX = -20f, speed = -20f)
+
+        simulate(state, PlayerInput(steering = 1f), seconds = 0.5f)
+
+        assertEquals(0f, state.driftAmount, EPSILON)
+    }
+
+    @Test
+    fun `fixed step drift simulation is deterministic`() {
+        val first = CarState(velocityX = 24f, speed = 24f)
+        val second = first.copy()
+        val inputs = List(60) { PlayerInput(throttle = 0.8f, steering = 1f) } +
+            List(60) { PlayerInput(throttle = 0.6f, steering = -0.8f) }
+
+        inputs.forEach { input ->
+            physics.update(first, config, input, CarPhysics.FIXED_DELTA_SECONDS)
+            physics.update(second, config, input, CarPhysics.FIXED_DELTA_SECONDS)
+        }
+
+        assertEquals(first, second)
     }
 
     @Test
@@ -88,6 +203,7 @@ class CarPhysicsTest {
         val noDragConfig = CarConfig(
             lateralFriction = 0f,
             rollingResistance = 0f,
+            driftDrag = 0f,
         )
         val state = CarState(velocityX = 12f, speed = 12f)
         val initialVelocity = velocityMagnitude(state)
@@ -107,6 +223,7 @@ class CarPhysicsTest {
         val noDragConfig = CarConfig(
             lateralFriction = 0f,
             rollingResistance = 0f,
+            driftDrag = 0f,
         )
         val state = CarState(velocityX = 12f, speed = 12f)
         val initialVelocity = velocityMagnitude(state)

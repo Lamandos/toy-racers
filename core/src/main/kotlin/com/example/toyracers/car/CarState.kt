@@ -9,4 +9,6 @@ data class CarState(
     var velocityX: Float = 0f,
     var velocityY: Float = 0f,
     var angularVelocity: Float = 0f,
+    var lateralSpeed: Float = 0f,
+    var driftAmount: Float = 0f,
 )

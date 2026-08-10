@@ -45,6 +45,22 @@ class CarPhysics {
             config.rollingResistance * deltaSeconds,
         ).coerceIn(-config.maxReverseSpeed, config.maxForwardSpeed)
 
+        val targetDriftAmount = targetDriftAmount(
+            longitudinalSpeed = longitudinalSpeed,
+            lateralSpeed = lateralSpeedBeforeSteering,
+            steering = input.steering,
+            config = config,
+        )
+        state.driftAmount = moveToward(
+            state.driftAmount,
+            targetDriftAmount,
+            if (targetDriftAmount > state.driftAmount) {
+                config.driftEntryResponse * deltaSeconds
+            } else {
+                config.driftExitResponse * deltaSeconds
+            },
+        )
+
         val velocityBeforeSteeringX =
             basis.forwardX * longitudinalSpeed + basis.rightX * lateralSpeedBeforeSteering
         val velocityBeforeSteeringY =
@@ -54,6 +70,7 @@ class CarPhysics {
         val steeringAuthority = min(abs(longitudinalSpeed) / STEERING_REFERENCE_SPEED, 1f)
         state.angularVelocity = -input.steering *
             config.steeringSpeed *
+            interpolate(1f, config.driftSteeringMultiplier, state.driftAmount) *
             steeringAuthority *
             signOrZero(longitudinalSpeed)
         state.rotationDeg = normalizeDegrees(state.rotationDeg + state.angularVelocity * deltaSeconds)
@@ -62,15 +79,52 @@ class CarPhysics {
         basis = Basis.fromDegrees(state.rotationDeg)
         longitudinalSpeed = basis.forwardDot(velocityBeforeSteeringX, velocityBeforeSteeringY)
         var lateralSpeed = basis.rightDot(velocityBeforeSteeringX, velocityBeforeSteeringY)
-        lateralSpeed *= max(0f, 1f - config.lateralFriction * config.grip * deltaSeconds)
+        val effectiveGrip = config.grip * interpolate(
+            1f,
+            config.driftGripMultiplier,
+            state.driftAmount,
+        )
+        lateralSpeed *= max(0f, 1f - config.lateralFriction * effectiveGrip * deltaSeconds)
+        longitudinalSpeed = moveToward(
+            longitudinalSpeed,
+            0f,
+            config.driftDrag * state.driftAmount * abs(lateralSpeed) * deltaSeconds,
+        )
 
         longitudinalSpeed = longitudinalSpeed.coerceIn(-config.maxReverseSpeed, config.maxForwardSpeed)
         state.velocityX = basis.forwardX * longitudinalSpeed + basis.rightX * lateralSpeed
         state.velocityY = basis.forwardY * longitudinalSpeed + basis.rightY * lateralSpeed
         state.speed = longitudinalSpeed
+        state.lateralSpeed = lateralSpeed
         state.x += state.velocityX * deltaSeconds
         state.y += state.velocityY * deltaSeconds
     }
+
+    private fun targetDriftAmount(
+        longitudinalSpeed: Float,
+        lateralSpeed: Float,
+        steering: Float,
+        config: CarConfig,
+    ): Float {
+        if (
+            longitudinalSpeed < config.driftEntrySpeed ||
+            steering * lateralSpeed < 0f
+        ) {
+            return 0f
+        }
+
+        val speedRatio = (
+            (longitudinalSpeed - config.driftEntrySpeed) / config.driftEntrySpeed
+            ).coerceIn(0f, 1f)
+        val steeringRatio = (
+            (abs(steering) - config.driftSteeringThreshold) /
+                (1f - config.driftSteeringThreshold)
+            ).coerceIn(0f, 1f)
+        return speedRatio * steeringRatio
+    }
+
+    private fun interpolate(from: Float, to: Float, amount: Float): Float =
+        from + (to - from) * amount
 
     private fun moveToward(value: Float, target: Float, amount: Float): Float = when {
         value < target -> min(value + amount, target)

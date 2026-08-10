@@ -68,6 +68,17 @@ class SurfaceSpeedSystemTest {
     }
 
     @Test
+    fun `off road speed limit also caps lateral drift`() {
+        val car = CarState(velocityY = carConfig.maxForwardSpeed)
+        val surfaceState = SurfaceSpeedState()
+
+        simulate(car, surfaceState, SurfaceType.GRASS, seconds = 3f)
+
+        assertEquals(carConfig.maxForwardSpeed * 0.3f, car.lateralSpeed, TOLERANCE)
+        assertEquals(car.lateralSpeed, car.velocityY, TOLERANCE)
+    }
+
+    @Test
     fun `non grass road surfaces do not apply off road slowdown`() {
         listOf(SurfaceType.ASPHALT, SurfaceType.BOOST, SurfaceType.OIL).forEach { surface ->
             val car = CarState()

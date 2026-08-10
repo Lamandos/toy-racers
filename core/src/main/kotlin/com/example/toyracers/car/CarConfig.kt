@@ -11,6 +11,13 @@ data class CarConfig(
     val grip: Float = 1f,
     val lateralFriction: Float = 7f,
     val rollingResistance: Float = 4f,
+    val driftEntrySpeed: Float = 16f,
+    val driftSteeringThreshold: Float = 0.55f,
+    val driftGripMultiplier: Float = 0.30f,
+    val driftSteeringMultiplier: Float = 1.18f,
+    val driftEntryResponse: Float = 5f,
+    val driftExitResponse: Float = 8f,
+    val driftDrag: Float = 0.8f,
     val collisionRadius: Float = 0.81f,
     val collisionLongitudinalOffset: Float = 0.81f,
     val width: Float = 1.8f,
@@ -26,6 +33,13 @@ data class CarConfig(
         require(grip >= 0f)
         require(lateralFriction >= 0f)
         require(rollingResistance >= 0f)
+        require(driftEntrySpeed > 0f)
+        require(driftSteeringThreshold in 0f..<1f)
+        require(driftGripMultiplier in 0f..1f)
+        require(driftSteeringMultiplier >= 1f)
+        require(driftEntryResponse > 0f)
+        require(driftExitResponse > 0f)
+        require(driftDrag >= 0f)
         require(collisionRadius > 0f)
         require(collisionLongitudinalOffset >= 0f)
         require(width > 0f)
