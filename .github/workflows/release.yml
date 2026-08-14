@@ -19,7 +19,17 @@ jobs:
       - name: Check out release tag
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: refs/tags/${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: Verify release commit is trusted
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          git fetch --no-tags origin main
+          tag_commit="$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")"
+          test "$(git rev-parse HEAD)" = "$tag_commit"
+          git merge-base --is-ancestor HEAD origin/main
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -66,16 +76,21 @@ jobs:
         run: ./gradlew android:assembleRelease --no-daemon
 
       - name: Verify and rename APK
+        id: artifact
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           apk_path="$(find android/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
           test -n "$apk_path"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$apk_path"
-          cp "$apk_path" "toy-racers-${RELEASE_TAG}.apk"
+          safe_tag="$(printf '%s' "$RELEASE_TAG" | tr -c 'A-Za-z0-9._-' '-')"
+          artifact_name="toy-racers-${safe_tag}.apk"
+          cp "$apk_path" "$artifact_name"
+          printf 'name=%s\n' "$artifact_name" >> "$GITHUB_OUTPUT"
 
       - name: Attach APK to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$RELEASE_TAG" "toy-racers-${RELEASE_TAG}.apk" --clobber
+          ARTIFACT_NAME: ${{ steps.artifact.outputs.name }}
+        run: gh release upload "$RELEASE_TAG" "$ARTIFACT_NAME" --clobber
