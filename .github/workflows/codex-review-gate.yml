@@ -22,7 +22,11 @@ concurrency:
 jobs:
   require-clean-codex-review:
     name: Codex review completed with no open findings
-    if: ${{ !github.event.pull_request.draft }}
+    if: >-
+      ${{
+        !github.event.pull_request.draft &&
+        (github.event.action != 'edited' || github.event.changes.base != null)
+      }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
