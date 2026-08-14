@@ -8,6 +8,17 @@ buildscript {
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
+def releaseKeystorePath = System.getenv('TOY_RACERS_KEYSTORE_PATH')
+def releaseKeystorePassword = System.getenv('TOY_RACERS_KEYSTORE_PASSWORD')
+def releaseKeyAlias = System.getenv('TOY_RACERS_KEY_ALIAS')
+def releaseKeyPassword = System.getenv('TOY_RACERS_KEY_PASSWORD')
+def releaseSigningConfigured = [
+      releaseKeystorePath,
+      releaseKeystorePassword,
+      releaseKeyAlias,
+      releaseKeyPassword
+  ].every { it != null && !it.isBlank() }
+
 android {
   namespace = "com.example.toyracers"
   compileSdk = 35
@@ -35,7 +46,17 @@ android {
     minSdkVersion 21
     targetSdkVersion 35
     versionCode 1
-    versionName "1.0"
+    versionName "0.1.0"
+  }
+  signingConfigs {
+    if (releaseSigningConfigured) {
+      release {
+        storeFile file(releaseKeystorePath)
+        storePassword releaseKeystorePassword
+        keyAlias releaseKeyAlias
+        keyPassword releaseKeyPassword
+      }
+    }
   }
   compileOptions {
     sourceCompatibility "21"
@@ -46,11 +67,31 @@ android {
     release {
       minifyEnabled true
       proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), 'proguard-rules.pro'
+      if (releaseSigningConfigured) {
+        signingConfig signingConfigs.release
+      }
     }
   }
 
   kotlin.compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
 
+}
+
+tasks.register('verifyReleaseSigning') {
+  group = 'verification'
+  description = 'Fails unless every release signing environment variable is configured.'
+  doLast {
+    if (!releaseSigningConfigured) {
+      throw new GradleException(
+          'Release signing requires TOY_RACERS_KEYSTORE_PATH, TOY_RACERS_KEYSTORE_PASSWORD, ' +
+              'TOY_RACERS_KEY_ALIAS, and TOY_RACERS_KEY_PASSWORD.'
+      )
+    }
+  }
+}
+
+tasks.matching { it.name == 'assembleRelease' }.configureEach {
+  dependsOn tasks.named('verifyReleaseSigning')
 }
 
 repositories {
