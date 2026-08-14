@@ -38,6 +38,8 @@ jobs:
             const repo = context.repo.repo;
             const number = context.payload.pull_request.number;
             const reviewer = 'chatgpt-codex-connector';
+            const isReviewer = login =>
+              login === reviewer || login === `${reviewer}[bot]`;
 
             const result = await github.graphql(`
               query($owner: String!, $repo: String!, $number: Int!) {
@@ -80,19 +82,19 @@ jobs:
               pullRequest.commits.nodes[0].commit.committedDate
             );
             const reviewedCurrentCommit = pullRequest.reviews.nodes.some(review =>
-              review.author?.login === reviewer &&
+              isReviewer(review.author?.login) &&
               review.state !== 'DISMISSED' &&
               review.commit?.oid === pullRequest.headRefOid &&
               Date.parse(review.submittedAt) >= committedAt
             );
             const approvedCurrentCommit = pullRequest.reactions.nodes.some(reaction =>
-              reaction.user?.login === reviewer &&
+              isReviewer(reaction.user?.login) &&
               reaction.content === 'THUMBS_UP' &&
               Date.parse(reaction.createdAt) >= committedAt
             );
             const unresolvedFindings = pullRequest.reviewThreads.nodes.filter(thread =>
               !thread.isResolved && thread.comments.nodes.some(comment =>
-                comment.author?.login === reviewer
+                isReviewer(comment.author?.login)
               )
             );
 
