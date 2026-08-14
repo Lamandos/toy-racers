@@ -16,17 +16,13 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: codex-review-${{ github.event.pull_request.number }}
+  group: codex-review-${{ github.event.pull_request.number }}-${{ github.event.action == 'edited' && github.event.changes.base == null && github.run_id || 'active' }}
   cancel-in-progress: true
 
 jobs:
   require-clean-codex-review:
     name: Codex review completed with no open findings
-    if: >-
-      ${{
-        !github.event.pull_request.draft &&
-        (github.event.action != 'edited' || github.event.changes.base != null)
-      }}
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -46,7 +42,14 @@ jobs:
               repo,
               run_id: context.runId
             });
-            const currentHeadObservedAt = Date.parse(run.data.created_at);
+            const baseWasEdited =
+              context.payload.action === 'edited' &&
+              context.payload.changes?.base != null;
+            const metadataWasEdited =
+              context.payload.action === 'edited' && !baseWasEdited;
+            const currentDiffObservedAt = metadataWasEdited
+              ? 0
+              : Date.parse(run.data.created_at);
 
             async function getReviewThreads() {
               const threads = [];
@@ -127,15 +130,17 @@ jobs:
               const threads = await getReviewThreads();
 
               const reviewedCurrentCommit = reviews.some(review =>
+                !baseWasEdited &&
                 isReviewer(review.user?.login) &&
                 ['COMMENTED', 'APPROVED'].includes(review.state) &&
                 review.commit_id === pullRequest.data.head.sha &&
-                Date.parse(review.submitted_at) >= currentHeadObservedAt
+                Date.parse(review.submitted_at) >= currentDiffObservedAt
               );
               const currentReviewRequests = comments.filter(comment =>
                 comment.body?.includes('@codex review') &&
                 comment.body.includes(pullRequest.data.head.sha) &&
-                Date.parse(comment.created_at) >= currentHeadObservedAt &&
+                comment.body.includes(pullRequest.data.base.sha) &&
+                Date.parse(comment.created_at) >= currentDiffObservedAt &&
                 comment.created_at === comment.updated_at
               );
               let approvedCurrentHead = false;
@@ -168,7 +173,8 @@ jobs:
               core.info(
                 `Attempt ${attempt}/110: waiting for a clean Codex review; ` +
                 `${unresolvedFindings.length} unresolved finding(s). ` +
-                `Request with: @codex review ${pullRequest.data.head.sha}`
+                `Request with: @codex review ${pullRequest.data.head.sha} ` +
+                `base ${pullRequest.data.base.sha}`
               );
               await new Promise(resolve => setTimeout(resolve, 15000));
             }
