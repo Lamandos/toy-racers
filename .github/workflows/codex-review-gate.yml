@@ -14,6 +14,10 @@ permissions:
   issues: read
   pull-requests: read
 
+concurrency:
+  group: codex-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   require-clean-codex-review:
     name: Codex review completed with no open findings
@@ -84,8 +88,8 @@ jobs:
                 github.rest.pulls.listReviews,
                 { owner, repo, pull_number: number, per_page: 100 }
               );
-              const reactions = await github.paginate(
-                github.rest.reactions.listForIssue,
+              const comments = await github.paginate(
+                github.rest.issues.listComments,
                 { owner, repo, issue_number: number, per_page: 100 }
               );
               const threads = await getReviewThreads();
@@ -95,11 +99,21 @@ jobs:
                 review.state !== 'DISMISSED' &&
                 review.commit_id === pullRequest.data.head.sha
               );
-              const approvedCurrentHead = reactions.some(reaction =>
-                isReviewer(reaction.user?.login) &&
-                reaction.content === '+1' &&
-                Date.parse(reaction.created_at) >= currentHeadObservedAt
+              const currentReviewRequests = comments.filter(comment =>
+                comment.body?.includes('@codex review') &&
+                comment.body.includes(pullRequest.data.head.sha) &&
+                Date.parse(comment.created_at) >= currentHeadObservedAt
               );
+              let approvedCurrentHead = false;
+              for (const request of currentReviewRequests) {
+                const reactions = await github.paginate(
+                  github.rest.reactions.listForIssueComment,
+                  { owner, repo, comment_id: request.id, per_page: 100 }
+                );
+                approvedCurrentHead ||= reactions.some(reaction =>
+                  isReviewer(reaction.user?.login) && reaction.content === '+1'
+                );
+              }
               const unresolvedFindings = threads.filter(thread =>
                 !thread.isResolved &&
                 thread.comments.nodes.some(comment =>
@@ -119,7 +133,8 @@ jobs:
 
               core.info(
                 `Attempt ${attempt}/110: waiting for a clean Codex review; ` +
-                `${unresolvedFindings.length} unresolved finding(s).`
+                `${unresolvedFindings.length} unresolved finding(s). ` +
+                `Request with: @codex review ${pullRequest.data.head.sha}`
               );
               await new Promise(resolve => setTimeout(resolve, 15000));
             }
