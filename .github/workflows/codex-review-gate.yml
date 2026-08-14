@@ -131,15 +131,17 @@ jobs:
 
               const reviewedCurrentCommit = reviews.some(review =>
                 !baseWasEdited &&
+                !metadataWasEdited &&
                 isReviewer(review.user?.login) &&
                 ['COMMENTED', 'APPROVED'].includes(review.state) &&
                 review.commit_id === pullRequest.data.head.sha &&
                 Date.parse(review.submitted_at) >= currentDiffObservedAt
               );
+              const expectedRequest =
+                `@codex review ${pullRequest.data.head.sha} ` +
+                `base ${pullRequest.data.base.sha}`;
               const currentReviewRequests = comments.filter(comment =>
-                comment.body?.includes('@codex review') &&
-                comment.body.includes(pullRequest.data.head.sha) &&
-                comment.body.includes(pullRequest.data.base.sha) &&
+                comment.body?.trim() === expectedRequest &&
                 Date.parse(comment.created_at) >= currentDiffObservedAt &&
                 comment.created_at === comment.updated_at
               );
