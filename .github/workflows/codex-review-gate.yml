@@ -7,19 +7,11 @@ on:
       - reopened
       - synchronize
       - ready_for_review
-  pull_request_review:
-    types:
-      - submitted
-      - edited
-      - dismissed
-  pull_request_review_comment:
-    types:
-      - created
-      - edited
-      - deleted
 
 permissions:
+  actions: read
   contents: read
+  issues: read
   pull-requests: read
 
 jobs:
@@ -27,7 +19,7 @@ jobs:
     name: Codex review completed with no open findings
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 30
 
     steps:
       - name: Verify review for current commit
@@ -40,72 +32,98 @@ jobs:
             const reviewer = 'chatgpt-codex-connector';
             const isReviewer = login =>
               login === reviewer || login === `${reviewer}[bot]`;
+            const run = await github.rest.actions.getWorkflowRun({
+              owner,
+              repo,
+              run_id: context.runId
+            });
+            const currentHeadObservedAt = Date.parse(run.data.created_at);
 
-            const result = await github.graphql(`
-              query($owner: String!, $repo: String!, $number: Int!) {
-                repository(owner: $owner, name: $repo) {
-                  pullRequest(number: $number) {
-                    headRefOid
-                    commits(last: 1) {
-                      nodes { commit { committedDate } }
-                    }
-                    reviews(last: 100) {
-                      nodes {
-                        state
-                        submittedAt
-                        author { login }
-                        commit { oid }
-                      }
-                    }
-                    reactions(last: 100) {
-                      nodes {
-                        content
-                        createdAt
-                        user { login }
-                      }
-                    }
-                    reviewThreads(first: 100) {
-                      nodes {
-                        isResolved
-                        comments(first: 100) {
-                          nodes { author { login } }
+            async function getReviewThreads() {
+              const threads = [];
+              let cursor = null;
+              do {
+                const result = await github.graphql(`
+                  query(
+                    $owner: String!,
+                    $repo: String!,
+                    $number: Int!,
+                    $cursor: String
+                  ) {
+                    repository(owner: $owner, name: $repo) {
+                      pullRequest(number: $number) {
+                        reviewThreads(first: 100, after: $cursor) {
+                          pageInfo { hasNextPage endCursor }
+                          nodes {
+                            isResolved
+                            comments(first: 1) {
+                              nodes { author { login } }
+                            }
+                          }
                         }
                       }
                     }
                   }
-                }
-              }
-            `, { owner, repo, number });
-
-            const pullRequest = result.repository.pullRequest;
-            const committedAt = Date.parse(
-              pullRequest.commits.nodes[0].commit.committedDate
-            );
-            const reviewedCurrentCommit = pullRequest.reviews.nodes.some(review =>
-              isReviewer(review.author?.login) &&
-              review.state !== 'DISMISSED' &&
-              review.commit?.oid === pullRequest.headRefOid &&
-              Date.parse(review.submittedAt) >= committedAt
-            );
-            const approvedCurrentCommit = pullRequest.reactions.nodes.some(reaction =>
-              isReviewer(reaction.user?.login) &&
-              reaction.content === 'THUMBS_UP' &&
-              Date.parse(reaction.createdAt) >= committedAt
-            );
-            const unresolvedFindings = pullRequest.reviewThreads.nodes.filter(thread =>
-              !thread.isResolved && thread.comments.nodes.some(comment =>
-                isReviewer(comment.author?.login)
-              )
-            );
-
-            if (!reviewedCurrentCommit && !approvedCurrentCommit) {
-              core.setFailed(
-                'Waiting for chatgpt-codex-connector to review the current PR commit.'
-              );
-            } else if (unresolvedFindings.length > 0) {
-              core.setFailed(
-                `Codex review has ${unresolvedFindings.length} unresolved finding(s).`
-              );
-            } else {
-              core.info('Codex reviewed the current commit with no unresolved findings.');
+                `, { owner, repo, number, cursor });
+                const page = result.repository.pullRequest.reviewThreads;
+                threads.push(...page.nodes);
+                cursor = page.pageInfo.hasNextPage
+                  ? page.pageInfo.endCursor
+                  : null;
+              } while (cursor);
+              return threads;
             }
+
+            for (let attempt = 1; attempt <= 110; attempt += 1) {
+              const pullRequest = await github.rest.pulls.get({
+                owner,
+                repo,
+                pull_number: number
+              });
+              const reviews = await github.paginate(
+                github.rest.pulls.listReviews,
+                { owner, repo, pull_number: number, per_page: 100 }
+              );
+              const reactions = await github.paginate(
+                github.rest.reactions.listForIssue,
+                { owner, repo, issue_number: number, per_page: 100 }
+              );
+              const threads = await getReviewThreads();
+
+              const reviewedCurrentCommit = reviews.some(review =>
+                isReviewer(review.user?.login) &&
+                review.state !== 'DISMISSED' &&
+                review.commit_id === pullRequest.data.head.sha
+              );
+              const approvedCurrentHead = reactions.some(reaction =>
+                isReviewer(reaction.user?.login) &&
+                reaction.content === '+1' &&
+                Date.parse(reaction.created_at) >= currentHeadObservedAt
+              );
+              const unresolvedFindings = threads.filter(thread =>
+                !thread.isResolved &&
+                thread.comments.nodes.some(comment =>
+                  isReviewer(comment.author?.login)
+                )
+              );
+
+              if (
+                (reviewedCurrentCommit || approvedCurrentHead) &&
+                unresolvedFindings.length === 0
+              ) {
+                core.info(
+                  'Codex reviewed the current HEAD with no unresolved findings.'
+                );
+                return;
+              }
+
+              core.info(
+                `Attempt ${attempt}/110: waiting for a clean Codex review; ` +
+                `${unresolvedFindings.length} unresolved finding(s).`
+              );
+              await new Promise(resolve => setTimeout(resolve, 15000));
+            }
+
+            core.setFailed(
+              'Timed out waiting for Codex to review the current HEAD with no open findings.'
+            );
