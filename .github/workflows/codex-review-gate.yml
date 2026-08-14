@@ -1,0 +1,109 @@
+name: Codex review gate
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+  pull_request_review:
+    types:
+      - submitted
+      - edited
+      - dismissed
+  pull_request_review_comment:
+    types:
+      - created
+      - edited
+      - deleted
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  require-clean-codex-review:
+    name: Codex review completed with no open findings
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Verify review for current commit
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const number = context.payload.pull_request.number;
+            const reviewer = 'chatgpt-codex-connector';
+
+            const result = await github.graphql(`
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    headRefOid
+                    commits(last: 1) {
+                      nodes { commit { committedDate } }
+                    }
+                    reviews(last: 100) {
+                      nodes {
+                        state
+                        submittedAt
+                        author { login }
+                        commit { oid }
+                      }
+                    }
+                    reactions(last: 100) {
+                      nodes {
+                        content
+                        createdAt
+                        user { login }
+                      }
+                    }
+                    reviewThreads(first: 100) {
+                      nodes {
+                        isResolved
+                        comments(first: 100) {
+                          nodes { author { login } }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `, { owner, repo, number });
+
+            const pullRequest = result.repository.pullRequest;
+            const committedAt = Date.parse(
+              pullRequest.commits.nodes[0].commit.committedDate
+            );
+            const reviewedCurrentCommit = pullRequest.reviews.nodes.some(review =>
+              review.author?.login === reviewer &&
+              review.state !== 'DISMISSED' &&
+              review.commit?.oid === pullRequest.headRefOid &&
+              Date.parse(review.submittedAt) >= committedAt
+            );
+            const approvedCurrentCommit = pullRequest.reactions.nodes.some(reaction =>
+              reaction.user?.login === reviewer &&
+              reaction.content === 'THUMBS_UP' &&
+              Date.parse(reaction.createdAt) >= committedAt
+            );
+            const unresolvedFindings = pullRequest.reviewThreads.nodes.filter(thread =>
+              !thread.isResolved && thread.comments.nodes.some(comment =>
+                comment.author?.login === reviewer
+              )
+            );
+
+            if (!reviewedCurrentCommit && !approvedCurrentCommit) {
+              core.setFailed(
+                'Waiting for chatgpt-codex-connector to review the current PR commit.'
+              );
+            } else if (unresolvedFindings.length > 0) {
+              core.setFailed(
+                `Codex review has ${unresolvedFindings.length} unresolved finding(s).`
+              );
+            } else {
+              core.info('Codex reviewed the current commit with no unresolved findings.');
+            }
