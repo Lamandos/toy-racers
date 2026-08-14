@@ -5,6 +5,7 @@ on:
     types:
       - opened
       - reopened
+      - edited
       - synchronize
       - ready_for_review
 
@@ -59,8 +60,10 @@ jobs:
                         reviewThreads(first: 100, after: $cursor) {
                           pageInfo { hasNextPage endCursor }
                           nodes {
+                            id
                             isResolved
-                            comments(first: 1) {
+                            comments(first: 100) {
+                              pageInfo { hasNextPage endCursor }
                               nodes { author { login } }
                             }
                           }
@@ -75,6 +78,31 @@ jobs:
                   ? page.pageInfo.endCursor
                   : null;
               } while (cursor);
+
+              for (const thread of threads) {
+                let commentsCursor = thread.comments.pageInfo.hasNextPage
+                  ? thread.comments.pageInfo.endCursor
+                  : null;
+                while (commentsCursor) {
+                  const result = await github.graphql(`
+                    query($id: ID!, $cursor: String!) {
+                      node(id: $id) {
+                        ... on PullRequestReviewThread {
+                          comments(first: 100, after: $cursor) {
+                            pageInfo { hasNextPage endCursor }
+                            nodes { author { login } }
+                          }
+                        }
+                      }
+                    }
+                  `, { id: thread.id, cursor: commentsCursor });
+                  const page = result.node.comments;
+                  thread.comments.nodes.push(...page.nodes);
+                  commentsCursor = page.pageInfo.hasNextPage
+                    ? page.pageInfo.endCursor
+                    : null;
+                }
+              }
               return threads;
             }
 
@@ -96,13 +124,15 @@ jobs:
 
               const reviewedCurrentCommit = reviews.some(review =>
                 isReviewer(review.user?.login) &&
-                review.state !== 'DISMISSED' &&
-                review.commit_id === pullRequest.data.head.sha
+                ['COMMENTED', 'APPROVED'].includes(review.state) &&
+                review.commit_id === pullRequest.data.head.sha &&
+                Date.parse(review.submitted_at) >= currentHeadObservedAt
               );
               const currentReviewRequests = comments.filter(comment =>
                 comment.body?.includes('@codex review') &&
                 comment.body.includes(pullRequest.data.head.sha) &&
-                Date.parse(comment.created_at) >= currentHeadObservedAt
+                Date.parse(comment.created_at) >= currentHeadObservedAt &&
+                comment.created_at === comment.updated_at
               );
               let approvedCurrentHead = false;
               for (const request of currentReviewRequests) {
