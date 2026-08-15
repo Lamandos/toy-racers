@@ -14,14 +14,18 @@ abstract class GameUiStage(
     private val onButtonClick: () -> Unit = {},
 ) : Disposable {
     protected val skin = createGameUiSkin()
-    protected val stage = Stage(
-        ExtendViewport(ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT),
-    )
+    protected val stage =
+        Stage(
+            ExtendViewport(ToyRacersGame.VIRTUAL_WIDTH, ToyRacersGame.VIRTUAL_HEIGHT),
+        )
 
     val inputProcessor: InputProcessor
         get() = stage
 
-    fun resize(width: Int, height: Int) {
+    fun resize(
+        width: Int,
+        height: Int,
+    ) {
         stage.viewport.update(width, height, true)
     }
 
@@ -34,25 +38,40 @@ abstract class GameUiStage(
         text: String,
         style: String = "default",
         action: () -> Unit,
-    ): TextButton = TextButton(text, skin, style).apply {
-        addListener(object : ClickListener() {
-            override fun clicked(event: InputEvent, x: Float, y: Float) {
-                onButtonClick()
-                action()
-            }
-        })
-    }
+    ): TextButton =
+        TextButton(text, skin, style).apply {
+            addListener(
+                object : ClickListener() {
+                    override fun clicked(
+                        event: InputEvent,
+                        x: Float,
+                        y: Float,
+                    ) {
+                        onButtonClick()
+                        action()
+                    }
+                },
+            )
+        }
 
-    protected fun button(text: String, action: () -> Unit): TextButton =
-        button(text, "default", action)
+    protected fun button(
+        text: String,
+        action: () -> Unit,
+    ): TextButton = button(text, "default", action)
 
     protected fun TextButton.onClick(action: () -> Unit) {
-        addListener(object : ClickListener() {
-            override fun clicked(event: InputEvent, x: Float, y: Float) {
-                onButtonClick()
-                action()
-            }
-        })
+        addListener(
+            object : ClickListener() {
+                override fun clicked(
+                    event: InputEvent,
+                    x: Float,
+                    y: Float,
+                ) {
+                    onButtonClick()
+                    action()
+                }
+            },
+        )
     }
 
     override fun dispose() {

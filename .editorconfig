@@ -1,18 +1,23 @@
-# https://editorconfig.org
 root = true
 
 [*]
-indent_style = space
-end_of_line = lf
 charset = utf-8
-trim_trailing_whitespace = true
+end_of_line = lf
 insert_final_newline = true
-
-[*.{java,scala,groovy,kt,kts}]
-indent_size = 4
-
-[*.gradle]
+indent_style = space
 indent_size = 2
+trim_trailing_whitespace = true
+
+[*.{kt,kts}]
+indent_size = 4
+continuation_indent_size = 4
+ktlint_code_style = official
+max_line_length = 120
+ij_kotlin_allow_trailing_comma = true
+ij_kotlin_allow_trailing_comma_on_call_site = true
+
+[*.{java,xml}]
+indent_size = 4
 
 [*.md]
 trim_trailing_whitespace = false

@@ -17,23 +17,27 @@ class CarSelectionScreen(
 ) : ToyRacersScreen(game) {
     private var backRequested = false
     private var startRequested = false
-    private val selection = CarSelectionStage(
-        options = CarModel.entries.map { CarSelectionOption(it, game.assets.car(it)) },
-        initiallySelected = game.selectedCar,
-        initiallySelectedDifficulty = game.selectedAiDifficulty,
-        onCarSelected = game::selectCar,
-        onDifficultySelected = game::selectAiDifficulty,
-        onStartRace = { startRequested = true },
-        onBack = { backRequested = true },
-        onButtonClick = game.audio::buttonClick,
-    )
+    private val selection =
+        CarSelectionStage(
+            options = CarModel.entries.map { CarSelectionOption(it, game.assets.car(it)) },
+            initiallySelected = game.selectedCar,
+            initiallySelectedDifficulty = game.selectedAiDifficulty,
+            onCarSelected = game::selectCar,
+            onDifficultySelected = game::selectAiDifficulty,
+            onStartRace = { startRequested = true },
+            onBack = { backRequested = true },
+            onButtonClick = game.audio::buttonClick,
+        )
 
     override fun show() {
         super.show()
         Gdx.input.inputProcessor = selection.inputProcessor
     }
 
-    override fun resize(width: Int, height: Int) {
+    override fun resize(
+        width: Int,
+        height: Int,
+    ) {
         super.resize(width, height)
         selection.resize(width, height)
     }

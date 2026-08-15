@@ -9,7 +9,13 @@ class CarModelTest {
     @Test
     fun `five selectable cars have unique asset paths`() {
         assertEquals(5, CarModel.entries.size)
-        assertEquals(5, CarModel.entries.map(CarModel::assetPath).toSet().size)
+        assertEquals(
+            5,
+            CarModel.entries
+                .map(CarModel::assetPath)
+                .toSet()
+                .size,
+        )
     }
 
     @Test

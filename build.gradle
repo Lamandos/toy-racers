@@ -9,7 +9,8 @@ buildscript {
   dependencies {
     classpath "com.android.tools.build:gradle:8.9.3"
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
-
+    classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:$detektVersion"
+    classpath "org.jlleitschuh.gradle:ktlint-gradle:$ktlintGradleVersion"
   }
 }
 
@@ -60,6 +61,9 @@ configure(subprojects - project(':android')) {
 }
 
 subprojects {
+  apply plugin: 'io.gitlab.arturbosch.detekt'
+  apply plugin: 'org.jlleitschuh.gradle.ktlint'
+
   version = "$projectVersion"
   ext.appName = 'ToyRacers'
   repositories {
@@ -69,6 +73,69 @@ subprojects {
     maven { url = 'https://central.sonatype.com/repository/maven-snapshots/' }
     maven { url = 'https://jitpack.io' }
   }
+
+  ktlint {
+    version = ktlintVersion
+    android = project.name == 'android'
+    ignoreFailures = false
+    verbose = true
+    outputToConsole = true
+    filter {
+      exclude { entry ->
+        entry.file.path.contains("${File.separator}build${File.separator}") ||
+            entry.file.path.contains("${File.separator}generated${File.separator}")
+      }
+    }
+  }
+
+  detekt {
+    buildUponDefaultConfig = true
+    allRules = false
+    parallel = true
+    ignoreFailures = false
+    config.setFrom(rootProject.files('config/detekt/detekt.yml'))
+    source.setFrom(fileTree(projectDir) {
+      include 'src/main/kotlin/**/*.kt', 'src/main/java/**/*.java'
+      include 'src/test/kotlin/**/*.kt', 'src/test/java/**/*.java'
+      exclude '**/build/**', '**/generated/**', '**/StartupHelper.kt'
+    })
+  }
 }
 
 eclipse.project.name = 'ToyRacers' + '-parent'
+
+tasks.register('verifySourceFileLengths') {
+  group = 'verification'
+  description = 'Fails when a Kotlin or Java source file exceeds 500 lines.'
+  def sourceFiles = fileTree(rootDir) {
+    include '**/*.kt', '**/*.java'
+    exclude '**/build/**', '**/generated/**', '**/.gradle/**'
+  }
+  inputs.files(sourceFiles)
+  doLast {
+    def violations = sourceFiles.files.findAll { it.readLines().size() > 500 }.sort()
+    if (!violations.empty) {
+      def details = violations.collect { file ->
+        "${rootDir.toPath().relativize(file.toPath())}: ${file.readLines().size()} lines"
+      }.join('\n')
+      throw new GradleException("Source files must not exceed 500 lines:\n${details}")
+    }
+  }
+}
+
+tasks.register('quickQualityCheck') {
+  group = 'verification'
+  description = 'Runs formatting checks, static analysis, and JVM unit tests.'
+  dependsOn subprojects.collect { project ->
+    [project.tasks.named('ktlintCheck'), project.tasks.named('detekt')]
+  }.flatten()
+  dependsOn ':core:test', ':lwjgl3:test'
+  dependsOn tasks.named('verifySourceFileLengths')
+}
+
+tasks.register('qualityCheck') {
+  group = 'verification'
+  description = 'Runs every repository quality gate used by pre-push and CI.'
+  dependsOn tasks.named('quickQualityCheck')
+  dependsOn ':core:jacocoTestCoverageVerification', ':android:testDebugUnitTest'
+}

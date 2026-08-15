@@ -50,5 +50,4 @@ class TrackRenderer(
         compatibilityBatch?.dispose()
         compatibilityBatch = null
     }
-
 }

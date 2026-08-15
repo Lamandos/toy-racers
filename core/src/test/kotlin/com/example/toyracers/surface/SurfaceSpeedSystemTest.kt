@@ -56,10 +56,11 @@ class SurfaceSpeedSystemTest {
 
     @Test
     fun `off road reverse speed uses the same multiplier`() {
-        val car = CarState(
-            velocityX = -carConfig.maxReverseSpeed,
-            speed = -carConfig.maxReverseSpeed,
-        )
+        val car =
+            CarState(
+                velocityX = -carConfig.maxReverseSpeed,
+                speed = -carConfig.maxReverseSpeed,
+            )
         val surfaceState = SurfaceSpeedState(speedMultiplier = 0.3f)
 
         system.update(car, carConfig, surfaceState, SurfaceType.GRASS, 1f / 60f)

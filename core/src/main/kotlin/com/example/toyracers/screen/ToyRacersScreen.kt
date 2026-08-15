@@ -12,11 +12,12 @@ abstract class ToyRacersScreen(
     protected val game: ToyRacersGame,
 ) : ScreenAdapter() {
     protected val camera = OrthographicCamera()
-    protected val viewport = ExtendViewport(
-        ToyRacersGame.VIRTUAL_WIDTH,
-        ToyRacersGame.VIRTUAL_HEIGHT,
-        camera,
-    )
+    protected val viewport =
+        ExtendViewport(
+            ToyRacersGame.VIRTUAL_WIDTH,
+            ToyRacersGame.VIRTUAL_HEIGHT,
+            camera,
+        )
     protected val shapes = ShapeRenderer()
     protected var lifecyclePaused = false
         private set
@@ -25,7 +26,10 @@ abstract class ToyRacersScreen(
         resize(Gdx.graphics.width, Gdx.graphics.height)
     }
 
-    override fun resize(width: Int, height: Int) {
+    override fun resize(
+        width: Int,
+        height: Int,
+    ) {
         viewport.update(width, height, true)
     }
 

@@ -17,13 +17,14 @@ class CollisionSystemTest {
 
     @Test
     fun `world edge pushes car inside and removes outward velocity`() {
-        val state = CarState(
-            x = -1f,
-            y = 6f,
-            velocityX = -10f,
-            velocityY = 4f,
-            speed = -10f,
-        )
+        val state =
+            CarState(
+                x = -1f,
+                y = 6f,
+                velocityX = -10f,
+                velocityY = 4f,
+                speed = -10f,
+            )
 
         val result = collisionSystem.resolveTrackCollision(state, radius = 1f, trackWithoutObjects)
 
@@ -37,28 +38,35 @@ class CollisionSystemTest {
 
     @Test
     fun `track object pushes car out and reports object contact`() {
-        val obstacle = TrackPolygon(
-            listOf(
-                TrackPoint(50f, 50f),
-                TrackPoint(54f, 50f),
-                TrackPoint(54f, 54f),
-                TrackPoint(50f, 54f),
-            ),
-        )
+        val obstacle =
+            TrackPolygon(
+                listOf(
+                    TrackPoint(50f, 50f),
+                    TrackPoint(54f, 50f),
+                    TrackPoint(54f, 54f),
+                    TrackPoint(50f, 54f),
+                ),
+            )
         val leftX = obstacle.vertices.minOf { it.x }
-        val centerY = obstacle.vertices.map { it.y }.average().toFloat()
-        val state = CarState(
-            x = leftX - 0.5f,
-            y = centerY,
-            velocityX = 8f,
-            speed = 8f,
-        )
+        val centerY =
+            obstacle.vertices
+                .map { it.y }
+                .average()
+                .toFloat()
+        val state =
+            CarState(
+                x = leftX - 0.5f,
+                y = centerY,
+                velocityX = 8f,
+                speed = 8f,
+            )
 
-        val result = collisionSystem.resolveTrackCollision(
-            state,
-            radius = 1f,
-            track.copy(collisionShapes = listOf(obstacle)),
-        )
+        val result =
+            collisionSystem.resolveTrackCollision(
+                state,
+                radius = 1f,
+                track.copy(collisionShapes = listOf(obstacle)),
+            )
 
         assertTrue(result.collided)
         assertEquals(CollisionType.TRACK_OBJECT, result.contacts.first().type)
@@ -103,12 +111,13 @@ class CollisionSystemTest {
         val first = CarState(x = 0f, velocityX = 10f, speed = 10f)
         val second = CarState(x = 1.5f)
 
-        val result = collisionSystem.resolveCarCollision(
-            first = first,
-            firstRadius = 1f,
-            second = second,
-            secondRadius = 1f,
-        )
+        val result =
+            collisionSystem.resolveCarCollision(
+                first = first,
+                firstRadius = 1f,
+                second = second,
+                secondRadius = 1f,
+            )
 
         assertTrue(result.collided)
         assertEquals(-0.25f, first.x, TOLERANCE)
@@ -132,12 +141,13 @@ class CollisionSystemTest {
     fun `oriented collision capsule reaches the visible nose of car`() {
         val state = CarState(x = 1.5f, y = 6f, rotationDeg = 0f, velocityX = -2f)
 
-        val result = collisionSystem.resolveTrackCollision(
-            state = state,
-            radius = 0.81f,
-            longitudinalOffset = 0.81f,
-            track = trackWithoutObjects,
-        )
+        val result =
+            collisionSystem.resolveTrackCollision(
+                state = state,
+                radius = 0.81f,
+                longitudinalOffset = 0.81f,
+                track = trackWithoutObjects,
+            )
 
         assertTrue(result.collided)
         assertEquals(1.62f, state.x, TOLERANCE)
@@ -148,14 +158,15 @@ class CollisionSystemTest {
         val first = CarState(x = 0f, rotationDeg = 0f)
         val second = CarState(x = 3.1f, rotationDeg = 0f)
 
-        val result = collisionSystem.resolveCarCollision(
-            first = first,
-            firstRadius = 0.81f,
-            firstLongitudinalOffset = 0.81f,
-            second = second,
-            secondRadius = 0.81f,
-            secondLongitudinalOffset = 0.81f,
-        )
+        val result =
+            collisionSystem.resolveCarCollision(
+                first = first,
+                firstRadius = 0.81f,
+                firstLongitudinalOffset = 0.81f,
+                second = second,
+                secondRadius = 0.81f,
+                secondLongitudinalOffset = 0.81f,
+            )
 
         assertTrue(result.collided)
     }

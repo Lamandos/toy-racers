@@ -48,11 +48,12 @@ data class CarPerformance(
     val total: Float
         get() = acceleration + maxSpeed + handling
 
-    fun applyTo(base: CarConfig = CarConfig()): CarConfig = base.copy(
-        acceleration = base.acceleration * acceleration,
-        maxForwardSpeed = base.maxForwardSpeed * maxSpeed,
-        steeringSpeed = base.steeringSpeed * handling,
-    )
+    fun applyTo(base: CarConfig = CarConfig()): CarConfig =
+        base.copy(
+            acceleration = base.acceleration * acceleration,
+            maxForwardSpeed = base.maxForwardSpeed * maxSpeed,
+            steeringSpeed = base.steeringSpeed * handling,
+        )
 
     companion object {
         const val MIN_MULTIPLIER = 0.80f

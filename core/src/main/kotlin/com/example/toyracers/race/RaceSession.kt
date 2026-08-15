@@ -40,34 +40,38 @@ internal class RaceSession(
     private val playerControlConfig: PlayerControlConfig = PlayerControlConfig(),
 ) {
     private val carController = CarController(carPhysics)
+
     init {
         require(track.startGrid.size == opponentCarModels.size + 1) {
             "Start grid must contain one position for every race participant"
         }
     }
 
-    val player = RaceParticipant(
-        id = PLAYER_ID,
-        start = track.startGrid.first(),
-        carModel = playerCarModel,
-        carConfig = playerCarModel.performance.applyTo(baseCarConfig),
-    )
-    val opponents: List<RaceParticipant> = track.startGrid.drop(1).mapIndexed { index, start ->
+    val player =
         RaceParticipant(
-            id = "ai-$index",
-            start = start,
-            carModel = opponentCarModels[index],
-            carConfig = opponentCarModels[index].performance.applyTo(baseCarConfig),
-            driver = AiDriver(
-                track.racingLine,
-                start.position,
-                aiConfig.copy(waypointRadius = track.racingLineWaypointRadius),
-                difficulty = opponentDifficulty,
-                racingLineBias = opponentRacingLineBias(index),
-                track = track,
-            ),
+            id = PLAYER_ID,
+            start = track.startGrid.first(),
+            carModel = playerCarModel,
+            carConfig = playerCarModel.performance.applyTo(baseCarConfig),
         )
-    }
+    val opponents: List<RaceParticipant> =
+        track.startGrid.drop(1).mapIndexed { index, start ->
+            RaceParticipant(
+                id = "ai-$index",
+                start = start,
+                carModel = opponentCarModels[index],
+                carConfig = opponentCarModels[index].performance.applyTo(baseCarConfig),
+                driver =
+                    AiDriver(
+                        track.racingLine,
+                        start.position,
+                        aiConfig.copy(waypointRadius = track.racingLineWaypointRadius),
+                        difficulty = opponentDifficulty,
+                        racingLineBias = opponentRacingLineBias(index),
+                        track = track,
+                    ),
+            )
+        }
     val raceState = RaceState()
     val requiredLaps: Int
         get() = raceRules.requiredLaps
@@ -78,15 +82,17 @@ internal class RaceSession(
     private var accumulator = 0f
 
     val playerPosition: Int
-        get() = positionTracker.positions(
-            participants.map { participant ->
-                RaceCompetitor(
-                    id = participant.id,
-                    progress = participant.progress,
-                    position = participant.state.position(),
-                )
-            },
-        ).getValue(player.id)
+        get() =
+            positionTracker
+                .positions(
+                    participants.map { participant ->
+                        RaceCompetitor(
+                            id = participant.id,
+                            progress = participant.progress,
+                            position = participant.state.position(),
+                        )
+                    },
+                ).getValue(player.id)
 
     /**
      * Returns a visual-only state between the last two fixed simulation steps.
@@ -122,51 +128,62 @@ internal class RaceSession(
         var physicalSteps = 0
         var collisionDurationNanos = 0L
 
-        if (simulationDelta > 0f) {
-            accumulator += simulationDelta
-            while (accumulator >= CarPhysics.FIXED_DELTA_SECONDS) {
-                participants.forEach(RaceParticipant::captureStateForRendering)
-                participants.forEach { participant ->
-                    updateLastSafeState(participant)
-                    var input = participant.driver?.update(
+        if (simulationDelta <= 0f) {
+            return RaceStepResult(
+                phaseBeforeAdvance = phaseBeforeAdvance,
+                playerCheckpointPassed = false,
+                maxImpactSpeed = 0f,
+                physicalSteps = 0,
+                collisionDurationNanos = 0L,
+            )
+        }
+
+        accumulator += simulationDelta
+        while (accumulator >= CarPhysics.FIXED_DELTA_SECONDS) {
+            participants.forEach(RaceParticipant::captureStateForRendering)
+            participants.forEach { participant ->
+                updateLastSafeState(participant)
+                var input =
+                    participant.driver?.update(
                         participant.state,
                         CarPhysics.FIXED_DELTA_SECONDS,
                         obstacles = obstaclesFor(participant),
                         finished = participant.progress.finished,
-                        isOnTrack = track.surfaceAt(
-                            participant.state.x,
-                            participant.state.y,
-                        ).isRoad,
+                        isOnTrack =
+                            track
+                                .surfaceAt(
+                                    participant.state.x,
+                                    participant.state.y,
+                                ).isRoad,
                     ) ?: playerControlConfig.applyTo(playerInput)
-                    if (participant.driver?.consumeRespawnRequest() == true) {
-                        restoreLastSafeState(participant)
-                        input = PlayerInput.NONE
-                    }
-                    val stepResult = updateParticipant(participant, input, measureTimings)
-                    if (measureTimings) {
-                        collisionDurationNanos += stepResult.collisionDurationNanos
-                    }
-                    if (participant === player) {
-                        maxImpactSpeed = maxOf(maxImpactSpeed, stepResult.impactSpeed)
-                        if (stepResult.checkpointPassed) {
-                            playerCheckpointPassed = true
-                        }
-                    }
+                if (participant.driver?.consumeRespawnRequest() == true) {
+                    restoreLastSafeState(participant)
+                    input = PlayerInput.NONE
                 }
-
-                val collisionStartedAt = if (measureTimings) System.nanoTime() else 0L
-                maxImpactSpeed = maxOf(maxImpactSpeed, resolveCarCollisions())
+                val stepResult = updateParticipant(participant, input, measureTimings)
                 if (measureTimings) {
-                    collisionDurationNanos += System.nanoTime() - collisionStartedAt
+                    collisionDurationNanos += stepResult.collisionDurationNanos
                 }
-                physicalSteps++
-                accumulator -= CarPhysics.FIXED_DELTA_SECONDS
-                if (player.progress.finished) {
-                    participants.forEach(RaceParticipant::captureStateForRendering)
-                    raceState.finish()
-                    accumulator = 0f
-                    break
+                if (participant === player) {
+                    maxImpactSpeed = maxOf(maxImpactSpeed, stepResult.impactSpeed)
+                    if (stepResult.checkpointPassed) {
+                        playerCheckpointPassed = true
+                    }
                 }
+            }
+
+            val collisionStartedAt = if (measureTimings) System.nanoTime() else 0L
+            maxImpactSpeed = maxOf(maxImpactSpeed, resolveCarCollisions())
+            if (measureTimings) {
+                collisionDurationNanos += System.nanoTime() - collisionStartedAt
+            }
+            physicalSteps++
+            accumulator -= CarPhysics.FIXED_DELTA_SECONDS
+            if (player.progress.finished) {
+                participants.forEach(RaceParticipant::captureStateForRendering)
+                raceState.finish()
+                accumulator = 0f
+                break
             }
         }
 
@@ -192,17 +209,19 @@ internal class RaceSession(
             deltaSeconds = CarPhysics.FIXED_DELTA_SECONDS,
         )
         val collisionStartedAt = if (measureTimings) System.nanoTime() else 0L
-        val collision = collisionSystem.resolveTrackCollision(
-            state = participant.state,
-            radius = participant.carConfig.collisionRadius,
-            longitudinalOffset = participant.carConfig.collisionLongitudinalOffset,
-            track = track,
-        )
-        val collisionDurationNanos = if (measureTimings) {
-            System.nanoTime() - collisionStartedAt
-        } else {
-            0L
-        }
+        val collision =
+            collisionSystem.resolveTrackCollision(
+                state = participant.state,
+                radius = participant.carConfig.collisionRadius,
+                longitudinalOffset = participant.carConfig.collisionLongitudinalOffset,
+                track = track,
+            )
+        val collisionDurationNanos =
+            if (measureTimings) {
+                System.nanoTime() - collisionStartedAt
+            } else {
+                0L
+            }
         surfaceSpeedSystem.update(
             carState = participant.state,
             carConfig = participant.carConfig,
@@ -255,16 +274,17 @@ internal class RaceSession(
         var maxImpactSpeed = 0f
         participants.indices.forEach { firstIndex ->
             for (secondIndex in firstIndex + 1..<participants.size) {
-                val result = collisionSystem.resolveCarCollision(
-                    first = participants[firstIndex].state,
-                    firstRadius = participants[firstIndex].carConfig.collisionRadius,
-                    firstLongitudinalOffset =
-                        participants[firstIndex].carConfig.collisionLongitudinalOffset,
-                    second = participants[secondIndex].state,
-                    secondRadius = participants[secondIndex].carConfig.collisionRadius,
-                    secondLongitudinalOffset =
-                        participants[secondIndex].carConfig.collisionLongitudinalOffset,
-                )
+                val result =
+                    collisionSystem.resolveCarCollision(
+                        first = participants[firstIndex].state,
+                        firstRadius = participants[firstIndex].carConfig.collisionRadius,
+                        firstLongitudinalOffset =
+                            participants[firstIndex].carConfig.collisionLongitudinalOffset,
+                        second = participants[secondIndex].state,
+                        secondRadius = participants[secondIndex].carConfig.collisionRadius,
+                        secondLongitudinalOffset =
+                            participants[secondIndex].carConfig.collisionLongitudinalOffset,
+                    )
                 maxImpactSpeed = maxOf(maxImpactSpeed, result.maxImpactSpeed)
             }
         }
@@ -272,7 +292,8 @@ internal class RaceSession(
     }
 
     private fun obstaclesFor(participant: RaceParticipant): List<AiObstacle> =
-        participants.asSequence()
+        participants
+            .asSequence()
             .filterNot { it === participant }
             .map {
                 AiObstacle(
@@ -281,12 +302,11 @@ internal class RaceSession(
                     radius = it.carConfig.collisionRadius,
                     speed = it.state.speed,
                 )
-            }
-            .toList()
+            }.toList()
 
     private fun opponentRacingLineBias(index: Int): Float =
         sessionConfig.opponentRacingLineBiases[
-            index % sessionConfig.opponentRacingLineBiases.size
+            index % sessionConfig.opponentRacingLineBiases.size,
         ]
 
     private fun CarState.position(): TrackPoint = TrackPoint(x, y)
@@ -320,11 +340,12 @@ internal class RaceParticipant(
     val carConfig: CarConfig,
     val driver: AiDriver? = null,
 ) {
-    val state = CarState(
-        x = start.position.x,
-        y = start.position.y,
-        rotationDeg = start.rotationDeg,
-    )
+    val state =
+        CarState(
+            x = start.position.x,
+            y = start.position.y,
+            rotationDeg = start.rotationDeg,
+        )
     val surfaceSpeedState = SurfaceSpeedState()
     val progress = RaceProgress()
     var lastSafeState = state.copy()

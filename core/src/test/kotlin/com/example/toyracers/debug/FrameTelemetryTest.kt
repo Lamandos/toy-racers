@@ -20,19 +20,20 @@ class FrameTelemetryTest {
         assertEquals(50f, snapshot.p99FrameTimeMs, EPSILON)
     }
 
-    private fun sample(frameDurationMs: Long) = FrameTelemetrySample(
-        frameDurationNanos = frameDurationMs * NANOSECONDS_PER_MILLISECOND,
-        simulationDurationNanos = 2 * NANOSECONDS_PER_MILLISECOND,
-        collisionDurationNanos = NANOSECONDS_PER_MILLISECOND,
-        worldRenderDurationNanos = 3 * NANOSECONDS_PER_MILLISECOND,
-        interfaceDurationNanos = 4 * NANOSECONDS_PER_MILLISECOND,
-        audioDurationNanos = 5 * NANOSECONDS_PER_MILLISECOND,
-        physicalSteps = 1,
-        worldDrawCalls = 2,
-        carFlushes = 1,
-        framesPerSecond = 60,
-        refreshRateHz = 60,
-    )
+    private fun sample(frameDurationMs: Long) =
+        FrameTelemetrySample(
+            frameDurationNanos = frameDurationMs * NANOSECONDS_PER_MILLISECOND,
+            simulationDurationNanos = 2 * NANOSECONDS_PER_MILLISECOND,
+            collisionDurationNanos = NANOSECONDS_PER_MILLISECOND,
+            worldRenderDurationNanos = 3 * NANOSECONDS_PER_MILLISECOND,
+            interfaceDurationNanos = 4 * NANOSECONDS_PER_MILLISECOND,
+            audioDurationNanos = 5 * NANOSECONDS_PER_MILLISECOND,
+            physicalSteps = 1,
+            worldDrawCalls = 2,
+            carFlushes = 1,
+            framesPerSecond = 60,
+            refreshRateHz = 60,
+        )
 
     private companion object {
         const val NANOSECONDS_PER_MILLISECOND = 1_000_000L
