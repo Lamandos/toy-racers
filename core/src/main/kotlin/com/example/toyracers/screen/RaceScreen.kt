@@ -65,6 +65,8 @@ class RaceScreen(
     private val debugSettings = DebugSettings()
     private val telemetryRecorder = RaceTelemetryRecorder()
     private val frameTelemetryRenderer = FrameTelemetryRenderer()
+    private val countdownActiveColor = Color(0.95f, 0.28f, 0.18f, 1f)
+    private val countdownInactiveColor = Color(0.25f, 0.27f, 0.31f, 1f)
     private val keyboardInput = KeyboardInputController()
     private val touchInput =
         TouchInputController(
@@ -416,7 +418,7 @@ class RaceScreen(
         shapes.color = Color(0f, 0f, 0f, 0.68f)
         shapes.rect(530f, 275f, 220f, 170f)
         repeat(3) { index ->
-            shapes.color = if (index == activeLight) COUNTDOWN_ACTIVE else COUNTDOWN_INACTIVE
+            shapes.color = if (index == activeLight) countdownActiveColor else countdownInactiveColor
             shapes.circle(580f + index * 60f, 360f, 22f)
         }
         shapes.end()

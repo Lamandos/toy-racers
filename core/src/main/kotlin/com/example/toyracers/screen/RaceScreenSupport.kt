@@ -1,6 +1,5 @@
 package com.example.toyracers.screen
 
-import com.badlogic.gdx.graphics.Color
 import com.example.toyracers.ai.AiDebugSnapshot
 import com.example.toyracers.debug.FrameTelemetry
 import com.example.toyracers.debug.FrameTelemetrySample
@@ -15,8 +14,6 @@ internal const val MIN_SHAKE_IMPACT_SPEED = 3f
 internal const val SHAKE_PER_IMPACT_SPEED = 0.025f
 internal const val COUNTDOWN_START_NUMBER = 3
 internal const val TRACK_DRAW_CALLS = 1
-internal val COUNTDOWN_ACTIVE = Color(0.95f, 0.28f, 0.18f, 1f)
-internal val COUNTDOWN_INACTIVE = Color(0.25f, 0.27f, 0.31f, 1f)
 
 internal enum class RaceUiAction {
     PAUSE,

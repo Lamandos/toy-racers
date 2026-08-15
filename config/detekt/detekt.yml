@@ -73,7 +73,7 @@ style:
   active: true
   ForbiddenImport:
     active: true
-    forbiddenPatterns: '.*,java.util.*,kotlinx.android.synthetic.*'
+    forbiddenPatterns: 'java\.util\.(?!Locale$).*|kotlinx\.android\.synthetic\..*'
   MagicNumber:
     active: false
   MaxLineLength:
