@@ -50,4 +50,5 @@ Runtime assets will live in `assets/`, which is shared by the platform launchers
 - Add tests for gameplay logic where practical.
 - Do not add dependencies without documenting the need and trade-offs.
 
-See [game design](docs/GAME_DESIGN.md), [architecture](docs/ARCHITECTURE.md), and [tasks](docs/TASKS.md).
+See [game design](docs/GAME_DESIGN.md), [architecture](docs/ARCHITECTURE.md), [tasks](docs/TASKS.md), and
+[code quality](docs/CODE_QUALITY.md).

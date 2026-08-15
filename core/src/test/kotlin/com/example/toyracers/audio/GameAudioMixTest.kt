@@ -44,17 +44,18 @@ class GameAudioMixTest {
         driftAmount: Float = 0f,
         offRoad: Boolean = false,
         sfxVolume: Float = 0.8f,
-    ): RaceAudioMix = calculateRaceAudioMix(
-        speed = speed,
-        maxSpeed = 16f,
-        throttle = throttle,
-        brake = brake,
-        driftAmount = driftAmount,
-        racing = true,
-        offRoad = offRoad,
-        paused = false,
-        sfxVolume = sfxVolume,
-    )
+    ): RaceAudioMix =
+        calculateRaceAudioMix(
+            speed = speed,
+            maxSpeed = 16f,
+            throttle = throttle,
+            brake = brake,
+            driftAmount = driftAmount,
+            racing = true,
+            offRoad = offRoad,
+            paused = false,
+            sfxVolume = sfxVolume,
+        )
 
     private companion object {
         const val TOLERANCE = 0.0001f

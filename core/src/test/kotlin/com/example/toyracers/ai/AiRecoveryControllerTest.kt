@@ -5,10 +5,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class AiRecoveryControllerTest {
-    private val config = AiConfig(
-        stuckDurationSeconds = 0.5f,
-        recoveryDurationSeconds = 0.5f,
-    )
+    private val config =
+        AiConfig(
+            stuckDurationSeconds = 0.5f,
+            recoveryDurationSeconds = 0.5f,
+        )
 
     @Test
     fun `successful reverse recovery resumes driving without respawn`() {

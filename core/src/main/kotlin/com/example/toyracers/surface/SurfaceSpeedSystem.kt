@@ -29,11 +29,12 @@ class SurfaceSpeedSystem(
         val targetMultiplier =
             if (surface.isRoad) 1f else config.offRoadSpeedMultiplier
         val changePerSecond = (1f - config.offRoadSpeedMultiplier) / config.transitionSeconds
-        surfaceState.speedMultiplier = moveToward(
-            surfaceState.speedMultiplier,
-            targetMultiplier,
-            changePerSecond * deltaSeconds,
-        )
+        surfaceState.speedMultiplier =
+            moveToward(
+                surfaceState.speedMultiplier,
+                targetMultiplier,
+                changePerSecond * deltaSeconds,
+            )
         applySpeedLimit(carState, carConfig, surfaceState.speedMultiplier)
     }
 
@@ -49,10 +50,11 @@ class SurfaceSpeedSystem(
         val rightY = forwardX
         val longitudinalSpeed = state.velocityX * forwardX + state.velocityY * forwardY
         val lateralSpeed = state.velocityX * rightX + state.velocityY * rightY
-        val limitedLongitudinalSpeed = longitudinalSpeed.coerceIn(
-            -carConfig.maxReverseSpeed * speedMultiplier,
-            carConfig.maxForwardSpeed * speedMultiplier,
-        )
+        val limitedLongitudinalSpeed =
+            longitudinalSpeed.coerceIn(
+                -carConfig.maxReverseSpeed * speedMultiplier,
+                carConfig.maxForwardSpeed * speedMultiplier,
+            )
         val lateralSpeedLimit = carConfig.maxForwardSpeed * speedMultiplier
         val limitedLateralSpeed = lateralSpeed.coerceIn(-lateralSpeedLimit, lateralSpeedLimit)
 
@@ -68,9 +70,10 @@ class SurfaceSpeedSystem(
         value: Float,
         target: Float,
         amount: Float,
-    ): Float = when {
-        value < target -> min(value + amount, target)
-        value > target -> max(value - amount, target)
-        else -> target
-    }
+    ): Float =
+        when {
+            value < target -> min(value + amount, target)
+            value > target -> max(value - amount, target)
+            else -> target
+        }
 }

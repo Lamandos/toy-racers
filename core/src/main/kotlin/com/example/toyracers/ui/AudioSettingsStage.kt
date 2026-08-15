@@ -17,32 +17,40 @@ class AudioSettingsStage(
     private val vibrationLabel = Label("", skin)
 
     init {
-        val table = Table().apply {
-            setFillParent(true)
-            background = this@AudioSettingsStage.skin.panelDrawable()
-            pad(36f)
-            add(Label("AUDIO SETTINGS", this@AudioSettingsStage.skin).apply {
-                setFontScale(2.2f)
-            }).colspan(3).height(90f)
-            row()
-            addVolumeRow(masterLabel, { settings.masterVolume }) {
-                settings.copy(masterVolume = it)
+        val table =
+            Table().apply {
+                setFillParent(true)
+                background = this@AudioSettingsStage.skin.panelDrawable()
+                pad(36f)
+                add(
+                    Label("AUDIO SETTINGS", this@AudioSettingsStage.skin).apply {
+                        setFontScale(2.2f)
+                    },
+                ).colspan(3).height(90f)
+                row()
+                addVolumeRow(masterLabel, { settings.masterVolume }) {
+                    settings.copy(masterVolume = it)
+                }
+                addVolumeRow(musicLabel, { settings.musicVolume }) {
+                    settings.copy(musicVolume = it)
+                }
+                addVolumeRow(sfxLabel, { settings.sfxVolume }) {
+                    settings.copy(sfxVolume = it)
+                }
+                vibrationLabel.setFontScale(1.45f)
+                add(vibrationLabel).width(390f).height(68f)
+                add(
+                    button("TOGGLE") {
+                        update(settings.copy(vibrationEnabled = !settings.vibrationEnabled))
+                    },
+                ).colspan(2).width(260f).height(64f)
+                row()
+                add(button("BACK", SECONDARY_BUTTON_STYLE, onBack))
+                    .colspan(3)
+                    .width(360f)
+                    .height(72f)
+                    .padTop(24f)
             }
-            addVolumeRow(musicLabel, { settings.musicVolume }) {
-                settings.copy(musicVolume = it)
-            }
-            addVolumeRow(sfxLabel, { settings.sfxVolume }) {
-                settings.copy(sfxVolume = it)
-            }
-            vibrationLabel.setFontScale(1.45f)
-            add(vibrationLabel).width(390f).height(68f)
-            add(button("TOGGLE") {
-                update(settings.copy(vibrationEnabled = !settings.vibrationEnabled))
-            }).colspan(2).width(260f).height(64f)
-            row()
-            add(button("BACK", SECONDARY_BUTTON_STYLE, onBack))
-                .colspan(3).width(360f).height(72f).padTop(24f)
-        }
         stage.addActor(table)
         refreshLabels()
     }
@@ -55,9 +63,11 @@ class AudioSettingsStage(
         label.setFontScale(1.45f)
         add(label).width(390f).height(68f)
         add(button("-") { update(change((value() - STEP).coerceAtLeast(0f))) })
-            .width(110f).height(60f)
+            .width(110f)
+            .height(60f)
         add(button("+") { update(change((value() + STEP).coerceAtMost(1f))) })
-            .width(110f).height(60f)
+            .width(110f)
+            .height(60f)
         row()
     }
 

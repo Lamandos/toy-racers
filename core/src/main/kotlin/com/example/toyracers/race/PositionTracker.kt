@@ -10,7 +10,9 @@ data class RaceCompetitor(
 )
 
 /** Ranks cars by finish result, completed gates, and distance to the next gate. */
-class PositionTracker(private val track: Track) {
+class PositionTracker(
+    private val track: Track,
+) {
     fun positions(competitors: List<RaceCompetitor>): Map<String, Int> {
         require(competitors.map(RaceCompetitor::id).distinct().size == competitors.size) {
             "Competitor ids must be unique"
@@ -28,24 +30,24 @@ class PositionTracker(private val track: Track) {
                 }.thenBy {
                     distanceSquaredToNextGate(it)
                 }.thenBy(RaceCompetitor::id),
-            )
-            .mapIndexed { index, competitor -> competitor.id to index + 1 }
+            ).mapIndexed { index, competitor -> competitor.id to index + 1 }
             .toMap()
     }
 
     private fun distanceSquaredToNextGate(competitor: RaceCompetitor): Float {
-        val gateCenter = if (competitor.progress.currentCheckpointIndex < track.checkpoints.size) {
-            val gate = track.checkpoints[competitor.progress.currentCheckpointIndex].gate
-            TrackPoint(
-                x = (gate.start.x + gate.end.x) / 2f,
-                y = (gate.start.y + gate.end.y) / 2f,
-            )
-        } else {
-            TrackPoint(
-                x = track.startLine.bounds.x + track.startLine.bounds.width / 2f,
-                y = track.startLine.bounds.y + track.startLine.bounds.height / 2f,
-            )
-        }
+        val gateCenter =
+            if (competitor.progress.currentCheckpointIndex < track.checkpoints.size) {
+                val gate = track.checkpoints[competitor.progress.currentCheckpointIndex].gate
+                TrackPoint(
+                    x = (gate.start.x + gate.end.x) / 2f,
+                    y = (gate.start.y + gate.end.y) / 2f,
+                )
+            } else {
+                TrackPoint(
+                    x = track.startLine.bounds.x + track.startLine.bounds.width / 2f,
+                    y = track.startLine.bounds.y + track.startLine.bounds.height / 2f,
+                )
+            }
         val deltaX = competitor.position.x - gateCenter.x
         val deltaY = competitor.position.y - gateCenter.y
         return deltaX * deltaX + deltaY * deltaY

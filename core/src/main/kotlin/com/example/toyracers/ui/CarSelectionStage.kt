@@ -34,82 +34,99 @@ class CarSelectionStage(
     private var selectedDifficulty = initiallySelectedDifficulty
 
     init {
-        val content = Table().apply {
-            setFillParent(true)
-            background = this@CarSelectionStage.skin.panelDrawable()
-            pad(22f)
-            add(Label("SELECT CAR", this@CarSelectionStage.skin).apply {
-                setFontScale(2.2f)
-            }).colspan(options.size).height(105f)
-            row()
-            options.forEach { option ->
-                add(carCard(option)).width(CARD_WIDTH).height(360f).pad(8f)
+        val content =
+            Table().apply {
+                setFillParent(true)
+                background = this@CarSelectionStage.skin.panelDrawable()
+                pad(22f)
+                add(
+                    Label("SELECT CAR", this@CarSelectionStage.skin).apply {
+                        setFontScale(2.2f)
+                    },
+                ).colspan(options.size).height(105f)
+                row()
+                options.forEach { option ->
+                    add(carCard(option)).width(CARD_WIDTH).height(360f).pad(8f)
+                }
+                row()
+                add(difficultySelector())
+                    .colspan(options.size)
+                    .height(78f)
+                    .growX()
+                    .padTop(4f)
+                row()
+                add(button("BACK", SECONDARY_BUTTON_STYLE, onBack))
+                    .width(260f)
+                    .height(68f)
+                    .padTop(10f)
+                add(button("START RACE", action = onStartRace))
+                    .colspan(options.size - 1)
+                    .width(360f)
+                    .height(68f)
+                    .padTop(10f)
             }
-            row()
-            add(difficultySelector()).colspan(options.size).height(78f).growX().padTop(4f)
-            row()
-            add(button("BACK", SECONDARY_BUTTON_STYLE, onBack))
-                .width(260f).height(68f).padTop(10f)
-            add(button("START RACE", action = onStartRace))
-                .colspan(options.size - 1)
-                .width(360f)
-                .height(68f)
-                .padTop(10f)
-        }
         stage.addActor(content)
         refreshStatuses()
         refreshDifficultyButtons()
     }
 
-    private fun difficultySelector(): Table = Table().apply {
-        add(Label("OPPONENTS", this@CarSelectionStage.skin).apply { setFontScale(0.9f) })
-            .width(150f)
-        AiDifficulty.entries.forEach { difficulty ->
-            val difficultyButton = button(difficulty.displayName) {
-                selectedDifficulty = difficulty
-                onDifficultySelected(difficulty)
-                refreshDifficultyButtons()
+    private fun difficultySelector(): Table =
+        Table().apply {
+            add(Label("OPPONENTS", this@CarSelectionStage.skin).apply { setFontScale(0.9f) })
+                .width(150f)
+            AiDifficulty.entries.forEach { difficulty ->
+                val difficultyButton =
+                    button(difficulty.displayName) {
+                        selectedDifficulty = difficulty
+                        onDifficultySelected(difficulty)
+                        refreshDifficultyButtons()
+                    }
+                difficultyButtons[difficulty] = difficultyButton
+                add(difficultyButton).width(180f).height(56f).padLeft(10f)
             }
-            difficultyButtons[difficulty] = difficultyButton
-            add(difficultyButton).width(180f).height(56f).padLeft(10f)
         }
-    }
 
-    private fun carCard(option: CarSelectionOption): TextButton = TextButton("", skin).apply {
-        clearChildren()
-        add(Image(option.preview).apply {
-            setScaling(Scaling.fit)
-        }).grow().pad(14f)
-        row()
-        add(Label(option.model.displayName, skin).apply {
-            setFontScale(1.05f)
-        }).height(48f)
-        row()
-        add(performanceTable(option.model.performance))
-            .height(82f)
-            .growX()
-            .padLeft(8f)
-            .padRight(8f)
-        row()
-        add(Label("", skin).also { statusLabels[option.model] = it }).height(42f)
-        onClick {
-            selected = option.model
-            onCarSelected(option.model)
-            refreshStatuses()
+    private fun carCard(option: CarSelectionOption): TextButton =
+        TextButton("", skin).apply {
+            clearChildren()
+            add(
+                Image(option.preview).apply {
+                    setScaling(Scaling.fit)
+                },
+            ).grow().pad(14f)
+            row()
+            add(
+                Label(option.model.displayName, skin).apply {
+                    setFontScale(1.05f)
+                },
+            ).height(48f)
+            row()
+            add(performanceTable(option.model.performance))
+                .height(82f)
+                .growX()
+                .padLeft(8f)
+                .padRight(8f)
+            row()
+            add(Label("", skin).also { statusLabels[option.model] = it }).height(42f)
+            onClick {
+                selected = option.model
+                onCarSelected(option.model)
+                refreshStatuses()
+            }
         }
-    }
 
-    private fun performanceTable(performance: CarPerformance): Table = Table().apply {
-        addPerformanceRow("ACCEL", performance.acceleration)
-        row()
-        addPerformanceSeparator()
-        row()
-        addPerformanceRow("SPEED", performance.maxSpeed)
-        row()
-        addPerformanceSeparator()
-        row()
-        addPerformanceRow("HANDLING", performance.handling)
-    }
+    private fun performanceTable(performance: CarPerformance): Table =
+        Table().apply {
+            addPerformanceRow("ACCEL", performance.acceleration)
+            row()
+            addPerformanceSeparator()
+            row()
+            addPerformanceRow("SPEED", performance.maxSpeed)
+            row()
+            addPerformanceSeparator()
+            row()
+            addPerformanceRow("HANDLING", performance.handling)
+        }
 
     private fun Table.addPerformanceSeparator() {
         add(Image(this@CarSelectionStage.skin.newDrawable("white", STAT_SEPARATOR)))
@@ -120,7 +137,10 @@ class CarSelectionStage(
             .padBottom(2f)
     }
 
-    private fun Table.addPerformanceRow(label: String, multiplier: Float) {
+    private fun Table.addPerformanceRow(
+        label: String,
+        multiplier: Float,
+    ) {
         add(Label(label, this@CarSelectionStage.skin).apply { setFontScale(0.72f) })
             .width(72f)
             .left()
@@ -143,8 +163,11 @@ class CarSelectionStage(
     private fun refreshDifficultyButtons() {
         difficultyButtons.forEach { (difficulty, button) ->
             button.setText(
-                if (difficulty == selectedDifficulty) "${difficulty.displayName}  ✓"
-                else difficulty.displayName,
+                if (difficulty == selectedDifficulty) {
+                    "${difficulty.displayName}  ✓"
+                } else {
+                    difficulty.displayName
+                },
             )
         }
     }
@@ -167,15 +190,17 @@ data class CarSelectionOption(
 )
 
 private val AiDifficulty.displayName: String
-    get() = when (this) {
-        AiDifficulty.EASY -> "EASY"
-        AiDifficulty.NORMAL -> "NORMAL"
-        AiDifficulty.HARD -> "HARD"
-    }
+    get() =
+        when (this) {
+            AiDifficulty.EASY -> "EASY"
+            AiDifficulty.NORMAL -> "NORMAL"
+            AiDifficulty.HARD -> "HARD"
+        }
 
 /** Maps the supported performance range onto the five-square selection UI. */
 internal fun performanceSquareCount(multiplier: Float): Int {
-    val normalized = (multiplier - CarPerformance.MIN_MULTIPLIER) /
-        (CarPerformance.MAX_MULTIPLIER - CarPerformance.MIN_MULTIPLIER)
+    val normalized =
+        (multiplier - CarPerformance.MIN_MULTIPLIER) /
+            (CarPerformance.MAX_MULTIPLIER - CarPerformance.MIN_MULTIPLIER)
     return (1 + (normalized * 4f).roundToInt()).coerceIn(1, 5)
 }

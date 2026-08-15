@@ -7,9 +7,9 @@ import com.example.toyracers.collision.CollisionSystem
 import com.example.toyracers.input.PlayerInput
 import com.example.toyracers.race.RaceProgress
 import com.example.toyracers.race.RaceRules
-import com.example.toyracers.track.TrackPoint
-import com.example.toyracers.track.TrackLoader
 import com.example.toyracers.track.TrackId
+import com.example.toyracers.track.TrackLoader
+import com.example.toyracers.track.TrackPoint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -18,9 +18,10 @@ import org.junit.Test
 class AiDriverTest {
     @Test
     fun `invalid racing line reports validation error before creating path follower`() {
-        val error = assertThrows(IllegalArgumentException::class.java) {
-            AiDriver(emptyList(), initialPosition = TrackPoint(0f, 0f))
-        }
+        val error =
+            assertThrows(IllegalArgumentException::class.java) {
+                AiDriver(emptyList(), initialPosition = TrackPoint(0f, 0f))
+            }
 
         assertEquals("Racing line must contain at least 3 points", error.message)
     }
@@ -52,11 +53,12 @@ class AiDriverTest {
 
     @Test
     fun `reaching target advances to following waypoint`() {
-        val line = listOf(
-            TrackPoint(0f, 0f),
-            TrackPoint(10f, 0f),
-            TrackPoint(10f, 10f),
-        )
+        val line =
+            listOf(
+                TrackPoint(0f, 0f),
+                TrackPoint(10f, 0f),
+                TrackPoint(10f, 10f),
+            )
         val driver = AiDriver(line, initialPosition = TrackPoint(0f, 0f))
         assertEquals(1, driver.targetWaypointIndex)
 
@@ -68,11 +70,12 @@ class AiDriverTest {
     @Test
     fun `stationary car enters deterministic reverse recovery`() {
         val config = AiConfig(stuckDurationSeconds = 0.5f)
-        val driver = AiDriver(
-            racingLine = testLine(TrackPoint(10f, 0f)),
-            initialPosition = TrackPoint(0f, 0f),
-            config = config,
-        )
+        val driver =
+            AiDriver(
+                racingLine = testLine(TrackPoint(10f, 0f)),
+                initialPosition = TrackPoint(0f, 0f),
+                config = config,
+            )
         val car = CarState()
 
         driver.update(car, 0.25f)
@@ -98,11 +101,12 @@ class AiDriverTest {
         val driver = driverForTarget(TrackPoint(10f, 0f))
         val car = CarState(rotationDeg = 0f, speed = 8f)
 
-        val input = driver.update(
-            carState = car,
-            deltaSeconds = FIXED_DELTA,
-            obstacles = listOf(AiObstacle(x = 4f, y = 0.5f, radius = 0.5f, speed = 3f)),
-        )
+        val input =
+            driver.update(
+                carState = car,
+                deltaSeconds = FIXED_DELTA,
+                obstacles = listOf(AiObstacle(x = 4f, y = 0.5f, radius = 0.5f, speed = 3f)),
+            )
 
         assertEquals(AiBehaviorState.OVERTAKE, driver.behaviorState)
         assertTrue(input.steering > 0f)
@@ -112,14 +116,16 @@ class AiDriverTest {
     @Test
     fun `overtake selects the only passing corridor clear of other cars`() {
         val driver = driverForTarget(TrackPoint(10f, 0f))
-        val input = driver.update(
-            carState = CarState(rotationDeg = 0f, speed = 8f),
-            deltaSeconds = FIXED_DELTA,
-            obstacles = listOf(
-                AiObstacle(x = 4f, y = 0.5f, radius = 0.5f, speed = 3f),
-                AiObstacle(x = 3f, y = -2f, radius = 0.5f, speed = 8f),
-            ),
-        )
+        val input =
+            driver.update(
+                carState = CarState(rotationDeg = 0f, speed = 8f),
+                deltaSeconds = FIXED_DELTA,
+                obstacles =
+                    listOf(
+                        AiObstacle(x = 4f, y = 0.5f, radius = 0.5f, speed = 3f),
+                        AiObstacle(x = 3f, y = -2f, radius = 0.5f, speed = 8f),
+                    ),
+            )
 
         assertEquals(AiBehaviorState.OVERTAKE, driver.behaviorState)
         assertTrue("AI must use the clear left corridor", input.steering < 0f)
@@ -128,15 +134,17 @@ class AiDriverTest {
     @Test
     fun `blocked passing corridors prevent unsafe overtake`() {
         val driver = driverForTarget(TrackPoint(10f, 0f))
-        val input = driver.update(
-            carState = CarState(rotationDeg = 0f, speed = 8f),
-            deltaSeconds = FIXED_DELTA,
-            obstacles = listOf(
-                AiObstacle(x = 4f, y = 0f, radius = 0.5f, speed = 3f),
-                AiObstacle(x = 2f, y = 2f, radius = 0.5f, speed = 8f),
-                AiObstacle(x = 2f, y = -2f, radius = 0.5f, speed = 8f),
-            ),
-        )
+        val input =
+            driver.update(
+                carState = CarState(rotationDeg = 0f, speed = 8f),
+                deltaSeconds = FIXED_DELTA,
+                obstacles =
+                    listOf(
+                        AiObstacle(x = 4f, y = 0f, radius = 0.5f, speed = 3f),
+                        AiObstacle(x = 2f, y = 2f, radius = 0.5f, speed = 8f),
+                        AiObstacle(x = 2f, y = -2f, radius = 0.5f, speed = 8f),
+                    ),
+            )
 
         assertEquals(AiBehaviorState.AVOID, driver.behaviorState)
         assertEquals(0f, input.steering, TOLERANCE)
@@ -192,14 +200,15 @@ class AiDriverTest {
 
     @Test
     fun `difficulty profiles preserve tuned config invariants`() {
-        val tuned = AiConfig(
-            straightSpeed = 10f,
-            cornerSpeed = 10f,
-            obstacleDetectionDistance = 1f,
-            staticObstacleReactionDistance = 1f,
-            overtakeMinimumClearance = 1f,
-            sensorRayStep = 1f,
-        )
+        val tuned =
+            AiConfig(
+                straightSpeed = 10f,
+                cornerSpeed = 10f,
+                obstacleDetectionDistance = 1f,
+                staticObstacleReactionDistance = 1f,
+                overtakeMinimumClearance = 1f,
+                sensorRayStep = 1f,
+            )
 
         AiDifficulty.entries.forEach { difficulty ->
             val adjusted = tuned.forDifficulty(difficulty)
@@ -220,11 +229,12 @@ class AiDriverTest {
     fun `track sensor rays detect the world boundary`() {
         val track = TrackLoader().load()
         val detector = AiObstacleDetector(AiConfig(obstacleDetectionDistance = 5f))
-        val car = CarState(
-            x = track.worldBounds.maxX - 1f,
-            y = track.worldBounds.y + track.worldBounds.height / 2f,
-            rotationDeg = 0f,
-        )
+        val car =
+            CarState(
+                x = track.worldBounds.maxX - 1f,
+                y = track.worldBounds.y + track.worldBounds.height / 2f,
+                rotationDeg = 0f,
+            )
 
         val rays = detector.scanTrack(car, track)
 
@@ -235,24 +245,28 @@ class AiDriverTest {
     @Test
     fun `driver reacts to a track boundary before immediate collision range`() {
         val track = TrackLoader().load()
-        val position = TrackPoint(
-            x = track.worldBounds.maxX - 4f,
-            y = track.worldBounds.y + track.worldBounds.height / 2f,
-        )
-        val driver = AiDriver(
-            racingLine = listOf(
-                TrackPoint(position.x - 10f, position.y),
-                position,
-                TrackPoint(position.x + 10f, position.y),
-            ),
-            initialPosition = position,
-            track = track,
-        )
+        val position =
+            TrackPoint(
+                x = track.worldBounds.maxX - 4f,
+                y = track.worldBounds.y + track.worldBounds.height / 2f,
+            )
+        val driver =
+            AiDriver(
+                racingLine =
+                    listOf(
+                        TrackPoint(position.x - 10f, position.y),
+                        position,
+                        TrackPoint(position.x + 10f, position.y),
+                    ),
+                initialPosition = position,
+                track = track,
+            )
 
-        val input = driver.update(
-            CarState(x = position.x, y = position.y, rotationDeg = 0f, speed = 8f),
-            FIXED_DELTA,
-        )
+        val input =
+            driver.update(
+                CarState(x = position.x, y = position.y, rotationDeg = 0f, speed = 8f),
+                FIXED_DELTA,
+            )
 
         assertEquals(AiBehaviorState.AVOID, driver.behaviorState)
         assertTrue(kotlin.math.abs(input.steering) > 0f)
@@ -261,11 +275,12 @@ class AiDriverTest {
 
     @Test
     fun `off track driver requests safe respawn without changing car coordinates`() {
-        val driver = AiDriver(
-            racingLine = testLine(TrackPoint(10f, 0f)),
-            initialPosition = TrackPoint(0f, 0f),
-            config = AiConfig(offTrackDurationSeconds = 0.1f),
-        )
+        val driver =
+            AiDriver(
+                racingLine = testLine(TrackPoint(10f, 0f)),
+                initialPosition = TrackPoint(0f, 0f),
+                config = AiConfig(offTrackDurationSeconds = 0.1f),
+            )
         val car = CarState(x = 100f, y = 100f, speed = 5f)
 
         driver.update(car, 0.1f, isOnTrack = false)
@@ -281,17 +296,19 @@ class AiDriverTest {
             val track = TrackLoader().load(trackId)
             AiDifficulty.entries.forEach { difficulty ->
                 track.startGrid.drop(1).forEach { start ->
-                    val state = CarState(
-                        x = start.position.x,
-                        y = start.position.y,
-                        rotationDeg = start.rotationDeg,
-                    )
-                    val driver = AiDriver(
-                        track.racingLine,
-                        start.position,
-                        AiConfig(waypointRadius = track.racingLineWaypointRadius),
-                        difficulty = difficulty,
-                    )
+                    val state =
+                        CarState(
+                            x = start.position.x,
+                            y = start.position.y,
+                            rotationDeg = start.rotationDeg,
+                        )
+                    val driver =
+                        AiDriver(
+                            track.racingLine,
+                            start.position,
+                            AiConfig(waypointRadius = track.racingLineWaypointRadius),
+                            difficulty = difficulty,
+                        )
                     val physics = CarPhysics()
                     val carConfig = CarConfig()
                     val collisions = CollisionSystem()
@@ -332,12 +349,13 @@ class AiDriverTest {
             initialPosition = TrackPoint(0f, 0f),
         )
 
-    private fun testLine(target: TrackPoint): List<TrackPoint> = listOf(
-        TrackPoint(-10f, -10f),
-        TrackPoint(0f, 0f),
-        target,
-        TrackPoint(-10f, 10f),
-    )
+    private fun testLine(target: TrackPoint): List<TrackPoint> =
+        listOf(
+            TrackPoint(-10f, -10f),
+            TrackPoint(0f, 0f),
+            target,
+            TrackPoint(-10f, 10f),
+        )
 
     private companion object {
         const val FIXED_DELTA = 1f / 60f

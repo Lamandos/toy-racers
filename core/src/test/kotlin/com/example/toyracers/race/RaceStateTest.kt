@@ -64,11 +64,12 @@ class RaceStateTest {
         RaceState().advance(-0.1f)
     }
 
-    private fun racingState(): RaceState = RaceState().apply {
-        markReady()
-        startCountdown()
-        advance(countdownDurationSeconds)
-    }
+    private fun racingState(): RaceState =
+        RaceState().apply {
+            markReady()
+            startCountdown()
+            advance(countdownDurationSeconds)
+        }
 
     private companion object {
         const val TOLERANCE = 0.001f

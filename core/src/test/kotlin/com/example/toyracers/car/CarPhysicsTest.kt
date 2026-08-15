@@ -86,10 +86,11 @@ class CarPhysicsTest {
 
     @Test
     fun `strong steering below drift entry speed does not activate drift`() {
-        val state = CarState(
-            velocityX = config.driftEntrySpeed - 0.1f,
-            speed = config.driftEntrySpeed - 0.1f,
-        )
+        val state =
+            CarState(
+                velocityX = config.driftEntrySpeed - 0.1f,
+                speed = config.driftEntrySpeed - 0.1f,
+            )
 
         simulate(state, PlayerInput(steering = 1f), seconds = 0.5f)
 
@@ -187,8 +188,9 @@ class CarPhysicsTest {
     fun `fixed step drift simulation is deterministic`() {
         val first = CarState(velocityX = 24f, speed = 24f)
         val second = first.copy()
-        val inputs = List(60) { PlayerInput(throttle = 0.8f, steering = 1f) } +
-            List(60) { PlayerInput(throttle = 0.6f, steering = -0.8f) }
+        val inputs =
+            List(60) { PlayerInput(throttle = 0.8f, steering = 1f) } +
+                List(60) { PlayerInput(throttle = 0.6f, steering = -0.8f) }
 
         inputs.forEach { input ->
             physics.update(first, config, input, CarPhysics.FIXED_DELTA_SECONDS)
@@ -200,11 +202,12 @@ class CarPhysicsTest {
 
     @Test
     fun `steering without engine power does not add kinetic energy`() {
-        val noDragConfig = CarConfig(
-            lateralFriction = 0f,
-            rollingResistance = 0f,
-            driftDrag = 0f,
-        )
+        val noDragConfig =
+            CarConfig(
+                lateralFriction = 0f,
+                rollingResistance = 0f,
+                driftDrag = 0f,
+            )
         val state = CarState(velocityX = 12f, speed = 12f)
         val initialVelocity = velocityMagnitude(state)
 
@@ -220,11 +223,12 @@ class CarPhysicsTest {
 
     @Test
     fun `continuous steering without drag preserves velocity magnitude`() {
-        val noDragConfig = CarConfig(
-            lateralFriction = 0f,
-            rollingResistance = 0f,
-            driftDrag = 0f,
-        )
+        val noDragConfig =
+            CarConfig(
+                lateralFriction = 0f,
+                rollingResistance = 0f,
+                driftDrag = 0f,
+            )
         val state = CarState(velocityX = 12f, speed = 12f)
         val initialVelocity = velocityMagnitude(state)
 
@@ -243,7 +247,11 @@ class CarPhysicsTest {
     private fun velocityMagnitude(state: CarState): Float =
         sqrt(state.velocityX * state.velocityX + state.velocityY * state.velocityY)
 
-    private fun simulate(state: CarState, input: PlayerInput, seconds: Float) {
+    private fun simulate(
+        state: CarState,
+        input: PlayerInput,
+        seconds: Float,
+    ) {
         val steps = (seconds / CarPhysics.FIXED_DELTA_SECONDS).toInt()
         repeat(steps) {
             physics.update(state, config, input, CarPhysics.FIXED_DELTA_SECONDS)

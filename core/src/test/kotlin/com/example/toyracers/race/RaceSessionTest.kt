@@ -2,13 +2,13 @@ package com.example.toyracers.race
 
 import com.example.toyracers.ai.AiConfig
 import com.example.toyracers.ai.AiDifficulty
-import com.example.toyracers.car.CarPhysics
 import com.example.toyracers.car.CarModel
+import com.example.toyracers.car.CarPhysics
 import com.example.toyracers.car.opponentModelsFor
 import com.example.toyracers.input.PlayerInput
-import com.example.toyracers.track.TrackLoader
-import com.example.toyracers.track.TrackId
 import com.example.toyracers.track.SurfaceType
+import com.example.toyracers.track.TrackId
+import com.example.toyracers.track.TrackLoader
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -23,11 +23,12 @@ class RaceSessionTest {
     fun `player and AI participants receive their own model performance`() {
         val playerModel = CarModel.YELLOW_SPORT
         val opponents = opponentModelsFor(playerModel)
-        val session = RaceSession(
-            track = TrackLoader().load(),
-            playerCarModel = playerModel,
-            opponentCarModels = opponents,
-        )
+        val session =
+            RaceSession(
+                track = TrackLoader().load(),
+                playerCarModel = playerModel,
+                opponentCarModels = opponents,
+            )
 
         assertEquals(
             playerModel.performance.applyTo(),
@@ -42,10 +43,11 @@ class RaceSessionTest {
 
     @Test
     fun `selected difficulty is applied to every opponent`() {
-        val session = RaceSession(
-            track = TrackLoader().load(),
-            opponentDifficulty = AiDifficulty.HARD,
-        )
+        val session =
+            RaceSession(
+                track = TrackLoader().load(),
+                opponentDifficulty = AiDifficulty.HARD,
+            )
 
         assertTrue(session.opponents.isNotEmpty())
         session.opponents.forEach { opponent ->
@@ -57,7 +59,10 @@ class RaceSessionTest {
     fun `one session step updates player and AI through the shared pipeline`() {
         val session = racingSession()
         val playerStartX = session.player.state.x
-        val opponentStartX = session.opponents.first().state.x
+        val opponentStartX =
+            session.opponents
+                .first()
+                .state.x
 
         session.advance(
             CarPhysics.FIXED_DELTA_SECONDS,
@@ -65,18 +70,27 @@ class RaceSessionTest {
         )
 
         assertTrue(session.player.state.x > playerStartX)
-        assertTrue(session.opponents.first().state.x > opponentStartX)
+        assertTrue(
+            session.opponents
+                .first()
+                .state.x > opponentStartX,
+        )
         assertTrue(session.player.progress.totalRaceTime > 0f)
-        assertTrue(session.opponents.first().progress.totalRaceTime > 0f)
+        assertTrue(
+            session.opponents
+                .first()
+                .progress.totalRaceTime > 0f,
+        )
     }
 
     @Test
     fun `finished race renders the state produced by the finishing step`() {
         val track = TrackLoader().load().copy(collisionShapes = emptyList())
-        val session = RaceSession(track).apply {
-            start()
-            advance(raceState.countdownDurationSeconds, PlayerInput.NONE)
-        }
+        val session =
+            RaceSession(track).apply {
+                start()
+                advance(raceState.countdownDurationSeconds, PlayerInput.NONE)
+            }
         val startLineCenterX = track.startLine.bounds.x + track.startLine.bounds.width / 2f
         val startLineCenterY = track.startLine.bounds.y + track.startLine.bounds.height / 2f
         session.player.progress.currentCheckpointIndex = track.checkpoints.size
@@ -104,14 +118,22 @@ class RaceSessionTest {
         val session = racingSession(withoutObjects = true)
         session.player.state.x = -10f
         session.player.state.y = 36f
-        session.opponents.first().state.x = -10f
-        session.opponents.first().state.y = 45f
+        session.opponents
+            .first()
+            .state.x = -10f
+        session.opponents
+            .first()
+            .state.y = 45f
 
         session.advance(CarPhysics.FIXED_DELTA_SECONDS, PlayerInput.NONE)
 
         val minimumCoordinate = session.player.carConfig.collisionRadius
         assertTrue(session.player.state.x >= minimumCoordinate)
-        assertTrue(session.opponents.first().state.x >= minimumCoordinate)
+        assertTrue(
+            session.opponents
+                .first()
+                .state.x >= minimumCoordinate,
+        )
     }
 
     @Test
@@ -129,13 +151,14 @@ class RaceSessionTest {
 
     @Test
     fun `AI respawn clears off-road speed reduction and drift state`() {
-        val session = RaceSession(
-            track = TrackLoader().load().copy(collisionShapes = emptyList()),
-            aiConfig = AiConfig(offTrackDurationSeconds = CarPhysics.FIXED_DELTA_SECONDS),
-        ).apply {
-            start()
-            advance(raceState.countdownDurationSeconds, PlayerInput.NONE)
-        }
+        val session =
+            RaceSession(
+                track = TrackLoader().load().copy(collisionShapes = emptyList()),
+                aiConfig = AiConfig(offTrackDurationSeconds = CarPhysics.FIXED_DELTA_SECONDS),
+            ).apply {
+                start()
+                advance(raceState.countdownDurationSeconds, PlayerInput.NONE)
+            }
         val opponent = session.opponents.first()
         val safeState = opponent.lastSafeState.copy()
         opponent.state.x = -10f
@@ -171,10 +194,11 @@ class RaceSessionTest {
     @Test
     fun `bathroom AI follows its racing line on asphalt`() {
         val track = TrackLoader().load(TrackId.BATHROOM)
-        val session = RaceSession(track).apply {
-            start()
-            advance(raceState.countdownDurationSeconds, PlayerInput.NONE)
-        }
+        val session =
+            RaceSession(track).apply {
+                start()
+                advance(raceState.countdownDurationSeconds, PlayerInput.NONE)
+            }
         val opponent = session.opponents.first()
         val startX = opponent.state.x
         val startY = opponent.state.y
@@ -217,10 +241,11 @@ class RaceSessionTest {
     @Test
     fun `five interacting AI complete a valid lap on every built in track`() {
         TrackId.entries.forEach { trackId ->
-            val session = RaceSession(TrackLoader().load(trackId)).apply {
-                start()
-                advance(raceState.countdownDurationSeconds, PlayerInput.NONE)
-            }
+            val session =
+                RaceSession(TrackLoader().load(trackId)).apply {
+                    start()
+                    advance(raceState.countdownDurationSeconds, PlayerInput.NONE)
+                }
 
             session.advance(MAX_RACE_SIMULATION_SECONDS, PlayerInput.NONE)
 
@@ -246,24 +271,26 @@ class RaceSessionTest {
             fifteenFps.advance(CarPhysics.FIXED_DELTA_SECONDS * 4f, PlayerInput(throttle = 1f))
         }
 
-        (listOf(sixtyFps.player) + sixtyFps.opponents).zip(
-            listOf(fifteenFps.player) + fifteenFps.opponents,
-        ).forEach { (first, second) ->
-            assertEquals(first.state.x, second.state.x, TOLERANCE)
-            assertEquals(first.state.y, second.state.y, TOLERANCE)
-            assertEquals(first.state.rotationDeg, second.state.rotationDeg, TOLERANCE)
-            assertEquals(first.state.speed, second.state.speed, TOLERANCE)
-            assertEquals(first.progress, second.progress)
-        }
+        (listOf(sixtyFps.player) + sixtyFps.opponents)
+            .zip(
+                listOf(fifteenFps.player) + fifteenFps.opponents,
+            ).forEach { (first, second) ->
+                assertEquals(first.state.x, second.state.x, TOLERANCE)
+                assertEquals(first.state.y, second.state.y, TOLERANCE)
+                assertEquals(first.state.rotationDeg, second.state.rotationDeg, TOLERANCE)
+                assertEquals(first.state.speed, second.state.speed, TOLERANCE)
+                assertEquals(first.progress, second.progress)
+            }
     }
 
     private fun racingSession(withoutObjects: Boolean = false): RaceSession {
         val loadedTrack = TrackLoader().load()
-        val track = if (withoutObjects) {
-            loadedTrack.copy(collisionShapes = emptyList())
-        } else {
-            loadedTrack
-        }
+        val track =
+            if (withoutObjects) {
+                loadedTrack.copy(collisionShapes = emptyList())
+            } else {
+                loadedTrack
+            }
         return RaceSession(track).apply {
             start()
             advance(raceState.countdownDurationSeconds, PlayerInput.NONE)

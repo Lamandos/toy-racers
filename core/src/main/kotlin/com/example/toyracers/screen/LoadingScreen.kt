@@ -7,7 +7,9 @@ import com.example.toyracers.ToyRacersGame
 import kotlin.math.min
 
 /** Brief startup screen that will later coordinate asynchronous asset loading. */
-class LoadingScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
+class LoadingScreen(
+    game: ToyRacersGame,
+) : ToyRacersScreen(game) {
     private var elapsedSeconds = 0f
 
     override fun render(delta: Float) {

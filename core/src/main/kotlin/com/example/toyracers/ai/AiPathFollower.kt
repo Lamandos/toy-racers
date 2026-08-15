@@ -16,11 +16,15 @@ class AiPathFollower(
     var targetWaypointIndex: Int = waypointAfterNearest(initialPosition)
         private set
 
-    fun reset(position: TrackPoint) { targetWaypointIndex = waypointAfterNearest(position) }
+    fun reset(position: TrackPoint) {
+        targetWaypointIndex = waypointAfterNearest(position)
+    }
 
     fun update(position: TrackPoint) {
         var checked = 0
-        while (checked < racingLine.size && distanceSquared(position, racingLine[targetWaypointIndex]) <= config.waypointRadius * config.waypointRadius) {
+        while (checked < racingLine.size &&
+            distanceSquared(position, racingLine[targetWaypointIndex]) <= config.waypointRadius * config.waypointRadius
+        ) {
             targetWaypointIndex = (targetWaypointIndex + 1) % racingLine.size
             checked++
         }
@@ -41,15 +45,26 @@ class AiPathFollower(
         )
     }
 
-    fun headingError(carState: CarState, target: TrackPoint = target()): Float {
-        val angle = Math.toDegrees(atan2((target.y - carState.y).toDouble(), (target.x - carState.x).toDouble())).toFloat()
+    fun headingError(
+        carState: CarState,
+        target: TrackPoint = target(),
+    ): Float {
+        val angle =
+            Math
+                .toDegrees(
+                    atan2((target.y - carState.y).toDouble(), (target.x - carState.x).toDouble()),
+                ).toFloat()
         return normalizeSignedDegrees(angle - carState.rotationDeg)
     }
 
     fun turnAheadDegrees(carState: CarState): Float {
         val target = racingLine[targetWaypointIndex]
         val next = racingLine[(targetWaypointIndex + config.lookAheadPoints) % racingLine.size]
-        val approach = Math.toDegrees(atan2((target.y - carState.y).toDouble(), (target.x - carState.x).toDouble())).toFloat()
+        val approach =
+            Math
+                .toDegrees(
+                    atan2((target.y - carState.y).toDouble(), (target.x - carState.x).toDouble()),
+                ).toFloat()
         val exit = Math.toDegrees(atan2((next.y - target.y).toDouble(), (next.x - target.x).toDouble())).toFloat()
         return abs(normalizeSignedDegrees(exit - approach))
     }
@@ -57,7 +72,10 @@ class AiPathFollower(
     private fun waypointAfterNearest(position: TrackPoint): Int =
         ((racingLine.indices.minByOrNull { distanceSquared(position, racingLine[it]) } ?: 0) + 1) % racingLine.size
 
-    private fun distanceSquared(first: TrackPoint, second: TrackPoint): Float {
+    private fun distanceSquared(
+        first: TrackPoint,
+        second: TrackPoint,
+    ): Float {
         val dx = second.x - first.x
         val dy = second.y - first.y
         return dx * dx + dy * dy

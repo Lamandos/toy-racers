@@ -75,12 +75,13 @@ class RaceCameraControllerTest {
         RaceCameraController(
             camera = camera,
             bounds = CameraBounds(0f, 0f, 40f, 30f),
-            config = RaceCameraConfig(
-                followSpeed = 5f,
-                lookAheadDistance = 4f,
-                zoom = 1f,
-                shakeDecaySpeed = 12f,
-            ),
+            config =
+                RaceCameraConfig(
+                    followSpeed = 5f,
+                    lookAheadDistance = 4f,
+                    zoom = 1f,
+                    shakeDecaySpeed = 12f,
+                ),
         )
 
     private companion object {

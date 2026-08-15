@@ -4,7 +4,9 @@ import com.example.toyracers.car.CarState
 import kotlin.math.abs
 
 /** Detects stalled, wrong-way and off-track cars, then escalates reverse recovery to respawn. */
-class AiRecoveryController(private val config: AiConfig) {
+class AiRecoveryController(
+    private val config: AiConfig,
+) {
     private var stuckTime = 0f
     private var wrongWayTime = 0f
     private var offTrackTime = 0f
@@ -28,9 +30,10 @@ class AiRecoveryController(private val config: AiConfig) {
             return if (recoveryTimeRemaining > 0f) {
                 AiRecoveryAction.REVERSE
             } else {
-                val recovered = abs(carState.speed) >= config.stuckSpeed &&
-                    abs(headingErrorDegrees) <= config.wrongWayAngleDeg &&
-                    isOnTrack
+                val recovered =
+                    abs(carState.speed) >= config.stuckSpeed &&
+                        abs(headingErrorDegrees) <= config.wrongWayAngleDeg &&
+                        isOnTrack
                 reset()
                 if (recovered) AiRecoveryAction.NONE else AiRecoveryAction.RESPAWN
             }
