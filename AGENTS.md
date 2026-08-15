@@ -24,11 +24,29 @@ These instructions apply to the entire repository.
 - Do not add a dependency without explaining why existing code or current dependencies are insufficient.
 - Prefer deterministic tests for physics, race rules, checkpoints, laps, and AI decisions.
 
+## Code quality gates
+
+- Keep `ktlintCheck`, `detekt`, unit tests, and `verifySourceFileLengths` green for every change.
+- Run `./gradlew quickQualityCheck` before committing and `./gradlew qualityCheck` before pushing. Do not bypass
+  the version-controlled hooks with `--no-verify` or another workaround.
+- Use `./gradlew ktlintFormat` only as an explicit local fix. Verification and CI tasks must detect formatting
+  violations without modifying source files.
+- Kotlin and Java source files must not exceed 500 lines. Functions, methods, and constructors must not exceed
+  80 lines. Keep control-flow nesting to at most 4 levels.
+- Preserve the configured detekt limits for class size, parameter lists, cyclomatic and cognitive complexity,
+  duplication, wildcard imports, unused code, and potentially dangerous code.
+- Do not add a ktlint or detekt baseline, exclude ordinary game code, or weaken a rule merely to make a check pass.
+  Refactor or fix violations instead. Generated sources, build outputs, and explicitly documented generated platform
+  helpers may remain excluded.
+- When changing quality configuration, update `.githooks`, GitHub Actions, and `docs/CODE_QUALITY.md` together so
+  local commit, local push, and CI behavior remain aligned.
+
 ## Verification
 
 After code changes, run the tasks available in the generated project:
 
 ```sh
+./gradlew qualityCheck
 ./gradlew test
 ./gradlew lwjgl3:run
 ./gradlew android:assembleDebug
