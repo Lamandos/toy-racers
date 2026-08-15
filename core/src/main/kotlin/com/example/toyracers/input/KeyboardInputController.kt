@@ -10,14 +10,17 @@ class KeyboardInputController : InputController {
         val brake = if (pressed(Input.Keys.S, Input.Keys.DOWN)) 1f else 0f
         val left = pressed(Input.Keys.A, Input.Keys.LEFT)
         val right = pressed(Input.Keys.D, Input.Keys.RIGHT)
-        val steering = when {
-            left == right -> 0f
-            left -> -1f
-            else -> 1f
-        }
+        val steering =
+            when {
+                left == right -> 0f
+                left -> -1f
+                else -> 1f
+            }
         return PlayerInput(throttle, brake, steering)
     }
 
-    private fun pressed(primary: Int, secondary: Int): Boolean =
-        Gdx.input.isKeyPressed(primary) || Gdx.input.isKeyPressed(secondary)
+    private fun pressed(
+        primary: Int,
+        secondary: Int,
+    ): Boolean = Gdx.input.isKeyPressed(primary) || Gdx.input.isKeyPressed(secondary)
 }

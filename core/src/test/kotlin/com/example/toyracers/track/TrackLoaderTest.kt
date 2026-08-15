@@ -39,9 +39,10 @@ class TrackLoaderTest {
 
     @Test
     fun `start grid positions do not overlap`() {
-        val minimumDistanceSquared = CarConfig().collisionRadius.let { radius ->
-            radius * 2f * radius * 2f
-        }
+        val minimumDistanceSquared =
+            CarConfig().collisionRadius.let { radius ->
+                radius * 2f * radius * 2f
+            }
 
         listOf(track, bathroom).forEach { builtInTrack ->
             builtInTrack.startGrid.forEachIndexed { index, first ->

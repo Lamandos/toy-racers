@@ -29,37 +29,41 @@ class CarPhysics {
         val lateralSpeedBeforeSteering = basis.rightDot(state.velocityX, state.velocityY)
         if (input.brake > 0f) {
             if (longitudinalSpeed > STOP_EPSILON) {
-                longitudinalSpeed = moveToward(
-                    longitudinalSpeed,
-                    0f,
-                    config.brakeForce * input.brake * deltaSeconds,
-                )
+                longitudinalSpeed =
+                    moveToward(
+                        longitudinalSpeed,
+                        0f,
+                        config.brakeForce * input.brake * deltaSeconds,
+                    )
             } else {
                 longitudinalSpeed -= config.reverseAcceleration * input.brake * deltaSeconds
             }
         }
 
-        longitudinalSpeed = moveToward(
-            longitudinalSpeed,
-            0f,
-            config.rollingResistance * deltaSeconds,
-        ).coerceIn(-config.maxReverseSpeed, config.maxForwardSpeed)
+        longitudinalSpeed =
+            moveToward(
+                longitudinalSpeed,
+                0f,
+                config.rollingResistance * deltaSeconds,
+            ).coerceIn(-config.maxReverseSpeed, config.maxForwardSpeed)
 
-        val targetDriftAmount = targetDriftAmount(
-            longitudinalSpeed = longitudinalSpeed,
-            lateralSpeed = lateralSpeedBeforeSteering,
-            steering = input.steering,
-            config = config,
-        )
-        state.driftAmount = moveToward(
-            state.driftAmount,
-            targetDriftAmount,
-            if (targetDriftAmount > state.driftAmount) {
-                config.driftEntryResponse * deltaSeconds
-            } else {
-                config.driftExitResponse * deltaSeconds
-            },
-        )
+        val targetDriftAmount =
+            targetDriftAmount(
+                longitudinalSpeed = longitudinalSpeed,
+                lateralSpeed = lateralSpeedBeforeSteering,
+                steering = input.steering,
+                config = config,
+            )
+        state.driftAmount =
+            moveToward(
+                state.driftAmount,
+                targetDriftAmount,
+                if (targetDriftAmount > state.driftAmount) {
+                    config.driftEntryResponse * deltaSeconds
+                } else {
+                    config.driftExitResponse * deltaSeconds
+                },
+            )
 
         val velocityBeforeSteeringX =
             basis.forwardX * longitudinalSpeed + basis.rightX * lateralSpeedBeforeSteering
@@ -79,17 +83,20 @@ class CarPhysics {
         basis = Basis.fromDegrees(state.rotationDeg)
         longitudinalSpeed = basis.forwardDot(velocityBeforeSteeringX, velocityBeforeSteeringY)
         var lateralSpeed = basis.rightDot(velocityBeforeSteeringX, velocityBeforeSteeringY)
-        val effectiveGrip = config.grip * interpolate(
-            1f,
-            config.driftGripMultiplier,
-            state.driftAmount,
-        )
+        val effectiveGrip =
+            config.grip *
+                interpolate(
+                    1f,
+                    config.driftGripMultiplier,
+                    state.driftAmount,
+                )
         lateralSpeed *= max(0f, 1f - config.lateralFriction * effectiveGrip * deltaSeconds)
-        longitudinalSpeed = moveToward(
-            longitudinalSpeed,
-            0f,
-            config.driftDrag * state.driftAmount * abs(lateralSpeed) * deltaSeconds,
-        )
+        longitudinalSpeed =
+            moveToward(
+                longitudinalSpeed,
+                0f,
+                config.driftDrag * state.driftAmount * abs(lateralSpeed) * deltaSeconds,
+            )
 
         longitudinalSpeed = longitudinalSpeed.coerceIn(-config.maxReverseSpeed, config.maxForwardSpeed)
         state.velocityX = basis.forwardX * longitudinalSpeed + basis.rightX * lateralSpeed
@@ -113,30 +120,41 @@ class CarPhysics {
             return 0f
         }
 
-        val speedRatio = (
-            (longitudinalSpeed - config.driftEntrySpeed) / config.driftEntrySpeed
+        val speedRatio =
+            (
+                (longitudinalSpeed - config.driftEntrySpeed) / config.driftEntrySpeed
             ).coerceIn(0f, 1f)
-        val steeringRatio = (
-            (abs(steering) - config.driftSteeringThreshold) /
-                (1f - config.driftSteeringThreshold)
+        val steeringRatio =
+            (
+                (abs(steering) - config.driftSteeringThreshold) /
+                    (1f - config.driftSteeringThreshold)
             ).coerceIn(0f, 1f)
         return speedRatio * steeringRatio
     }
 
-    private fun interpolate(from: Float, to: Float, amount: Float): Float =
-        from + (to - from) * amount
+    private fun interpolate(
+        from: Float,
+        to: Float,
+        amount: Float,
+    ): Float = from + (to - from) * amount
 
-    private fun moveToward(value: Float, target: Float, amount: Float): Float = when {
-        value < target -> min(value + amount, target)
-        value > target -> max(value - amount, target)
-        else -> target
-    }
+    private fun moveToward(
+        value: Float,
+        target: Float,
+        amount: Float,
+    ): Float =
+        when {
+            value < target -> min(value + amount, target)
+            value > target -> max(value - amount, target)
+            else -> target
+        }
 
-    private fun signOrZero(value: Float): Float = when {
-        value > STOP_EPSILON -> 1f
-        value < -STOP_EPSILON -> -1f
-        else -> 0f
-    }
+    private fun signOrZero(value: Float): Float =
+        when {
+            value > STOP_EPSILON -> 1f
+            value < -STOP_EPSILON -> -1f
+            else -> 0f
+        }
 
     private fun normalizeDegrees(degrees: Float): Float {
         val wrapped = degrees % 360f
@@ -149,9 +167,15 @@ class CarPhysics {
         val rightX: Float,
         val rightY: Float,
     ) {
-        fun forwardDot(x: Float, y: Float): Float = x * forwardX + y * forwardY
+        fun forwardDot(
+            x: Float,
+            y: Float,
+        ): Float = x * forwardX + y * forwardY
 
-        fun rightDot(x: Float, y: Float): Float = x * rightX + y * rightY
+        fun rightDot(
+            x: Float,
+            y: Float,
+        ): Float = x * rightX + y * rightY
 
         companion object {
             fun fromDegrees(rotationDeg: Float): Basis {

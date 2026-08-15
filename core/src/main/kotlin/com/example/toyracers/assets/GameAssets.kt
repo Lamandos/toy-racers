@@ -20,22 +20,23 @@ class GameAssets(
         get() = manager.progress
 
     fun car(model: CarModel): TextureRegion {
-        check(prepared) { "Assets must finish loading before they are accessed" }
+        check(prepared) { ASSETS_NOT_READY_MESSAGE }
         return TextureRegion(manager.get(model.assetPath, Texture::class.java))
     }
 
     fun track(trackId: TrackId): Texture {
-        check(prepared) { "Assets must finish loading before they are accessed" }
-        val path = when (trackId) {
-            TrackId.LIVING_ROOM -> AssetPaths.TRACK_01
-            TrackId.BATHROOM -> AssetPaths.TRACK_02
-        }
+        check(prepared) { ASSETS_NOT_READY_MESSAGE }
+        val path =
+            when (trackId) {
+                TrackId.LIVING_ROOM -> AssetPaths.TRACK_01
+                TrackId.BATHROOM -> AssetPaths.TRACK_02
+            }
         return manager.get(path, Texture::class.java)
     }
 
     val mainMenuBackground: Texture
         get() {
-            check(prepared) { "Assets must finish loading before they are accessed" }
+            check(prepared) { ASSETS_NOT_READY_MESSAGE }
             return manager.get(AssetPaths.MAIN_MENU_BACKGROUND, Texture::class.java)
         }
 
@@ -59,7 +60,7 @@ class GameAssets(
     val buttonClick: Sound get() = sound(AssetPaths.BUTTON_CLICK)
     val backgroundMusic: Music
         get() {
-            check(prepared) { "Assets must finish loading before they are accessed" }
+            check(prepared) { ASSETS_NOT_READY_MESSAGE }
             return manager.get(AssetPaths.BACKGROUND_MUSIC, Music::class.java)
         }
 
@@ -91,7 +92,7 @@ class GameAssets(
                     AssetPaths.FINISH,
                     AssetPaths.BUTTON_CLICK,
                 )
-            ).forEach { manager.load(it, Sound::class.java) }
+        ).forEach { manager.load(it, Sound::class.java) }
         manager.load(AssetPaths.BACKGROUND_MUSIC, Music::class.java)
         queued = true
     }
@@ -110,12 +111,16 @@ class GameAssets(
     }
 
     private fun sound(path: String): Sound {
-        check(prepared) { "Assets must finish loading before they are accessed" }
+        check(prepared) { ASSETS_NOT_READY_MESSAGE }
         return manager.get(path, Sound::class.java)
     }
 
     private fun textureRegion(path: String): TextureRegion {
-        check(prepared) { "Assets must finish loading before they are accessed" }
+        check(prepared) { ASSETS_NOT_READY_MESSAGE }
         return TextureRegion(manager.get(path, Texture::class.java))
+    }
+
+    private companion object {
+        const val ASSETS_NOT_READY_MESSAGE = "Assets must finish loading before they are accessed"
     }
 }

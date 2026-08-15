@@ -15,19 +15,23 @@ class ResultsScreen(
 ) : ToyRacersScreen(game) {
     private var retryRequested = false
     private var mainMenuRequested = false
-    private val results = ResultsStage(
-        result = result,
-        onRetry = { retryRequested = true },
-        onMainMenu = { mainMenuRequested = true },
-        onButtonClick = game.audio::buttonClick,
-    )
+    private val results =
+        ResultsStage(
+            result = result,
+            onRetry = { retryRequested = true },
+            onMainMenu = { mainMenuRequested = true },
+            onButtonClick = game.audio::buttonClick,
+        )
 
     override fun show() {
         super.show()
         Gdx.input.inputProcessor = results.inputProcessor
     }
 
-    override fun resize(width: Int, height: Int) {
+    override fun resize(
+        width: Int,
+        height: Int,
+    ) {
         super.resize(width, height)
         results.resize(width, height)
     }
@@ -39,9 +43,13 @@ class ResultsScreen(
         if (lifecyclePaused) return
 
         when {
-            mainMenuRequested || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) ->
+            mainMenuRequested || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) -> {
                 game.showMainMenu()
-            retryRequested || retryKeyPressed() -> game.startRace()
+            }
+
+            retryRequested || retryKeyPressed() -> {
+                game.startRace()
+            }
         }
     }
 

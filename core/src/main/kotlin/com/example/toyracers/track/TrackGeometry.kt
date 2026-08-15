@@ -21,8 +21,7 @@ data class TrackRectangle(
     val maxY: Float
         get() = y + height
 
-    fun contains(point: TrackPoint): Boolean =
-        contains(point.x, point.y)
+    fun contains(point: TrackPoint): Boolean = contains(point.x, point.y)
 
     fun contains(
         pointX: Float,
@@ -78,7 +77,7 @@ data class TrackPolygon(
                 x < (
                     (previous.x - current.x) * (y - current.y) /
                         (previous.y - current.y) + current.x
-                    )
+                )
             ) {
                 inside = !inside
             }

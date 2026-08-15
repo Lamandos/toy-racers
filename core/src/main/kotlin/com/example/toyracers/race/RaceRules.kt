@@ -78,16 +78,19 @@ class RaceRules(
         val halfLength =
             abs(perpendicularX) * startLine.bounds.width / 2f +
                 abs(perpendicularY) * startLine.bounds.height / 2f
-        val gate = TrackSegment(
-            start = TrackPoint(
-                centerX - perpendicularX * halfLength,
-                centerY - perpendicularY * halfLength,
-            ),
-            end = TrackPoint(
-                centerX + perpendicularX * halfLength,
-                centerY + perpendicularY * halfLength,
-            ),
-        )
+        val gate =
+            TrackSegment(
+                start =
+                    TrackPoint(
+                        centerX - perpendicularX * halfLength,
+                        centerY - perpendicularY * halfLength,
+                    ),
+                end =
+                    TrackPoint(
+                        centerX + perpendicularX * halfLength,
+                        centerY + perpendicularY * halfLength,
+                    ),
+            )
         return crossesForward(
             previous,
             current,

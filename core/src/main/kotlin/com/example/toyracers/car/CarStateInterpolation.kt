@@ -15,19 +15,21 @@ internal fun interpolateCarState(
     return CarState(
         x = interpolate(previous.x, current.x, clampedAlpha),
         y = interpolate(previous.y, current.y, clampedAlpha),
-        rotationDeg = interpolateRotationDegrees(
-            previous.rotationDeg,
-            current.rotationDeg,
-            clampedAlpha,
-        ),
+        rotationDeg =
+            interpolateRotationDegrees(
+                previous.rotationDeg,
+                current.rotationDeg,
+                clampedAlpha,
+            ),
         speed = interpolate(previous.speed, current.speed, clampedAlpha),
         velocityX = interpolate(previous.velocityX, current.velocityX, clampedAlpha),
         velocityY = interpolate(previous.velocityY, current.velocityY, clampedAlpha),
-        angularVelocity = interpolate(
-            previous.angularVelocity,
-            current.angularVelocity,
-            clampedAlpha,
-        ),
+        angularVelocity =
+            interpolate(
+                previous.angularVelocity,
+                current.angularVelocity,
+                clampedAlpha,
+            ),
     )
 }
 

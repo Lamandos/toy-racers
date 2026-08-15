@@ -8,6 +8,5 @@ data class PlayerControlConfig(
         require(steeringSensitivity in 0f..1f)
     }
 
-    fun applyTo(input: PlayerInput): PlayerInput =
-        input.copy(steering = input.steering * steeringSensitivity)
+    fun applyTo(input: PlayerInput): PlayerInput = input.copy(steering = input.steering * steeringSensitivity)
 }

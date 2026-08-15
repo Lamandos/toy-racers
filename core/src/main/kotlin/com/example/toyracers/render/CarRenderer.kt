@@ -77,9 +77,10 @@ internal data class CarRenderBounds(
 internal fun calculateCarRenderBounds(
     state: CarState,
     config: CarConfig,
-): CarRenderBounds = CarRenderBounds(
-    x = state.x - config.width / 2f,
-    y = state.y - config.length / 2f,
-    width = config.width,
-    length = config.length,
-)
+): CarRenderBounds =
+    CarRenderBounds(
+        x = state.x - config.width / 2f,
+        y = state.y - config.length / 2f,
+        width = config.width,
+        length = config.length,
+    )

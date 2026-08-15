@@ -33,13 +33,18 @@ class CollisionDebugRenderer {
         track.innerObstacles.forEach { drawRectangle(shapes, it) }
         track.collisionShapes.forEach { collisionShape ->
             when (collisionShape) {
-                is TrackCircle -> shapes.circle(
-                    collisionShape.center.x,
-                    collisionShape.center.y,
-                    collisionShape.radius,
-                    CIRCLE_SEGMENTS,
-                )
-                is TrackPolygon -> drawPolygon(shapes, collisionShape)
+                is TrackCircle -> {
+                    shapes.circle(
+                        collisionShape.center.x,
+                        collisionShape.center.y,
+                        collisionShape.radius,
+                        CIRCLE_SEGMENTS,
+                    )
+                }
+
+                is TrackPolygon -> {
+                    drawPolygon(shapes, collisionShape)
+                }
             }
         }
         shapes.color = CAR_COLOR

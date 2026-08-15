@@ -9,21 +9,27 @@ import com.example.toyracers.audio.AudioSettings
 import com.example.toyracers.ui.AudioSettingsStage
 
 /** Edits in-memory audio preferences; persistence is owned by the later save-system stage. */
-class SettingsScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
+class SettingsScreen(
+    game: ToyRacersGame,
+) : ToyRacersScreen(game) {
     private var backRequested = false
-    private val settingsStage = AudioSettingsStage(
-        initialSettings = game.audio.settings,
-        onSettingsChanged = { game.audio.settings = it },
-        onBack = { backRequested = true },
-        onButtonClick = game.audio::buttonClick,
-    )
+    private val settingsStage =
+        AudioSettingsStage(
+            initialSettings = game.audio.settings,
+            onSettingsChanged = { game.audio.settings = it },
+            onBack = { backRequested = true },
+            onButtonClick = game.audio::buttonClick,
+        )
 
     override fun show() {
         super.show()
         Gdx.input.inputProcessor = settingsStage.inputProcessor
     }
 
-    override fun resize(width: Int, height: Int) {
+    override fun resize(
+        width: Int,
+        height: Int,
+    ) {
         super.resize(width, height)
         settingsStage.resize(width, height)
     }

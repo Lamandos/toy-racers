@@ -7,22 +7,28 @@ import com.example.toyracers.ToyRacersGame
 import com.example.toyracers.ui.MainMenuStage
 
 /** Scene2D entry menu; Play continues to the dedicated track selection step. */
-class MainMenuScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
+class MainMenuScreen(
+    game: ToyRacersGame,
+) : ToyRacersScreen(game) {
     private var playRequested = false
     private var settingsRequested = false
-    private val menu = MainMenuStage(
-        background = game.assets.mainMenuBackground,
-        onPlay = { playRequested = true },
-        onSettings = { settingsRequested = true },
-        onButtonClick = game.audio::buttonClick,
-    )
+    private val menu =
+        MainMenuStage(
+            background = game.assets.mainMenuBackground,
+            onPlay = { playRequested = true },
+            onSettings = { settingsRequested = true },
+            onButtonClick = game.audio::buttonClick,
+        )
 
     override fun show() {
         super.show()
         Gdx.input.inputProcessor = menu.inputProcessor
     }
 
-    override fun resize(width: Int, height: Int) {
+    override fun resize(
+        width: Int,
+        height: Int,
+    ) {
         super.resize(width, height)
         menu.resize(width, height)
     }

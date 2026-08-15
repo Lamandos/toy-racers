@@ -29,18 +29,20 @@ internal fun calculateRaceAudioMix(
     val speedRatio = (abs(speed) / maxSpeed).coerceIn(0f, 1f)
     val activeRaceVolume = if (paused || !racing) 0f else sfxVolume
     return RaceAudioMix(
-        engineVolume = if (paused) {
-            0f
-        } else {
-            (IDLE_VOLUME + throttle.coerceIn(0f, 1f) * THROTTLE_VOLUME) * sfxVolume
-        },
+        engineVolume =
+            if (paused) {
+                0f
+            } else {
+                (IDLE_VOLUME + throttle.coerceIn(0f, 1f) * THROTTLE_VOLUME) * sfxVolume
+            },
         driftVolume = driftAmount.coerceIn(0f, 1f) * speedRatio * activeRaceVolume,
         driftPitch = 0.9f + speedRatio * 0.25f,
-        wheelspinVolume = if (offRoad) {
-            throttle.coerceIn(0f, 1f) * activeRaceVolume
-        } else {
-            0f
-        },
+        wheelspinVolume =
+            if (offRoad) {
+                throttle.coerceIn(0f, 1f) * activeRaceVolume
+            } else {
+                0f
+            },
         brakingVolume =
             brake.coerceIn(0f, 1f) *
                 (speed.coerceAtLeast(0f) / maxSpeed).coerceIn(0f, 1f) *
@@ -105,17 +107,18 @@ class GameAudio(
         surface: SurfaceType,
     ) {
         val offRoad = !surface.isRoad
-        val mix = calculateRaceAudioMix(
-            speed = speed,
-            maxSpeed = maxSpeed,
-            throttle = throttle,
-            brake = brake,
-            driftAmount = driftAmount,
-            racing = racing,
-            offRoad = offRoad,
-            paused = paused,
-            sfxVolume = settings.effectiveSfxVolume * raceMixGain,
-        )
+        val mix =
+            calculateRaceAudioMix(
+                speed = speed,
+                maxSpeed = maxSpeed,
+                throttle = throttle,
+                brake = brake,
+                driftAmount = driftAmount,
+                racing = racing,
+                offRoad = offRoad,
+                paused = paused,
+                sfxVolume = settings.effectiveSfxVolume * raceMixGain,
+            )
         val speedRatio = (abs(speed) / maxSpeed).coerceIn(0f, 1f)
         engine.setVolume(mix.engineVolume)
         engine.setPitch(0.96f + speedRatio * 0.08f)
@@ -136,17 +139,23 @@ class GameAudio(
     }
 
     fun countdown() = play(countdown, 0.75f)
+
     fun go() = play(go, 1f)
+
     fun checkpoint() = play(checkpoint, 0.75f)
+
     fun finish() = play(finish, 1f)
+
     fun collision(impactRatio: Float) {
-        val variants = when {
-            impactRatio < 0.35f -> collisionLight
-            impactRatio < 0.7f -> collisionMedium
-            else -> collisionHeavy
-        }
+        val variants =
+            when {
+                impactRatio < 0.35f -> collisionLight
+                impactRatio < 0.7f -> collisionMedium
+                else -> collisionHeavy
+            }
         playNext(variants, impactRatio.coerceIn(0.3f, 1f), collisionVariant++)
     }
+
     fun buttonClick() = play(buttonClick, 0.7f)
 
     fun beginRaceFadeOut() {
@@ -186,11 +195,18 @@ class GameAudio(
         music.stop()
     }
 
-    private fun play(sound: Sound, volume: Float) {
+    private fun play(
+        sound: Sound,
+        volume: Float,
+    ) {
         if (!paused) sound.play(volume * settings.effectiveSfxVolume)
     }
 
-    private fun playNext(sounds: List<Sound>, volume: Float, index: Int) {
+    private fun playNext(
+        sounds: List<Sound>,
+        volume: Float,
+        index: Int,
+    ) {
         play(sounds[index % sounds.size], volume)
     }
 

@@ -10,24 +10,31 @@ import com.example.toyracers.ui.TrackSelectionOption
 import com.example.toyracers.ui.TrackSelectionStage
 
 /** Track selection shown as the second step of the Play flow. */
-class TrackSelectionScreen(game: ToyRacersGame) : ToyRacersScreen(game) {
+class TrackSelectionScreen(
+    game: ToyRacersGame,
+) : ToyRacersScreen(game) {
     private var selectedTrack: TrackId? = null
     private var backRequested = false
-    private val selection = TrackSelectionStage(
-        options = TrackId.entries.map { trackId ->
-            TrackSelectionOption(trackId, game.assets.track(trackId))
-        },
-        onTrackSelected = { selectedTrack = it },
-        onBack = { backRequested = true },
-        onButtonClick = game.audio::buttonClick,
-    )
+    private val selection =
+        TrackSelectionStage(
+            options =
+                TrackId.entries.map { trackId ->
+                    TrackSelectionOption(trackId, game.assets.track(trackId))
+                },
+            onTrackSelected = { selectedTrack = it },
+            onBack = { backRequested = true },
+            onButtonClick = game.audio::buttonClick,
+        )
 
     override fun show() {
         super.show()
         Gdx.input.inputProcessor = selection.inputProcessor
     }
 
-    override fun resize(width: Int, height: Int) {
+    override fun resize(
+        width: Int,
+        height: Int,
+    ) {
         super.resize(width, height)
         selection.resize(width, height)
     }

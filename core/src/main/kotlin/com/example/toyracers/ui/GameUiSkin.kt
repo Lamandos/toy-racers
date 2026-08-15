@@ -17,9 +17,10 @@ internal fun createGameUiSkin(): Skin {
     skin.add(WHITE_TEXTURE, Texture(pixmap))
     pixmap.dispose()
 
-    val font = BitmapFont().apply {
-        region.texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear)
-    }
+    val font =
+        BitmapFont().apply {
+            region.texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear)
+        }
     skin.add(DEFAULT_FONT, font)
     skin.add(DEFAULT_LABEL_STYLE, Label.LabelStyle(font, Color.WHITE))
     skin.add(

@@ -6,11 +6,12 @@ import org.junit.Test
 class AudioSettingsTest {
     @Test
     fun `master volume scales music and sound effects independently`() {
-        val settings = AudioSettings(
-            masterVolume = 0.5f,
-            musicVolume = 0.4f,
-            sfxVolume = 0.8f,
-        )
+        val settings =
+            AudioSettings(
+                masterVolume = 0.5f,
+                musicVolume = 0.4f,
+                sfxVolume = 0.8f,
+            )
 
         assertEquals(0.2f, settings.effectiveMusicVolume, TOLERANCE)
         assertEquals(0.4f, settings.effectiveSfxVolume, TOLERANCE)

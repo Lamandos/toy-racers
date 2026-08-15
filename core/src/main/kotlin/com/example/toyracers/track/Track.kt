@@ -69,9 +69,7 @@ data class Track(
         }
     }
 
-    fun surfaceAt(point: TrackPoint): SurfaceType {
-        return surfaceAt(point.x, point.y)
-    }
+    fun surfaceAt(point: TrackPoint): SurfaceType = surfaceAt(point.x, point.y)
 
     fun surfaceAt(
         x: Float,

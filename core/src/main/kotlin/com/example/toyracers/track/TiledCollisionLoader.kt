@@ -1,9 +1,9 @@
 package com.example.toyracers.track
 
+import org.w3c.dom.Element
 import java.io.InputStream
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.parsers.ParserConfigurationException
-import org.w3c.dom.Element
 
 /**
  * Reads collision contours from the `collisions` object layer of a Tiled TMX map.
@@ -24,52 +24,58 @@ class TiledCollisionLoader(
         require(worldScale > 0f)
     }
 
-    fun load(input: InputStream): List<TrackCollisionShape> =
-        loadTrackObjects(input).collisionShapes
+    fun load(input: InputStream): List<TrackCollisionShape> = loadTrackObjects(input).collisionShapes
 
     fun loadTrackObjects(input: InputStream): TiledTrackObjects {
         val document = documentBuilderFactory().newDocumentBuilder().parse(input)
         val imageLayers = document.getElementsByTagName("imagelayer")
-        val trackImageLayer = (0 until imageLayers.length)
-            .map { imageLayers.item(it) as Element }
-            .firstOrNull { it.getAttribute("name") == TRACK_IMAGE_LAYER_NAME }
-            ?: error("TMX map must contain a '$TRACK_IMAGE_LAYER_NAME' image layer")
+        val trackImageLayer =
+            (0 until imageLayers.length)
+                .map { imageLayers.item(it) as Element }
+                .firstOrNull { it.getAttribute("name") == TRACK_IMAGE_LAYER_NAME }
+                ?: error("TMX map must contain a '$TRACK_IMAGE_LAYER_NAME' image layer")
         val imageOffsetX = trackImageLayer.optionalFloatAttribute("offsetx")
         val imageOffsetY = trackImageLayer.optionalFloatAttribute("offsety")
         val objectGroups = document.getElementsByTagName("objectgroup")
-        val layers = (0 until objectGroups.length)
-            .map { objectGroups.item(it) as Element }
-            .associateBy { it.getAttribute("name") }
-        val collisionLayer = layers[COLLISION_LAYER_NAME]
-            ?: error("TMX map must contain a '$COLLISION_LAYER_NAME' object layer")
+        val layers =
+            (0 until objectGroups.length)
+                .map { objectGroups.item(it) as Element }
+                .associateBy { it.getAttribute("name") }
+        val collisionLayer =
+            layers[COLLISION_LAYER_NAME]
+                ?: error("TMX map must contain a '$COLLISION_LAYER_NAME' object layer")
         val objects = collisionLayer.getElementsByTagName("object")
         val collisionOffsetX =
             collisionLayer.optionalFloatAttribute("offsetx") - imageOffsetX
         val collisionOffsetY =
             collisionLayer.optionalFloatAttribute("offsety") - imageOffsetY
-        val collisionShapes = (0 until objects.length).map { index ->
-            parseObject(
-                objects.item(index) as Element,
-                collisionOffsetX,
-                collisionOffsetY,
-            )
-        }
-        val roadLayer = layers[ROAD_LAYER_NAME]
-            ?: error("TMX map must contain a '$ROAD_LAYER_NAME' object layer")
+        val collisionShapes =
+            (0 until objects.length).map { index ->
+                parseObject(
+                    objects.item(index) as Element,
+                    collisionOffsetX,
+                    collisionOffsetY,
+                )
+            }
+        val roadLayer =
+            layers[ROAD_LAYER_NAME]
+                ?: error("TMX map must contain a '$ROAD_LAYER_NAME' object layer")
         return TiledTrackObjects(
             collisionShapes = collisionShapes,
-            roadOuter = parseNamedPolygon(
-                roadLayer,
-                ROAD_OUTER_NAME,
-                imageOffsetX,
-                imageOffsetY,
-            ),
-            roadInner = parseNamedPolygon(
-                roadLayer,
-                ROAD_INNER_NAME,
-                imageOffsetX,
-                imageOffsetY,
-            ),
+            roadOuter =
+                parseNamedPolygon(
+                    roadLayer,
+                    ROAD_OUTER_NAME,
+                    imageOffsetX,
+                    imageOffsetY,
+                ),
+            roadInner =
+                parseNamedPolygon(
+                    roadLayer,
+                    ROAD_INNER_NAME,
+                    imageOffsetX,
+                    imageOffsetY,
+                ),
         )
     }
 
@@ -80,10 +86,11 @@ class TiledCollisionLoader(
         imageOffsetY: Float,
     ): TrackPolygon {
         val objects = layer.getElementsByTagName("object")
-        val element = (0 until objects.length)
-            .map { objects.item(it) as Element }
-            .firstOrNull { it.getAttribute("name") == objectName }
-            ?: error("Tiled layer '$ROAD_LAYER_NAME' must contain '$objectName'")
+        val element =
+            (0 until objects.length)
+                .map { objects.item(it) as Element }
+                .firstOrNull { it.getAttribute("name") == objectName }
+                ?: error("Tiled layer '$ROAD_LAYER_NAME' must contain '$objectName'")
         return parseObject(
             element,
             layer.optionalFloatAttribute("offsetx") - imageOffsetX,
@@ -101,17 +108,19 @@ class TiledCollisionLoader(
         val y = element.floatAttribute("y") + layerOffsetY
         val polygons = element.getElementsByTagName("polygon")
         if (polygons.length > 0) {
-            val points = (polygons.item(0) as Element).getAttribute("points")
-                .trim()
-                .split(Regex("\\s+"))
-                .map { point ->
-                    val coordinates = point.split(",")
-                    require(coordinates.size == 2) { "Invalid Tiled polygon point: $point" }
-                    toTrackPoint(
-                        pixelX = x + coordinates[0].toFloat(),
-                        pixelY = y + coordinates[1].toFloat(),
-                    )
-                }
+            val points =
+                (polygons.item(0) as Element)
+                    .getAttribute("points")
+                    .trim()
+                    .split(Regex("\\s+"))
+                    .map { point ->
+                        val coordinates = point.split(",")
+                        require(coordinates.size == 2) { "Invalid Tiled polygon point: $point" }
+                        toTrackPoint(
+                            pixelX = x + coordinates[0].toFloat(),
+                            pixelY = y + coordinates[1].toFloat(),
+                        )
+                    }
             return TrackPolygon(points)
         }
 
@@ -141,20 +150,19 @@ class TiledCollisionLoader(
     private fun toTrackPoint(
         pixelX: Float,
         pixelY: Float,
-    ): TrackPoint = TrackPoint(
-        x = pixelsToWorld(pixelX),
-        y = pixelsToWorld(imageHeightPixels - pixelY),
-    )
+    ): TrackPoint =
+        TrackPoint(
+            x = pixelsToWorld(pixelX),
+            y = pixelsToWorld(imageHeightPixels - pixelY),
+        )
 
-    private fun pixelsToWorld(pixels: Float): Float =
-        pixels / imageWidthPixels * authoredWidth * worldScale
+    private fun pixelsToWorld(pixels: Float): Float = pixels / imageWidthPixels * authoredWidth * worldScale
 
     private fun Element.floatAttribute(name: String): Float =
         getAttribute(name).toFloatOrNull()
             ?: error("TMX object is missing numeric '$name'")
 
-    private fun Element.optionalFloatAttribute(name: String): Float =
-        getAttribute(name).toFloatOrNull() ?: 0f
+    private fun Element.optionalFloatAttribute(name: String): Float = getAttribute(name).toFloatOrNull() ?: 0f
 
     private fun documentBuilderFactory(): DocumentBuilderFactory =
         DocumentBuilderFactory.newInstance().apply {

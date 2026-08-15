@@ -180,15 +180,17 @@ class CollisionSystem(
             val edgeX = end.x - start.x
             val edgeY = end.y - start.y
             val lengthSquared = edgeX * edgeX + edgeY * edgeY
-            val fraction = (
-                (point.x - start.x) * edgeX +
-                    (point.y - start.y) * edgeY
+            val fraction =
+                (
+                    (point.x - start.x) * edgeX +
+                        (point.y - start.y) * edgeY
                 ) / lengthSquared
             val clampedFraction = fraction.coerceIn(0f, 1f)
-            val edgePoint = TrackPoint(
-                start.x + edgeX * clampedFraction,
-                start.y + edgeY * clampedFraction,
-            )
+            val edgePoint =
+                TrackPoint(
+                    start.x + edgeX * clampedFraction,
+                    start.y + edgeY * clampedFraction,
+                )
             val distance = hypot(point.x - edgePoint.x, point.y - edgePoint.y)
             if (closest == null || distance < closest!!.distance) {
                 closest = ClosestPolygonEdge(edgePoint, start, end, distance)
@@ -205,11 +207,12 @@ class CollisionSystem(
         val edgeX = end.x - start.x
         val edgeY = end.y - start.y
         val length = hypot(edgeX, edgeY)
-        val signedArea = vertices.indices.sumOf { index ->
-            val current = vertices[index]
-            val next = vertices[(index + 1) % vertices.size]
-            (current.x * next.y - next.x * current.y).toDouble()
-        }
+        val signedArea =
+            vertices.indices.sumOf { index ->
+                val current = vertices[index]
+                val next = vertices[(index + 1) % vertices.size]
+                (current.x * next.y - next.x * current.y).toDouble()
+            }
         return if (signedArea >= 0.0) {
             Pair(edgeY / length, -edgeX / length)
         } else {
@@ -231,11 +234,12 @@ class CollisionSystem(
         if (distanceSquared >= radius * radius) return
 
         val distance = sqrt(distanceSquared)
-        val normalAndPenetration = if (distance > MIN_DISTANCE) {
-            Triple(offsetX / distance, offsetY / distance, radius - distance)
-        } else {
-            insideRectangleNormal(state, radius, obstacle)
-        }
+        val normalAndPenetration =
+            if (distance > MIN_DISTANCE) {
+                Triple(offsetX / distance, offsetY / distance, radius - distance)
+            } else {
+                insideRectangleNormal(state, radius, obstacle)
+            }
         state.x += normalAndPenetration.first * normalAndPenetration.third
         state.y += normalAndPenetration.second * normalAndPenetration.third
         addWallContact(
@@ -253,12 +257,13 @@ class CollisionSystem(
         radius: Float,
         obstacle: TrackRectangle,
     ): Triple<Float, Float, Float> {
-        val distances = listOf(
-            Triple(-1f, 0f, state.x - obstacle.x),
-            Triple(1f, 0f, obstacle.maxX - state.x),
-            Triple(0f, -1f, state.y - obstacle.y),
-            Triple(0f, 1f, obstacle.maxY - state.y),
-        )
+        val distances =
+            listOf(
+                Triple(-1f, 0f, state.x - obstacle.x),
+                Triple(1f, 0f, obstacle.maxX - state.x),
+                Triple(0f, -1f, state.y - obstacle.y),
+                Triple(0f, 1f, obstacle.maxY - state.y),
+            )
         val nearestSide = distances.minBy { it.third }
         return Triple(nearestSide.first, nearestSide.second, radius + nearestSide.third)
     }
@@ -294,10 +299,11 @@ class CollisionSystem(
         val relativeVelocityY = first.velocityY - second.velocityY
         val closingSpeed =
             (relativeVelocityX * normalX + relativeVelocityY * normalY).coerceAtLeast(0f)
-        val impulse = min(
-            closingSpeed * (1f + config.carRestitution) / 2f,
-            config.maxCarImpulse,
-        )
+        val impulse =
+            min(
+                closingSpeed * (1f + config.carRestitution) / 2f,
+                config.maxCarImpulse,
+            )
         first.velocityX -= normalX * impulse
         first.velocityY -= normalY * impulse
         second.velocityX += normalX * impulse
@@ -329,28 +335,33 @@ class CollisionSystem(
     ): CollisionResult {
         val firstCircles = carCollisionCircles(first, firstRadius, firstLongitudinalOffset)
         val secondCircles = carCollisionCircles(second, secondRadius, secondLongitudinalOffset)
-        val closestPair = firstCircles.flatMap { firstCircle ->
-            secondCircles.map { secondCircle ->
-                val offsetX = secondCircle.x - firstCircle.x
-                val offsetY = secondCircle.y - firstCircle.y
-                CirclePair(firstCircle, secondCircle, offsetX * offsetX + offsetY * offsetY)
-            }
-        }.minBy(CirclePair::distanceSquared)
+        val closestPair =
+            firstCircles
+                .flatMap { firstCircle ->
+                    secondCircles.map { secondCircle ->
+                        val offsetX = secondCircle.x - firstCircle.x
+                        val offsetY = secondCircle.y - firstCircle.y
+                        CirclePair(firstCircle, secondCircle, offsetX * offsetX + offsetY * offsetY)
+                    }
+                }.minBy(CirclePair::distanceSquared)
 
-        val firstCircleState = first.copy(
-            x = closestPair.firstCircle.x,
-            y = closestPair.firstCircle.y,
-        )
-        val secondCircleState = second.copy(
-            x = closestPair.secondCircle.x,
-            y = closestPair.secondCircle.y,
-        )
-        val result = resolveCarCollision(
-            firstCircleState,
-            closestPair.firstCircle.radius,
-            secondCircleState,
-            closestPair.secondCircle.radius,
-        )
+        val firstCircleState =
+            first.copy(
+                x = closestPair.firstCircle.x,
+                y = closestPair.firstCircle.y,
+            )
+        val secondCircleState =
+            second.copy(
+                x = closestPair.secondCircle.x,
+                y = closestPair.secondCircle.y,
+            )
+        val result =
+            resolveCarCollision(
+                firstCircleState,
+                closestPair.firstCircle.radius,
+                secondCircleState,
+                closestPair.secondCircle.radius,
+            )
         first.x += firstCircleState.x - closestPair.firstCircle.x
         first.y += firstCircleState.y - closestPair.firstCircle.y
         second.x += secondCircleState.x - closestPair.secondCircle.x
