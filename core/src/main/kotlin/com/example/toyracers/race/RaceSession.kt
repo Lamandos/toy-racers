@@ -166,9 +166,7 @@ internal class RaceSession(
                 }
                 if (participant === player) {
                     maxImpactSpeed = maxOf(maxImpactSpeed, stepResult.impactSpeed)
-                    if (stepResult.checkpointPassed) {
-                        playerCheckpointPassed = true
-                    }
+                    playerCheckpointPassed = playerCheckpointPassed || stepResult.checkpointPassed
                 }
             }
 

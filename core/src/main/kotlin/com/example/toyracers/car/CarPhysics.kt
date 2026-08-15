@@ -103,6 +103,13 @@ class CarPhysics {
         state.velocityY = basis.forwardY * longitudinalSpeed + basis.rightY * lateralSpeed
         state.speed = longitudinalSpeed
         state.lateralSpeed = lateralSpeed
+        integratePosition(state, deltaSeconds)
+    }
+
+    private fun integratePosition(
+        state: CarState,
+        deltaSeconds: Float,
+    ) {
         state.x += state.velocityX * deltaSeconds
         state.y += state.velocityY * deltaSeconds
     }
