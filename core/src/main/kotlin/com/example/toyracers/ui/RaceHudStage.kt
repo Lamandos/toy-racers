@@ -19,23 +19,37 @@ data class RaceHudSnapshot(
     val bestLapTime: Float?,
 )
 
-/** Screen-space race instruments styled after the supplied neon motorsport HUD reference. */
-class RaceHudStage(
+/**
+ * Screen-space race instruments styled after the supplied neon motorsport HUD reference.
+ *
+ * The private marker keeps the implementation constructor distinct while preserving the legacy
+ * callback-only constructor's generated Kotlin default-argument ABI.
+ */
+class RaceHudStage private constructor(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onRestart: () -> Unit,
     onQuitToMenu: () -> Unit,
-    onButtonClick: () -> Unit = {},
-    track: Track? = null,
+    onButtonClick: () -> Unit,
+    track: Track?,
+    @Suppress("UNUSED_PARAMETER") initializationMarker: Unit,
 ) : GameUiStage(onButtonClick) {
-    /** Compatibility constructor for callers that only need the pre-minimap HUD. */
     constructor(
         onPause: () -> Unit,
         onResume: () -> Unit,
         onRestart: () -> Unit,
         onQuitToMenu: () -> Unit,
-        onButtonClick: () -> Unit,
-    ) : this(onPause, onResume, onRestart, onQuitToMenu, onButtonClick, null)
+        onButtonClick: () -> Unit = {},
+    ) : this(onPause, onResume, onRestart, onQuitToMenu, onButtonClick, null, Unit)
+
+    constructor(
+        onPause: () -> Unit,
+        onResume: () -> Unit,
+        onRestart: () -> Unit,
+        onQuitToMenu: () -> Unit,
+        onButtonClick: () -> Unit = {},
+        track: Track?,
+    ) : this(onPause, onResume, onRestart, onQuitToMenu, onButtonClick, track, Unit)
 
     private val minimap = track?.let(::MinimapActor)
     private val hudSkin = skin
