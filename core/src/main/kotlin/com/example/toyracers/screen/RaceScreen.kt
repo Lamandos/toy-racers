@@ -80,6 +80,7 @@ class RaceScreen(
     private var finishSoundPlayed = false
     private val hud =
         RaceHudStage(
+            track = track,
             onPause = { pendingUiAction = RaceUiAction.PAUSE },
             onResume = { pendingUiAction = RaceUiAction.RESUME },
             onRestart = { pendingUiAction = RaceUiAction.RESTART },
@@ -334,6 +335,7 @@ class RaceScreen(
         }
         touchInput.render(delta)
         hud.update(createHudSnapshot())
+        hud.updateMinimap(raceSession.createMinimapSnapshot())
         hud.showPause(raceSession.raceState.phase == RacePhase.PAUSED || lifecyclePaused)
         hud.render(delta)
 

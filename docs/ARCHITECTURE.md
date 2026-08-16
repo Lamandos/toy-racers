@@ -103,6 +103,9 @@ This is a target structure, not a requirement to create empty placeholder classe
   asphalt position without granting checkpoint progress for the move.
 - Renderers read state and draw it. They must not mutate the simulation.
 - UI stages display state and emit user intentions; they do not calculate gameplay outcomes.
+- `MinimapActor` owns its screen-space drawing resource and reads immutable participant snapshots
+  built from interpolated render state. Track contours are converted once at construction. If a
+  track has no `roadOuter`/`roadInner`, the world-bounds rectangle is the documented fallback.
 
 ## Update and rendering flow
 

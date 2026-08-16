@@ -7,6 +7,9 @@ import com.example.toyracers.debug.FrameTelemetrySnapshot
 import com.example.toyracers.race.RaceParticipant
 import com.example.toyracers.race.RaceSession
 import com.example.toyracers.track.TrackPoint
+import com.example.toyracers.ui.MinimapParticipantRole
+import com.example.toyracers.ui.MinimapParticipantSnapshot
+import com.example.toyracers.ui.RaceMinimapSnapshot
 
 internal const val CAMERA_VIEW_WIDTH = 24f
 internal const val CAMERA_VIEW_HEIGHT = CAMERA_VIEW_WIDTH * 9f / 16f
@@ -72,5 +75,29 @@ internal fun displayAiDebugSnapshot(
                     end = TrackPoint(ray.end.x + offsetX, ray.end.y + offsetY),
                 )
             },
+    )
+}
+
+internal fun RaceSession.createMinimapSnapshot(): RaceMinimapSnapshot =
+    RaceMinimapSnapshot(
+        participants =
+            buildList(opponents.size + 1) {
+                opponents.forEach {
+                    add(toMinimapSnapshot(it, MinimapParticipantRole.OPPONENT))
+                }
+                add(toMinimapSnapshot(player, MinimapParticipantRole.PLAYER))
+            },
+    )
+
+private fun RaceSession.toMinimapSnapshot(
+    participant: RaceParticipant,
+    role: MinimapParticipantRole,
+): MinimapParticipantSnapshot {
+    val state = renderStateOf(participant)
+    return MinimapParticipantSnapshot(
+        x = state.x,
+        y = state.y,
+        rotationDeg = state.rotationDeg,
+        role = role,
     )
 }

@@ -8,6 +8,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Stack
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable
 import com.badlogic.gdx.utils.Align
+import com.example.toyracers.track.Track
 
 data class RaceHudSnapshot(
     val position: Int,
@@ -20,12 +21,14 @@ data class RaceHudSnapshot(
 
 /** Screen-space race instruments styled after the supplied neon motorsport HUD reference. */
 class RaceHudStage(
+    track: Track,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onRestart: () -> Unit,
     onQuitToMenu: () -> Unit,
     onButtonClick: () -> Unit = {},
 ) : GameUiStage(onButtonClick) {
+    private val minimap = MinimapActor(track)
     private val hudSkin = skin
     private val positionValue = hudLabel("", 3.35f, HUD_CYAN)
     private val lapValue = hudLabel("", 2.15f, HUD_CYAN)
@@ -84,6 +87,10 @@ class RaceHudStage(
                 row.root.background = if (isPlayer) playerRowDrawable else standingRowDrawable
             }
         }
+    }
+
+    fun updateMinimap(snapshot: RaceMinimapSnapshot) {
+        minimap.update(snapshot)
     }
 
     fun showPause(show: Boolean) {
@@ -169,7 +176,18 @@ class RaceHudStage(
         Table().apply {
             top().right()
             add(pauseButton).width(88f).height(76f).right()
+            row()
+            add(minimap)
+                .width(MinimapActor.PREFERRED_WIDTH)
+                .height(MinimapActor.PREFERRED_HEIGHT)
+                .right()
+                .padTop(14f)
         }
+
+    override fun dispose() {
+        minimap.dispose()
+        super.dispose()
+    }
 
     private fun neonPanel(content: Table): Stack {
         val border = Table().apply { background = cyanDrawable }
