@@ -85,6 +85,7 @@ class RaceScreen(
             onRestart = { pendingUiAction = RaceUiAction.RESTART },
             onQuitToMenu = { pendingUiAction = RaceUiAction.QUIT_TO_MENU },
             onButtonClick = game.audio::buttonClick,
+            track = track,
         )
     private val inputProcessor = InputMultiplexer(hud.inputProcessor, touchInput.inputProcessor)
     private val cameraController =
@@ -334,6 +335,7 @@ class RaceScreen(
         }
         touchInput.render(delta)
         hud.update(createHudSnapshot())
+        hud.updateMinimap(raceSession.createMinimapSnapshot())
         hud.showPause(raceSession.raceState.phase == RacePhase.PAUSED || lifecyclePaused)
         hud.render(delta)
 

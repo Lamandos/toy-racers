@@ -8,6 +8,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Stack
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable
 import com.badlogic.gdx.utils.Align
+import com.example.toyracers.track.Track
 
 data class RaceHudSnapshot(
     val position: Int,
@@ -18,14 +19,39 @@ data class RaceHudSnapshot(
     val bestLapTime: Float?,
 )
 
-/** Screen-space race instruments styled after the supplied neon motorsport HUD reference. */
-class RaceHudStage(
+/**
+ * Screen-space race instruments styled after the supplied neon motorsport HUD reference.
+ *
+ * The private marker keeps the implementation constructor distinct while preserving the legacy
+ * callback-only constructor's generated Kotlin default-argument ABI.
+ */
+class RaceHudStage private constructor(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onRestart: () -> Unit,
     onQuitToMenu: () -> Unit,
-    onButtonClick: () -> Unit = {},
+    onButtonClick: () -> Unit,
+    track: Track?,
+    @Suppress("UNUSED_PARAMETER") initializationMarker: Unit,
 ) : GameUiStage(onButtonClick) {
+    constructor(
+        onPause: () -> Unit,
+        onResume: () -> Unit,
+        onRestart: () -> Unit,
+        onQuitToMenu: () -> Unit,
+        onButtonClick: () -> Unit = {},
+    ) : this(onPause, onResume, onRestart, onQuitToMenu, onButtonClick, null, Unit)
+
+    constructor(
+        onPause: () -> Unit,
+        onResume: () -> Unit,
+        onRestart: () -> Unit,
+        onQuitToMenu: () -> Unit,
+        onButtonClick: () -> Unit = {},
+        track: Track?,
+    ) : this(onPause, onResume, onRestart, onQuitToMenu, onButtonClick, track, Unit)
+
+    private val minimap = track?.let(::MinimapActor)
     private val hudSkin = skin
     private val positionValue = hudLabel("", 3.35f, HUD_CYAN)
     private val lapValue = hudLabel("", 2.15f, HUD_CYAN)
@@ -84,6 +110,10 @@ class RaceHudStage(
                 row.root.background = if (isPlayer) playerRowDrawable else standingRowDrawable
             }
         }
+    }
+
+    fun updateMinimap(snapshot: RaceMinimapSnapshot) {
+        minimap?.update(snapshot)
     }
 
     fun showPause(show: Boolean) {
@@ -169,7 +199,20 @@ class RaceHudStage(
         Table().apply {
             top().right()
             add(pauseButton).width(88f).height(76f).right()
+            minimap?.let { map ->
+                row()
+                add(map)
+                    .width(MinimapActor.PREFERRED_WIDTH)
+                    .height(MinimapActor.PREFERRED_HEIGHT)
+                    .right()
+                    .padTop(14f)
+            }
         }
+
+    override fun dispose() {
+        minimap?.dispose()
+        super.dispose()
+    }
 
     private fun neonPanel(content: Table): Stack {
         val border = Table().apply { background = cyanDrawable }
