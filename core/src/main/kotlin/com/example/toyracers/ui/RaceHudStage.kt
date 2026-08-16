@@ -21,14 +21,23 @@ data class RaceHudSnapshot(
 
 /** Screen-space race instruments styled after the supplied neon motorsport HUD reference. */
 class RaceHudStage(
-    track: Track,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onRestart: () -> Unit,
     onQuitToMenu: () -> Unit,
     onButtonClick: () -> Unit = {},
+    track: Track? = null,
 ) : GameUiStage(onButtonClick) {
-    private val minimap = MinimapActor(track)
+    /** Compatibility constructor for callers that only need the pre-minimap HUD. */
+    constructor(
+        onPause: () -> Unit,
+        onResume: () -> Unit,
+        onRestart: () -> Unit,
+        onQuitToMenu: () -> Unit,
+        onButtonClick: () -> Unit,
+    ) : this(onPause, onResume, onRestart, onQuitToMenu, onButtonClick, null)
+
+    private val minimap = track?.let(::MinimapActor)
     private val hudSkin = skin
     private val positionValue = hudLabel("", 3.35f, HUD_CYAN)
     private val lapValue = hudLabel("", 2.15f, HUD_CYAN)
@@ -90,7 +99,7 @@ class RaceHudStage(
     }
 
     fun updateMinimap(snapshot: RaceMinimapSnapshot) {
-        minimap.update(snapshot)
+        minimap?.update(snapshot)
     }
 
     fun showPause(show: Boolean) {
@@ -176,16 +185,18 @@ class RaceHudStage(
         Table().apply {
             top().right()
             add(pauseButton).width(88f).height(76f).right()
-            row()
-            add(minimap)
-                .width(MinimapActor.PREFERRED_WIDTH)
-                .height(MinimapActor.PREFERRED_HEIGHT)
-                .right()
-                .padTop(14f)
+            minimap?.let { map ->
+                row()
+                add(map)
+                    .width(MinimapActor.PREFERRED_WIDTH)
+                    .height(MinimapActor.PREFERRED_HEIGHT)
+                    .right()
+                    .padTop(14f)
+            }
         }
 
     override fun dispose() {
-        minimap.dispose()
+        minimap?.dispose()
         super.dispose()
     }
 

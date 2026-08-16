@@ -80,12 +80,12 @@ class RaceScreen(
     private var finishSoundPlayed = false
     private val hud =
         RaceHudStage(
-            track = track,
             onPause = { pendingUiAction = RaceUiAction.PAUSE },
             onResume = { pendingUiAction = RaceUiAction.RESUME },
             onRestart = { pendingUiAction = RaceUiAction.RESTART },
             onQuitToMenu = { pendingUiAction = RaceUiAction.QUIT_TO_MENU },
             onButtonClick = game.audio::buttonClick,
+            track = track,
         )
     private val inputProcessor = InputMultiplexer(hud.inputProcessor, touchInput.inputProcessor)
     private val cameraController =

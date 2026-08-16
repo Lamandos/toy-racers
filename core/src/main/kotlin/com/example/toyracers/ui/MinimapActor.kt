@@ -1,6 +1,8 @@
 package com.example.toyracers.ui
 
+import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.g2d.Batch
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.badlogic.gdx.math.Vector2
@@ -40,10 +42,16 @@ class MinimapActor(
         val transform = MinimapTransform(worldBounds, width, height, CONTENT_PADDING)
         batch.end()
         shapes.projectionMatrix = batch.projectionMatrix
-        drawPanel()
-        drawTrack(transform)
-        drawParticipants(transform)
-        batch.begin()
+        val blendingEnabled = Gdx.gl.glIsEnabled(GL20.GL_BLEND)
+        Gdx.gl.glEnable(GL20.GL_BLEND)
+        try {
+            drawPanel()
+            drawTrack(transform)
+            drawParticipants(transform)
+        } finally {
+            if (!blendingEnabled) Gdx.gl.glDisable(GL20.GL_BLEND)
+            batch.begin()
+        }
     }
 
     private fun drawPanel() {
@@ -61,11 +69,15 @@ class MinimapActor(
         shapes.begin(ShapeRenderer.ShapeType.Line)
         shapes.color = ROAD_COLOR
         if (outerVertices == null || innerVertices == null) {
+            val left = transform.mapX(worldBounds.x)
+            val bottom = transform.mapY(worldBounds.y)
+            val right = transform.mapX(worldBounds.maxX)
+            val top = transform.mapY(worldBounds.maxY)
             shapes.rect(
-                stageOrigin.x + CONTENT_PADDING,
-                stageOrigin.y + CONTENT_PADDING,
-                width - CONTENT_PADDING * 2f,
-                height - CONTENT_PADDING * 2f,
+                stageOrigin.x + left,
+                stageOrigin.y + bottom,
+                right - left,
+                top - bottom,
             )
         } else {
             drawLoop(outerVertices, transform)
