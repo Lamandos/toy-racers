@@ -25,6 +25,19 @@ sourceSets {
   }
 }
 
+tasks.withType(Test).configureEach {
+  systemProperty 'updateBehavioralGoldens', System.getProperty('updateBehavioralGoldens', 'false')
+}
+
+tasks.register('behavioralCompatibilityTest', Test) {
+  group = 'verification'
+  description = 'Runs the versioned, headless behavioral compatibility suite.'
+  dependsOn testClasses
+  testClassesDirs = sourceSets.test.output.classesDirs
+  classpath = sourceSets.test.runtimeClasspath
+  filter.includeTestsMatching 'com.example.toyracers.compat.BehavioralCompatibilityTest'
+}
+
 dependencies {
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
   api "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
