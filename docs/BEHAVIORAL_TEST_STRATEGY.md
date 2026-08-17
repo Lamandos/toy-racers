@@ -139,7 +139,7 @@ omitted for player cars or absent values; they are not encoded as platform-speci
   "schemaVersion": 1,
   "scenarioId": "track-01-player-lap",
   "operation": 184,
-  "fixedTicks": 1,
+  "fixedTicks": 184,
   "race": {
     "phase": "RACING",
     "countdownRemainingSeconds": 0.0,
@@ -188,10 +188,12 @@ omitted for player cars or absent values; they are not encoded as platform-speci
 }
 ```
 
-Snapshots are required immediately after `start`, after every race-phase transition, after the first
-physical step, after every event-bearing physical-step trace entry, and at a fixed interval (at most
-60 physical steps) during a long replay. A scenario may sample every tick for a focused physics or
-collision test.
+Snapshots are required immediately after each operation returns, after the first physical step,
+after every event-bearing physical-step trace entry, and at a fixed interval (at most 60 physical
+steps) during a long replay. `RaceSession.start()` reaches `READY` and starts `COUNTDOWN`
+synchronously, so a session trace can observe only the resulting `COUNTDOWN` phase; focused
+`RaceState` tests cover the intermediate `READY` transition. A scenario may sample every tick for a
+focused physics or collision test.
 
 ## Scenario schema
 
@@ -200,6 +202,7 @@ Scenarios are committed JSON fixtures rather than recordings of a live screen. A
 ```json
 {
   "schemaVersion": 1,
+  "referenceProfileVersion": 1,
   "id": "track-01-countdown-and-lap",
   "seed": 0,
   "track": {
@@ -216,7 +219,10 @@ Scenarios are committed JSON fixtures rather than recordings of a live screen. A
     "profileSha256": "<sha256>"
   },
   "initialState": {
+    "phase": "LOADING",
+    "countdownRemainingSeconds": 3.0,
     "accumulatorRemainderSeconds": 0.0,
+    "fixedTicks": 0,
     "nextFinishPosition": 1,
     "participants": ["<full continuation state per participant>"]
   },
