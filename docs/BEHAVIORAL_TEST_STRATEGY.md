@@ -87,6 +87,10 @@ host process:
   session, fixed-delta, and per-difficulty AI values. The track-specific AI waypoint-radius overlay
   is applied after the profile, as defined in [Reference profile and track-definition bytes](#reference-profile-and-track-definition-bytes).
   A fixture may not inherit a setting from source-code defaults or from the host process.
+- Version 1 requires `configuration.aiDifficulty: "NORMAL"`. `AiDriver` applies
+  `AiConfig.forDifficulty` internally, and `NORMAL` is the identity transformation; `EASY` and
+  `HARD` are reserved for a later adapter/profile contract so an effective profile is not adjusted
+  twice.
 - The initial global state. Version 1 accepts only a constructor-derived fresh session: the phase
   must be `LOADING`, countdown and accumulator remainder must equal their profile defaults, and
   `fixedTicks` and `nextFinishPosition` must both be zero/one respectively. Its participants are
@@ -124,8 +128,10 @@ At each requested sample, emit:
 
 - Global: operation number, cumulative fixed-step count, `RacePhase`, countdown remaining seconds,
   accumulator remainder, required laps, and the next finish-position counter.
-- Per participant, sorted by stable `id`: car model, rank, all `CarState` fields, current surface,
-  surface-speed multiplier, and all `RaceProgress` fields.
+- Per participant, sorted by stable `id`: car model, rank, all `CarState` fields, the surface
+  consumed by `SurfaceSpeedSystem`, surface-speed multiplier, and all `RaceProgress` fields. The
+  consumed surface is sampled after that participant's track collision and before car-to-car
+  collision resolution; it is not recomputed from the final post-collision position.
 - For AI participants: `AiBehaviorState`, target waypoint index, and the normalized command emitted
   for that step, or `null` when the sample has no physical step. This catches divergence before a
   later car-state difference hides its cause.
@@ -250,8 +256,11 @@ Snapshots are required immediately after each operation returns, after fixed tic
 event-bearing physical-step trace entry, and at the fixed-tick multiples selected by
 `samples.everyFixedTicks`. Thus an interval of 60 samples ticks 60, 120, 180, and so on; it does
 not use the first sample as its origin. When several rules request the same post-step state, emit
-one snapshot. An adapter that exposes intra-operation samples gives them the enclosing operation
-number and the just-completed fixed tick. `RaceSession.start()` reaches `READY` and starts
+one snapshot. `steps` is an operation-local prefix: a snapshot after fixed tick `k` contains only
+the entries through `k` from the current `advance`; the final post-operation snapshot contains the
+complete trace for that operation. A snapshot before any physical step has `steps: []`. An adapter
+that exposes intra-operation samples gives them the enclosing operation number and the just-completed
+fixed tick. `RaceSession.start()` reaches `READY` and starts
 `COUNTDOWN` synchronously, so a session trace can observe only the resulting `COUNTDOWN` phase;
 focused `RaceState` tests cover the intermediate `READY` transition. A scenario may sample every
 tick for a focused physics or collision test.
@@ -300,6 +309,16 @@ configuration values, and initial-state floats, are parsed from their JSON decim
 and rounded to IEEE-754 binary32 with round-to-nearest, ties-to-even before validation or
 execution. Integer counters remain JSON integers. The example's `0.016666667` therefore becomes
 the same binary32 value as Kotlin's `1f / 60f`.
+
+After input conversion, all simulation state and scalar arithmetic must remain IEEE-754 binary32:
+accumulator and countdown updates, physics, collision, surface, race-rule, and AI calculations
+round to binary32 after each operation as Kotlin `Float` does. Runners must not retain values in
+double precision, fuse operations, or use extended-precision registers when those choices can alter
+a comparison or fixed-step count. The intentional transcendental boundary matches the Kotlin
+reference: `sin`, `cos`, `atan2`, `toRadians`, and `toDegrees` are evaluated through their explicit
+`Double` calls where the source converts to `Double`, then their results are rounded to `Float`
+before entering simulation state; this is the only permitted double-precision arithmetic in the
+gameplay path.
 
 The initial state above is an assertion of the fresh constructor-derived state, not a restore
 payload. Version 1 requires exactly `LOADING`, profile-default countdown duration, zero accumulator
@@ -368,7 +387,8 @@ from elapsed wall time.
 
 ## Reference profile and track-definition bytes
 
-`reference-profiles/v1.json` is the version-1 default simulation profile. It is an ordinary
+`reference-profiles/v1.json` is the version-1 default simulation profile. Version 1 scenarios select
+`NORMAL` difficulty only: this is the identity path through `AiConfig.forDifficulty`. It is an ordinary
 committed UTF-8 JSON file, with no BOM and a terminating newline. Its property order and the
 literal bytes in Git are normative; `profileSha256` hashes those bytes, including the newline. A
 string in a field documented as `float32` is the eight lowercase hexadecimal digits of the
