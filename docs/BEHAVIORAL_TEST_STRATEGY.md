@@ -27,17 +27,20 @@ HUD, and results navigation. It must not be the test boundary.
 `RaceSession` is the correct simulation boundary. For every physical step it processes its fixed,
 ordered pipeline:
 
-1. Preserve the previous state for rendering and capture the last safe AI state.
-2. Convert player input or AI output into `PlayerInput`.
-3. Update the car with `CarPhysics`.
-4. Resolve track collision, then apply `SurfaceSpeedSystem`.
-5. Advance checkpoints, laps, times, and finish status with `RaceRules`.
+1. Preserve the previous state of every participant for rendering.
+2. For each participant in stable participant-list order, capture its last safe AI state and convert
+   player input or AI output into `PlayerInput` using the state already updated by earlier
+   participants in this step.
+3. Update that participant's car with `CarPhysics`.
+4. Resolve that participant's track collision, then apply `SurfaceSpeedSystem`.
+5. Advance that participant's checkpoints, laps, times, and finish status with `RaceRules`.
 6. Resolve car-to-car collisions in participant-list order.
 7. Move `RaceState` to `FINISHED` when the player has finished.
 
-The participant order is stable: player first, followed by `ai-0` through `ai-4` in start-grid
-order. Collision pair order and same-tick finishing order are consequently part of the current
-behavioural contract.
+Steps 2–5 run to completion for one participant before beginning the next; all participant updates
+finish before step 6. The participant order is stable: player first, followed by `ai-0` through
+`ai-4` in start-grid order. Collision pair order and same-tick finishing order are consequently
+part of the current behavioural contract.
 
 ### Deterministic gameplay subsystems
 
@@ -131,8 +134,10 @@ mid-race save/restore must serialize them, or only compare replay runs from tick
 
 ## Snapshot schema
 
-The following JSON-shaped schema is the recommended version-1 output. Fields ending in `?` are
-omitted for player cars or absent values; they are not encoded as platform-specific sentinels.
+The following JSON-shaped schema is the recommended version-1 output. Fields named with `?` in the
+rules after the example are optional and omitted when absent. Every other field is required; a
+required field whose value is unavailable uses the JSON literal `null`, never an omitted property or
+a platform-specific sentinel.
 
 ```json
 {
@@ -187,6 +192,16 @@ omitted for player cars or absent values; they are not encoded as platform-speci
   "result": null
 }
 ```
+
+The version-1 encoding rules are:
+
+- `participants[].progress.bestLapTime`, `participants[].progress.finishPosition`, and `result`
+  are required properties. They contain `null` until the corresponding value exists, then a number
+  or result object as applicable.
+- `participants[].ai?` is omitted for the player and required for every AI participant. Its object
+  contains that participant's `AiBehaviorState`, target waypoint index, and normalized command.
+- No other property is optional. Empty collections are represented by `[]`, as shown for `steps`
+  and collision `contacts`.
 
 Snapshots are required immediately after each operation returns, after the first physical step,
 after every event-bearing physical-step trace entry, and at a fixed interval (at most 60 physical
@@ -245,13 +260,17 @@ recovery, and a complete multi-car race on each built-in track.
 There is no use of `kotlin.random.Random`, `java.util.Random`, `MathUtils.random`, UUIDs, clocks,
 threads, or unordered concurrent collections in the gameplay path.
 
-The only random-like gameplay code is `AiDriver.randomState`. It is a private linear congruential
-generator (`state = state * 1664525 + 1013904223`) used for periodic AI mistakes. Its initial value
-is the XOR of the AI start position's float bits and its deterministic racing-line bias. It is
-therefore reproducible for a fixed track, grid order, and configuration, but it is not presently
-seeded from a public race seed. The `seed` field is retained in the scenario contract for forward
-compatibility; changing it cannot currently change Kotlin behaviour. If seeding becomes public,
-the seed-to-AI-state derivation must be specified and golden fixtures versioned.
+The only random-like gameplay code is `AiDriver.randomState`. It is a private 32-bit linear
+congruential generator used for periodic AI mistakes. Its initial signed 32-bit state is the XOR of
+the raw IEEE-754 float bits of the AI start position and its deterministic racing-line bias. Each
+check replaces it with `(state * 1664525 + 1013904223) mod 2^32`, using two's-complement wraparound.
+The sample is the upper 24 bits interpreted as an unsigned integer, divided by `2^24`: in Kotlin,
+`(state ushr 8).toFloat() / 0x01000000`. A non-JVM implementation must use these state width,
+wraparound, unsigned-shift, and conversion rules rather than its native integer-overflow defaults.
+It is therefore reproducible for a fixed track, grid order, and configuration, but it is not
+presently seeded from a public race seed. The `seed` field is retained in the scenario contract for
+forward compatibility; changing it cannot currently change Kotlin behaviour. If seeding becomes
+public, the seed-to-AI-state derivation must be specified and golden fixtures versioned.
 
 Potential sources of variation that must be controlled are:
 
