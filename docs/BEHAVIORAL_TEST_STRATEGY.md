@@ -7,8 +7,10 @@ of Toy Racers implementations. It is an audit of the current Kotlin reference as
 `core`; it does not prescribe a rendering, audio, or input-device test.
 
 The comparison boundary is a race simulation supplied with a fully specified track, race
-configuration, initial state, and normalized commands. Its result is a sequence of normalized
-snapshots and discrete events. The reference step is
+configuration, initial state, and normalized commands. A fully specified track means the
+canonical serialized `Track` definition, including both TMX-derived geometry and the values
+hard-coded by `TrackLoader`. Its result is a sequence of normalized snapshots and discrete events.
+The reference step is
 `CarPhysics.FIXED_DELTA_SECONDS` (`1f / 60f`).
 
 The following are deliberately out of scope: pixels, draw-call counts, camera interpolation and
@@ -42,16 +44,16 @@ behavioural contract.
 | Subsystem | Current behaviour | Comparison treatment |
 | --- | --- | --- |
 | `CarState` | Mutable vehicle state: position, heading, velocity, angular velocity, lateral speed, and drift. | Include every field. |
-| `PlayerInput` and `PlayerControlConfig` | Clamps throttle/brake to `[0, 1]`, steering to `[-1, 1]`, then applies the player's 0.85 steering scale. | Supply normalized input; record the scaled command if comparing a session. |
+| `PlayerInput` and `PlayerControlConfig` | `RaceSession` first applies the player's 0.85 steering scale; `CarPhysics` then clamps throttle/brake to `[0, 1]` and steering to `[-1, 1]` before physics. | Supply already-normalized scenario input; record the scaled command if comparing a session. |
 | `CarPhysics` | Deterministic numerical integration, steering, grip, drift, and position update for an explicit delta. | Run only at the fixed delta. |
 | `CollisionSystem` | Ordered, bounded circle/capsule contact resolution for boundaries, track objects, and cars. | Compare post-step state and collision event summary. |
 | `SurfaceSpeedSystem` | Deterministically ramps the per-car speed multiplier and clamps velocity from the current surface. | Include surface and multiplier. |
-| `Track`, checkpoints, and `TrackLoader` | Immutable geometry, ordered checkpoint gates, start line/grid, racing line, and surfaces. The loader parses committed TMX bytes into this data. | Pin `trackId` and the TMX content hash. |
+| `Track`, checkpoints, and `TrackLoader` | Immutable geometry, ordered checkpoint gates, start line/grid, racing line, and surfaces. `TrackLoader` combines committed TMX bytes with hard-coded world, gate, grid, racing-line, and waypoint-radius data. | Pin `trackId`, raw TMX content hash, and canonical complete-`Track` definition hash. |
 | `RaceRules` | Ordered forward gate crossing, lap timing, best lap, and sequential finish position assignment. | Include progress, finish data, and race result. |
 | `RaceSession` | Fixed-step accumulator and stable update order across cars, AI, physics, collision, surface, and rules. | Call with controlled deltas only; disable timings. |
 | `PositionTracker` | Total ordering by finish, lap, checkpoint, distance to next gate, then participant ID. | Include rank for every participant. |
 | AI (`AiDriver`, path, obstacle, recovery) | Deterministic waypoint following, sensing, recovery, and pseudo-random mistakes. | Include AI command, behaviour, and waypoint index. |
-| Race state machine and countdown | Legal `LOADING → READY → COUNTDOWN → RACING → PAUSED → FINISHED` transitions. Countdown converts a supplied delta into simulation time. | Include phase and remaining countdown. |
+| Race state machine and countdown | `LOADING → READY → COUNTDOWN → RACING`; `RACING ↔ PAUSED`; and `RACING → FINISHED`. `restart()` may reset any `RaceState` phase to `READY`, then `COUNTDOWN`. Countdown converts a supplied delta into simulation time. | Include phase and remaining countdown; version 1 excludes restart from the `RaceSession` operation set. |
 | Finish and results | `RaceRules` creates finish state; `RaceScreen` derives a `RaceResult` after presentation-only audio fade-out. | Compare the core finish state/result, not the screen transition. |
 
 `CarStateInterpolation` is explicitly display-only. Its previous state and interpolation alpha must
@@ -64,16 +66,34 @@ host process:
 
 - Schema and reference profile versions.
 - A stable scenario ID and a `seed` field.
-- Track ID plus SHA-256 of the exact TMX/collision fixture used by the scenario.
+- Track ID, SHA-256 of the exact TMX/collision fixture, and SHA-256 of a canonical complete
+  serialized `Track` definition. The canonical definition includes every `Track` field in a fixed
+  field/list order: bounds, collision shapes, road contours, surfaces, start line, checkpoints,
+  start grid, racing line, and racing-line waypoint radius. It therefore changes when either TMX
+  data or `TrackLoader`'s hard-coded track definition changes. The profile version owns this UTF-8
+  JSON representation; it uses stable field names and list order, and encodes every `Float` as its
+  raw IEEE-754 bits in eight lowercase hexadecimal digits, so hashing cannot hide a geometry change
+  through decimal rounding.
 - Player car, ordered opponent cars, AI difficulty, required laps, countdown duration, and all
   non-default simulation configuration values. A schema may reference a versioned default profile
   only when its content hash is also recorded.
 - The initial global state and an initial state for every participant. This includes the complete
   `CarState`, `SurfaceSpeedState`, and `RaceProgress` (including `lapStartTime`). It also includes
   the last-safe state for AI participants when respawn is enabled.
-- An ordered stream of operations. Operations are `start`, `pause`, `resume`, and `advance`. An
-  `advance` operation contains a positive, explicit delta and the normalized player command
-  effective for that call. Its command is held for every physical step produced by that call.
+- An ordered stream of operations. Version 1 operations are `start`, `pause`, `resume`, and
+  `advance`; `restart` is intentionally excluded because `RaceSession` does not expose it. It is
+  tested directly as a `RaceState` state-machine concern. An `advance` operation contains a
+  positive, explicit delta and a player command already within the `PlayerInput` ranges. Its
+  command is held for every physical step produced by that call. The runner rejects out-of-range
+  session commands rather than pre-clamping them; normalization-boundary behaviour belongs in
+  focused `PlayerInput.normalized` tests. In the Kotlin session, the accepted command is scaled by
+  `PlayerControlConfig` and is then normalized by `CarPhysics` immediately before physics.
+
+The current Kotlin `RaceSession` always constructs `RaceState()` and `RaceRules(track)`. Until a
+headless adapter injects `RaceState(countdownDurationSeconds)` and
+`RaceRules(track, requiredLaps)`, version-1 Kotlin fixtures must require the current defaults of
+three seconds and three laps, and reject other values. A later profile may support non-default
+values only together with that adapter change and a version bump.
 
 For portable goldens, normal racing should use one `advance` operation per fixed tick after the
 countdown. A separate scenario should exercise countdown boundary handling with its exact supplied
@@ -88,20 +108,24 @@ meaning (render interpolation, debug data, telemetry, audio, and UI state).
 
 At each requested sample, emit:
 
-- Global: operation number, fixed-step count, `RacePhase`, countdown remaining seconds, and required
-  laps.
+- Global: operation number, cumulative fixed-step count, `RacePhase`, countdown remaining seconds,
+  accumulator remainder, required laps, and the next finish-position counter.
 - Per participant, sorted by stable `id`: car model, rank, all `CarState` fields, current surface,
   surface-speed multiplier, and all `RaceProgress` fields.
 - For AI participants: `AiBehaviorState`, target waypoint index, and the normalized command emitted
   for that step. This catches divergence before a later car-state difference hides its cause.
-- Last step event summary: physical-step count, whether the player passed a checkpoint, maximum
-  impact speed, and the ordered collision contact types/impact speeds when collision behaviour is
-  under test.
+- A trace entry for every physical step executed by an `advance` operation, in execution order.
+  Each entry identifies its cumulative fixed tick and records checkpoint passage, maximum impact
+  speed, and the ordered collision contact types/impact speeds. A trace is empty when an operation
+  executes no physical steps. Emit a snapshot after every event-bearing entry, so an event remains
+  attributable to its physical tick even when one `advance` executes several ticks.
 - On `FINISHED`: a `RaceResult` projection containing player finish position, competitor count,
   total race time, and best lap time.
 
 `lapStartTime` is required even though it is not normally shown in the HUD: it changes the next lap
-time. AI recovery timers, path-follower target, steering smoothing, mistake timers, and the LCG
+time. The accumulator remainder changes how many physical steps the next `advance` executes, and
+the next finish-position counter changes the next finisher's result, so both are required snapshot
+fields. AI recovery timers, path-follower target, steering smoothing, mistake timers, and the LCG
 state are not minimal *output* fields, but they are continuation state. A runner that supports
 mid-race save/restore must serialize them, or only compare replay runs from tick zero.
 
@@ -119,14 +143,18 @@ omitted for player cars or absent values; they are not encoded as platform-speci
   "race": {
     "phase": "RACING",
     "countdownRemainingSeconds": 0.0,
-    "requiredLaps": 3
+    "accumulatorRemainderSeconds": 0.0,
+    "requiredLaps": 3,
+    "nextFinishPosition": 1
   },
-  "lastStep": {
-    "physicalSteps": 1,
-    "playerCheckpointPassed": false,
-    "maxImpactSpeed": 0.0,
-    "contacts": []
-  },
+  "steps": [
+    {
+      "fixedTick": 184,
+      "playerCheckpointPassed": false,
+      "maxImpactSpeed": 0.0,
+      "contacts": []
+    }
+  ],
   "participants": [
     {
       "id": "player",
@@ -161,7 +189,7 @@ omitted for player cars or absent values; they are not encoded as platform-speci
 ```
 
 Snapshots are required immediately after `start`, after every race-phase transition, after the first
-physical step, after each checkpoint/lap/finish/collision event, and at a fixed interval (at most
+physical step, after every event-bearing physical-step trace entry, and at a fixed interval (at most
 60 physical steps) during a long replay. A scenario may sample every tick for a focused physics or
 collision test.
 
@@ -174,7 +202,11 @@ Scenarios are committed JSON fixtures rather than recordings of a live screen. A
   "schemaVersion": 1,
   "id": "track-01-countdown-and-lap",
   "seed": 0,
-  "track": { "id": "track-01", "tmxSha256": "<sha256>" },
+  "track": {
+    "id": "track-01",
+    "tmxSha256": "<sha256>",
+    "definitionSha256": "<sha256 of canonical complete Track>"
+  },
   "configuration": {
     "countdownDurationSeconds": 3.0,
     "requiredLaps": 3,
@@ -183,7 +215,11 @@ Scenarios are committed JSON fixtures rather than recordings of a live screen. A
     "aiDifficulty": "NORMAL",
     "profileSha256": "<sha256>"
   },
-  "initialState": { "participants": ["<full continuation state per participant>"] },
+  "initialState": {
+    "accumulatorRemainderSeconds": 0.0,
+    "nextFinishPosition": 1,
+    "participants": ["<full continuation state per participant>"]
+  },
   "operations": [
     { "type": "start" },
     { "type": "advance", "deltaSeconds": 0.016666667, "input": { "throttle": 0, "brake": 0, "steering": 0 } },
@@ -269,7 +305,9 @@ libGDX application globals part of that adapter.
 Before encoding or comparing a snapshot:
 
 1. Reject `NaN` and infinite numeric values.
-2. Normalize input ranges using the Kotlin `PlayerInput.normalized` contract.
+2. Validate that scenario session commands already satisfy the Kotlin `PlayerInput.normalized`
+   ranges; reject invalid commands instead of altering them. The Kotlin session applies
+   `PlayerControlConfig` before `CarPhysics` invokes `normalized()`.
 3. Normalize rotations to `[0, 360)` degrees and normalize `-0.0` to `0.0`.
 4. Sort participants by stable ID and contacts by the simulation's emitted order. Serialize enum
    names, booleans, IDs, integer counters, ranks, phases, and nullability exactly.
@@ -289,9 +327,14 @@ require exact discrete fields and fixture/profile hashes.
 - A public seeded-random contract does not exist yet; AI pseudo-random continuation state cannot be
   restored externally without an adapter change.
 - A public immutable snapshot of `RaceSession` does not exist. The proposed schema is a test
-  boundary, not a statement that all current fields are public API.
-- The accumulator's fractional remainder is continuation state. It is unnecessary when every
-  replay call is exactly one fixed tick, but must be included for arbitrary frame-delta snapshots.
+  boundary, not a statement that all current fields are public API. A test-only accessor or small
+  headless adapter must expose the accumulator remainder and `RaceRules` finish-position counter.
+- `RaceStepResult` aggregates checkpoint passage and maximum impact across an `advance` operation
+  and discards individual collision contacts. The headless adapter must expose an ordered
+  per-physical-step trace before scenarios with multi-step advances or contact assertions are
+  supported.
+- The current `RaceSession` only supports the default countdown duration and lap count. Non-default
+  configuration requires a deliberate adapter/session change before it may be accepted by fixtures.
 - The current finish phase is player-centric: the race becomes `FINISHED` when the player finishes,
   even if opponents are still running. That is current behaviour and must be preserved unless a
   gameplay change is explicitly approved.
