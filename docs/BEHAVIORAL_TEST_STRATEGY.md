@@ -83,12 +83,15 @@ host process:
   rounding.
 - Player car, ordered opponent cars, AI difficulty, required laps, countdown duration, and every
   simulation setting that differs from the selected reference profile. The selected profile is
-  complete: it defines the effective base car, model-performance, collision, surface, player
-  control, session, fixed-delta, and per-difficulty AI values. A fixture may not inherit a setting
-  from source-code defaults or from the host process.
-- The initial global state and an initial state for every participant. This includes the complete
-  `CarState`, `SurfaceSpeedState`, and `RaceProgress` (including `lapStartTime`). It also includes
-  the last-safe state for AI participants when respawn is enabled.
+  complete: it defines the base car, model-performance, collision, surface, player control,
+  session, fixed-delta, and per-difficulty AI values. The track-specific AI waypoint-radius overlay
+  is applied after the profile, as defined in [Reference profile and track-definition bytes](#reference-profile-and-track-definition-bytes).
+  A fixture may not inherit a setting from source-code defaults or from the host process.
+- The initial global state. Version 1 accepts only a constructor-derived fresh session: the phase
+  must be `LOADING`, countdown and accumulator remainder must equal their profile defaults, and
+  `fixedTicks` and `nextFinishPosition` must both be zero/one respectively. Its participants are
+  derived from the selected `Track`, cars, and profile; a fixture may not supply restored
+  participant state in version 1.
 - An ordered stream of operations. Version 1 operations are `start`, `pause`, `resume`, and
   `advance`; `restart` is intentionally excluded because `RaceSession` does not expose it. It is
   tested directly as a `RaceState` state-machine concern. An `advance` operation contains a
@@ -101,8 +104,10 @@ host process:
 The current Kotlin `RaceSession` always constructs `RaceState()` and `RaceRules(track)`. Until a
 headless adapter injects `RaceState(countdownDurationSeconds)` and
 `RaceRules(track, requiredLaps)`, version-1 Kotlin fixtures must require the current defaults of
-three seconds and three laps, and reject other values. A later profile may support non-default
-values only together with that adapter change and a version bump.
+three seconds and three laps. A runner must reject a fixture whose
+`configuration.countdownDurationSeconds` or `configuration.requiredLaps` differs from its selected
+profile's defaults; it must not hash or execute such a configuration. A later profile may support
+non-default values only together with that adapter change and a version bump.
 
 For portable goldens, normal racing should use one `advance` operation per fixed tick after the
 countdown. A separate scenario should exercise countdown boundary handling with its exact supplied
@@ -122,7 +127,8 @@ At each requested sample, emit:
 - Per participant, sorted by stable `id`: car model, rank, all `CarState` fields, current surface,
   surface-speed multiplier, and all `RaceProgress` fields.
 - For AI participants: `AiBehaviorState`, target waypoint index, and the normalized command emitted
-  for that step. This catches divergence before a later car-state difference hides its cause.
+  for that step, or `null` when the sample has no physical step. This catches divergence before a
+  later car-state difference hides its cause.
 - A trace entry for every physical step executed by an `advance` operation, in execution order.
   Each entry identifies its cumulative fixed tick and contains participant-tagged race-rule events
   and ordered collision contacts. A trace is empty when an operation executes no physical steps.
@@ -135,8 +141,10 @@ At each requested sample, emit:
 time. The accumulator remainder changes how many physical steps the next `advance` executes, and
 the next finish-position counter changes the next finisher's result, so both are required snapshot
 fields. AI recovery timers, path-follower target, steering smoothing, mistake timers, and the LCG
-state are not minimal *output* fields, but they are continuation state. A runner that supports
-mid-race save/restore must serialize them, or only compare replay runs from tick zero.
+state are not minimal *output* fields, but they are continuation state. Version-1 fixtures only
+compare replay runs from tick zero. A later version that supports mid-race save/restore must
+serialize every participant continuation field and inject the accumulator remainder and
+next-finish-position counter into the restored session.
 
 ## Snapshot schema
 
@@ -206,8 +214,10 @@ The version-1 encoding rules are:
   or result object as applicable.
 - `participants[].ai?` is omitted for the player and required for every AI participant. Its object
   is `{ "behaviorState": AiBehaviorState, "targetWaypointIndex": integer,
-  "command": { "throttle": float, "brake": float, "steering": float } }`. `command` is the
-  normalized command returned by that driver for the recorded physical step.
+  "command": { "throttle": float, "brake": float, "steering": float } | null }`. `command` is
+  the normalized command returned by that driver for the recorded physical step, or `null` if the
+  enclosing operation executed no physical step. A snapshot must not reuse a command from an
+  earlier step.
 - Each `steps[]` entry is `{ "fixedTick": integer, "events": [event, ...],
   "maxImpactSpeed": float, "contacts": [contact, ...] }`. `event` is one of
   `{ "kind": "CHECKPOINT_PASSED", "participantId": string, "checkpointOrder": integer }`,
@@ -221,6 +231,13 @@ The version-1 encoding rules are:
   "impactSpeed": float }`. Track contacts use `null` for `otherParticipantId`; car contacts use
   the other participant's stable ID. Contacts are appended in the exact order produced while
   resolving track contacts for each participant, then car-pair contacts in participant-list order.
+- `steps[].maxImpactSpeed` is the maximum impact speed from the player's track contacts and every
+  car-pair contact in that physical step. It intentionally excludes track contacts for AI cars,
+  matching `RaceSession`; therefore it cannot in general be recomputed as the maximum of the
+  emitted `contacts` array.
+- A non-null `result` is `{ "finishPosition": integer, "competitorCount": integer,
+  "totalRaceTime": float, "bestLapTime": float|null }`. It is the `RaceResult` projection used by
+  this contract; omit the presentation/persistence-only `isNewRecord` source field.
 - `AiBehaviorState` is exactly `FOLLOW_ROUTE`, `AVOID`, `OVERTAKE`, `RECOVER`, or `FINISHED`.
   `CollisionType` is exactly `WORLD_BOUNDARY`, `TRACK_OBJECT`, or `CAR`.
 - No other property is optional. Empty collections are represented by `[]`, as shown for `steps`
@@ -267,8 +284,7 @@ Scenarios are committed JSON fixtures rather than recordings of a live screen. A
     "countdownRemainingSeconds": 3.0,
     "accumulatorRemainderSeconds": 0.0,
     "fixedTicks": 0,
-    "nextFinishPosition": 1,
-    "participants": ["<full continuation state per participant>"]
+    "nextFinishPosition": 1
   },
   "operations": [
     { "type": "start" },
@@ -278,6 +294,19 @@ Scenarios are committed JSON fixtures rather than recordings of a live screen. A
   "samples": { "everyFixedTicks": 60, "onEvents": true }
 }
 ```
+
+Version-1 scenario values with `float` semantics, including `deltaSeconds`, player input,
+configuration values, and initial-state floats, are parsed from their JSON decimal representation
+and rounded to IEEE-754 binary32 with round-to-nearest, ties-to-even before validation or
+execution. Integer counters remain JSON integers. The example's `0.016666667` therefore becomes
+the same binary32 value as Kotlin's `1f / 60f`.
+
+The initial state above is an assertion of the fresh constructor-derived state, not a restore
+payload. Version 1 requires exactly `LOADING`, profile-default countdown duration, zero accumulator
+remainder, `fixedTicks: 0`, and `nextFinishPosition: 1`; runners derive participant state from the
+track start grid and the configuration, then reject any extra initial participant data. Version 1
+also requires `samples.onEvents: true`; a runner rejects `false` rather than silently changing the
+mandatory event-snapshot rule.
 
 The test suite should include focused scenarios for normalization boundaries, acceleration/reverse,
 drift, each wall/object/car collision rule, surface transitions, every checkpoint direction,
@@ -346,7 +375,11 @@ string in a field documented as `float32` is the eight lowercase hexadecimal dig
 IEEE-754 binary32 bit pattern, most-significant byte first. `"3f800000"`, for example, is `1f`.
 All other numbers in that file are JSON integers. The `aiByDifficulty` objects are already the
 effective configurations after Kotlin's `AiConfig.forDifficulty`; do not apply that transformation
-again. A later profile must be a new file and version, never an edit that changes v1's bytes.
+again. When creating an `AiDriver`, Kotlin then applies a separate track overlay:
+`waypointRadius` is replaced by `Track.racingLineWaypointRadius`. Thus the profile's
+`aiByDifficulty.*.waypointRadius` is a base value, while the complete `Track` definition supplies
+the effective value (`10f` for track 01 and `7f` for track 02); runners must apply this overlay in
+that order. A later profile must be a new file and version, never an edit that changes v1's bytes.
 
 `Track.definitionSha256` is calculated from a separate canonical byte sequence, not from a
 platform JSON serializer. The encoder writes a single minified UTF-8 JSON value with no BOM, no
