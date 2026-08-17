@@ -81,12 +81,14 @@ host process:
   it uses stable field names and list order, and encodes every `Float` as its raw IEEE-754 bits in
   eight lowercase hexadecimal digits, so hashing cannot hide a geometry change through decimal
   rounding.
-- Player car, ordered opponent cars, AI difficulty, required laps, countdown duration, and every
-  simulation setting that differs from the selected reference profile. The selected profile is
-  complete: it defines the base car, model-performance, collision, surface, player control,
-  session, fixed-delta, and per-difficulty AI values. The track-specific AI waypoint-radius overlay
-  is applied after the profile, as defined in [Reference profile and track-definition bytes](#reference-profile-and-track-definition-bytes).
-  A fixture may not inherit a setting from source-code defaults or from the host process.
+- Player car, ordered opponent cars, AI difficulty, required laps, and countdown duration. Version 1
+  has a closed `configuration` object: it permits exactly the properties in
+  [Scenario schema](#scenario-schema) and rejects unknown properties and configuration overrides.
+  The selected profile is complete: it defines the base car, model-performance, collision, surface,
+  player control, session, fixed-delta, and per-difficulty AI values. The track-specific AI
+  waypoint-radius overlay is applied after the profile, as defined in [Reference profile and
+  track-definition bytes](#reference-profile-and-track-definition-bytes). A fixture may not inherit
+  a setting from source-code defaults or from the host process.
 - Version 1 requires `configuration.aiDifficulty: "NORMAL"`. `AiDriver` applies
   `AiConfig.forDifficulty` internally, and `NORMAL` is the identity transformation; `EASY` and
   `HARD` are reserved for a later adapter/profile contract so an effective profile is not adjusted
@@ -111,7 +113,8 @@ headless adapter injects `RaceState(countdownDurationSeconds)` and
 three seconds and three laps. A runner must reject a fixture whose
 `configuration.countdownDurationSeconds` or `configuration.requiredLaps` differs from its selected
 profile's defaults; it must not hash or execute such a configuration. A later profile may support
-non-default values only together with that adapter change and a version bump.
+non-default values or a named nested override schema only together with that adapter change and a
+version bump.
 
 For portable goldens, normal racing should use one `advance` operation per fixed tick after the
 countdown. A separate scenario should exercise countdown boundary handling with its exact supplied
@@ -317,8 +320,20 @@ double precision, fuse operations, or use extended-precision registers when thos
 a comparison or fixed-step count. The intentional transcendental boundary matches the Kotlin
 reference: `sin`, `cos`, `atan2`, `toRadians`, and `toDegrees` are evaluated through their explicit
 `Double` calls where the source converts to `Double`, then their results are rounded to `Float`
-before entering simulation state; this is the only permitted double-precision arithmetic in the
-gameplay path.
+before entering simulation state. `CollisionSystem.outwardNormal` has a separate double-precision
+boundary: each cross product is calculated as `Float`, converted to `Double`, and then accumulated
+in the vertex-list order as a binary64 signed area. Its binary64 sign chooses the normal's
+orientation. Runners must preserve that per-product `Float` rounding and ordered binary64 sum;
+they must not fuse the cross-product expression or accumulate it as `Float`. These are the only
+permitted double-precision arithmetic boundaries in the gameplay path.
+
+The cross-runtime corpus must also be decision-stable around the transcendental boundary. A fixture
+is ineligible when a small difference in a rounded `sin`, `cos`, or `atan2` result can alter a
+discrete decision, such as an AI behavior, contact, event, finish state, or phase. Before admitting
+a fixture, the Kotlin reference must replay it with a test-only perturbation of `-0.0001f` and
+`+0.0001f` applied independently to each such rounded result that contributes to a predicate. Both
+replays must retain the canonical discrete trace; otherwise the fixture is JVM-only until it can be
+reframed away from the decision boundary or the contract specifies a deterministic math library.
 
 The initial state above is an assertion of the fresh constructor-derived state, not a restore
 payload. Version 1 requires exactly `LOADING`, profile-default countdown duration, zero accumulator
