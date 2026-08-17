@@ -67,19 +67,25 @@ not be sent back to the simulation or included in a gameplay golden.
 Every scenario must contain the following data; no value may be inherited from a device or the
 host process:
 
-- Schema and reference profile versions.
+- Schema and reference profile versions. `referenceProfileVersion: 1` selects the committed
+  [`reference-profiles/v1.json`](reference-profiles/v1.json) file. Its SHA-256, calculated over
+  the file's exact UTF-8 bytes, is required as `configuration.profileSha256`; a runner must reject
+  a fixture if that hash does not match before applying any operation.
 - A stable scenario ID and a `seed` field.
 - Track ID, SHA-256 of the exact TMX/collision fixture, and SHA-256 of a canonical complete
   serialized `Track` definition. The canonical definition includes every `Track` field in a fixed
   field/list order: bounds, collision shapes, road contours, surfaces, start line, checkpoints,
   start grid, racing line, and racing-line waypoint radius. It therefore changes when either TMX
-  data or `TrackLoader`'s hard-coded track definition changes. The profile version owns this UTF-8
-  JSON representation; it uses stable field names and list order, and encodes every `Float` as its
-  raw IEEE-754 bits in eight lowercase hexadecimal digits, so hashing cannot hide a geometry change
-  through decimal rounding.
-- Player car, ordered opponent cars, AI difficulty, required laps, countdown duration, and all
-  non-default simulation configuration values. A schema may reference a versioned default profile
-  only when its content hash is also recorded.
+  data or `TrackLoader`'s hard-coded track definition changes. The version-1 UTF-8 representation
+  is defined in [Reference profile and track-definition bytes](#reference-profile-and-track-definition-bytes):
+  it uses stable field names and list order, and encodes every `Float` as its raw IEEE-754 bits in
+  eight lowercase hexadecimal digits, so hashing cannot hide a geometry change through decimal
+  rounding.
+- Player car, ordered opponent cars, AI difficulty, required laps, countdown duration, and every
+  simulation setting that differs from the selected reference profile. The selected profile is
+  complete: it defines the effective base car, model-performance, collision, surface, player
+  control, session, fixed-delta, and per-difficulty AI values. A fixture may not inherit a setting
+  from source-code defaults or from the host process.
 - The initial global state and an initial state for every participant. This includes the complete
   `CarState`, `SurfaceSpeedState`, and `RaceProgress` (including `lapStartTime`). It also includes
   the last-safe state for AI participants when respawn is enabled.
@@ -118,10 +124,10 @@ At each requested sample, emit:
 - For AI participants: `AiBehaviorState`, target waypoint index, and the normalized command emitted
   for that step. This catches divergence before a later car-state difference hides its cause.
 - A trace entry for every physical step executed by an `advance` operation, in execution order.
-  Each entry identifies its cumulative fixed tick and records checkpoint passage, maximum impact
-  speed, and the ordered collision contact types/impact speeds. A trace is empty when an operation
-  executes no physical steps. Emit a snapshot after every event-bearing entry, so an event remains
-  attributable to its physical tick even when one `advance` executes several ticks.
+  Each entry identifies its cumulative fixed tick and contains participant-tagged race-rule events
+  and ordered collision contacts. A trace is empty when an operation executes no physical steps.
+  Emit a snapshot after every event-bearing entry, so an event remains attributable to its physical
+  tick even when one `advance` executes several ticks.
 - On `FINISHED`: a `RaceResult` projection containing player finish position, competitor count,
   total race time, and best lap time.
 
@@ -155,7 +161,7 @@ a platform-specific sentinel.
   "steps": [
     {
       "fixedTick": 184,
-      "playerCheckpointPassed": false,
+      "events": [],
       "maxImpactSpeed": 0.0,
       "contacts": []
     }
@@ -199,16 +205,39 @@ The version-1 encoding rules are:
   are required properties. They contain `null` until the corresponding value exists, then a number
   or result object as applicable.
 - `participants[].ai?` is omitted for the player and required for every AI participant. Its object
-  contains that participant's `AiBehaviorState`, target waypoint index, and normalized command.
+  is `{ "behaviorState": AiBehaviorState, "targetWaypointIndex": integer,
+  "command": { "throttle": float, "brake": float, "steering": float } }`. `command` is the
+  normalized command returned by that driver for the recorded physical step.
+- Each `steps[]` entry is `{ "fixedTick": integer, "events": [event, ...],
+  "maxImpactSpeed": float, "contacts": [contact, ...] }`. `event` is one of
+  `{ "kind": "CHECKPOINT_PASSED", "participantId": string, "checkpointOrder": integer }`,
+  `{ "kind": "LAP_COMPLETED", "participantId": string, "completedLaps": integer,
+  "lapTimeSeconds": float, "bestLapTimeSeconds": float }`, or
+  `{ "kind": "FINISHED", "participantId": string, "finishPosition": integer }`. Emit a
+  `CHECKPOINT_PASSED` event when a gate is crossed; a start-line crossing emits
+  `LAP_COMPLETED`, followed by `FINISHED` when that lap reaches the required count.
+- Each `contact` is `{ "participantId": string, "otherParticipantId": string|null,
+  "type": CollisionType, "normalX": float, "normalY": float, "penetration": float,
+  "impactSpeed": float }`. Track contacts use `null` for `otherParticipantId`; car contacts use
+  the other participant's stable ID. Contacts are appended in the exact order produced while
+  resolving track contacts for each participant, then car-pair contacts in participant-list order.
+- `AiBehaviorState` is exactly `FOLLOW_ROUTE`, `AVOID`, `OVERTAKE`, `RECOVER`, or `FINISHED`.
+  `CollisionType` is exactly `WORLD_BOUNDARY`, `TRACK_OBJECT`, or `CAR`.
 - No other property is optional. Empty collections are represented by `[]`, as shown for `steps`
   and collision `contacts`.
 
-Snapshots are required immediately after each operation returns, after the first physical step,
-after every event-bearing physical-step trace entry, and at a fixed interval (at most 60 physical
-steps) during a long replay. `RaceSession.start()` reaches `READY` and starts `COUNTDOWN`
-synchronously, so a session trace can observe only the resulting `COUNTDOWN` phase; focused
-`RaceState` tests cover the intermediate `READY` transition. A scenario may sample every tick for a
-focused physics or collision test.
+`operation` is one-based: `start`, the first item in `operations`, has operation number 1. A
+physical step is also one-based: `fixedTick` and `fixedTicks` are 0 before the first step, then 1,
+2, and so on. `fixedTicks` equals the `fixedTick` of the most recently completed physical step.
+Snapshots are required immediately after each operation returns, after fixed tick 1, after every
+event-bearing physical-step trace entry, and at the fixed-tick multiples selected by
+`samples.everyFixedTicks`. Thus an interval of 60 samples ticks 60, 120, 180, and so on; it does
+not use the first sample as its origin. When several rules request the same post-step state, emit
+one snapshot. An adapter that exposes intra-operation samples gives them the enclosing operation
+number and the just-completed fixed tick. `RaceSession.start()` reaches `READY` and starts
+`COUNTDOWN` synchronously, so a session trace can observe only the resulting `COUNTDOWN` phase;
+focused `RaceState` tests cover the intermediate `READY` transition. A scenario may sample every
+tick for a focused physics or collision test.
 
 ## Scenario schema
 
@@ -231,7 +260,7 @@ Scenarios are committed JSON fixtures rather than recordings of a live screen. A
     "playerCar": "RED_STRIPE",
     "opponentCars": ["BLUE_STRIPE", "YELLOW_SPORT", "GREEN_RACER", "ORANGE_TRUCK", "BLUE_STRIPE"],
     "aiDifficulty": "NORMAL",
-    "profileSha256": "<sha256>"
+    "profileSha256": "86cecabf57030f9330148aa8276c9a0c9fff1686f6d5aa00c17b89842e5d5ddb"
   },
   "initialState": {
     "phase": "LOADING",
@@ -307,6 +336,55 @@ Consequently, comparing a real-time render trace at different frame rates is inv
 must drive the session directly with an explicit delta sequence, normally one fixed tick per call.
 Countdown and accumulator-edge tests must record their exact delta sequence rather than infer it
 from elapsed wall time.
+
+## Reference profile and track-definition bytes
+
+`reference-profiles/v1.json` is the version-1 default simulation profile. It is an ordinary
+committed UTF-8 JSON file, with no BOM and a terminating newline. Its property order and the
+literal bytes in Git are normative; `profileSha256` hashes those bytes, including the newline. A
+string in a field documented as `float32` is the eight lowercase hexadecimal digits of the
+IEEE-754 binary32 bit pattern, most-significant byte first. `"3f800000"`, for example, is `1f`.
+All other numbers in that file are JSON integers. The `aiByDifficulty` objects are already the
+effective configurations after Kotlin's `AiConfig.forDifficulty`; do not apply that transformation
+again. A later profile must be a new file and version, never an edit that changes v1's bytes.
+
+`Track.definitionSha256` is calculated from a separate canonical byte sequence, not from a
+platform JSON serializer. The encoder writes a single minified UTF-8 JSON value with no BOM, no
+whitespace, and no final newline. JSON strings use these exact rules: `"`, `\\`, `\b`, `\t`, `\n`,
+`\f`, and `\r` use their short escapes; a remaining U+0000--U+001F code point uses lowercase
+`\u00xx`; every other code point is emitted directly as UTF-8. `float32` leaves are JSON strings
+using the eight-digit encoding above, integer leaves use base-10 with no leading zero, enum leaves
+are their Kotlin enum names, and a missing road contour is the literal `null`.
+
+The top-level fields, in this exact order, are `id`, `name`, `worldBounds`, `cameraBounds`,
+`outerBoundary`, `innerObstacles`, `collisionShapes`, `backgroundSurface`, `surfaceRegions`,
+`roadOuter`, `roadInner`, `startLine`, `checkpoints`, `startGrid`, `racingLine`, and
+`racingLineWaypointRadius`. Their exact object forms and field orders are:
+
+```text
+point        = {"x":float32,"y":float32}
+rectangle    = {"x":float32,"y":float32,"width":float32,"height":float32}
+segment      = {"start":point,"end":point}
+circle       = {"kind":"CIRCLE","center":point,"radius":float32}
+polygon      = {"kind":"POLYGON","vertices":[point,...]}
+surface      = {"bounds":rectangle,"surface":SurfaceType}
+startLine    = {"bounds":rectangle,"forwardX":float32,"forwardY":float32}
+checkpoint   = {"order":integer,"gate":segment,"forwardX":float32,"forwardY":float32}
+startGrid    = {"position":point,"rotationDeg":float32}
+track        = {"id":string,"name":string,"worldBounds":rectangle,
+                "cameraBounds":rectangle,"outerBoundary":rectangle,
+                "innerObstacles":[rectangle,...],"collisionShapes":[circle|polygon,...],
+                "backgroundSurface":SurfaceType,"surfaceRegions":[surface,...],
+                "roadOuter":polygon|null,"roadInner":polygon|null,"startLine":startLine,
+                "checkpoints":[checkpoint,...],"startGrid":[startGrid,...],
+                "racingLine":[point,...],"racingLineWaypointRadius":float32}
+```
+
+`SurfaceType` is exactly one of `ASPHALT`, `PARQUET`, `TILE`, `GRASS`, `BOOST`, or `OIL`.
+Arrays retain the current `Track` list order exactly; no sorting, deduplication, omission of empty
+arrays, coordinate rounding, or normalization is permitted. `definitionSha256` is the lowercase
+hex SHA-256 of the resulting bytes. This definition covers both TMX-derived values and every value
+that `TrackLoader` supplies in Kotlin.
 
 ## Headless constraints
 
