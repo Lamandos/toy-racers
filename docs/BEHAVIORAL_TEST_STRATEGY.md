@@ -141,7 +141,9 @@ At each requested sample, emit:
 - Per participant, sorted by stable `id`: car model, rank, all `CarState` fields, the surface
   consumed by `SurfaceSpeedSystem`, surface-speed multiplier, and all `RaceProgress` fields. The
   consumed surface is sampled after that participant's track collision and before car-to-car
-  collision resolution; it is not recomputed from the final post-collision position.
+  collision resolution; it is not recomputed from the final post-collision position. It is `null`
+  until that participant completes its first physical step, then retains the most recently
+  consumed value across snapshots produced by operations with no physical step.
 - For AI participants: `AiBehaviorState`, target waypoint index, and the normalized command emitted
   for that step, or `null` when the sample has no physical step. This catches divergence before a
   later car-state difference hides its cause.
@@ -228,6 +230,11 @@ The version-1 encoding rules are:
 - `participants[].progress.bestLapTime`, `participants[].progress.finishPosition`, and `result`
   are required properties. They contain `null` until the corresponding value exists, then a number
   or result object as applicable.
+- `participants[].surface` is a required `SurfaceType|null` property. It is `null` before that
+  participant's first physical step, including the mandatory post-`start` snapshot, because
+  `SurfaceSpeedSystem` has not consumed a surface. A runner must not synthesize it with
+  `Track.surfaceAt`. After a physical step it contains the surface consumed by the participant's
+  most recent `SurfaceSpeedSystem` update.
 - `participants[].ai?` is omitted for the player and required for every AI participant. Its object
   is `{ "behaviorState": AiBehaviorState, "targetWaypointIndex": integer,
   "command": { "throttle": float, "brake": float, "steering": float } | null }`. `command` is
@@ -342,13 +349,17 @@ permitted double-precision arithmetic boundaries in the gameplay path.
 The cross-runtime corpus must also be decision-stable around runtime math results. A fixture is
 ineligible when a small difference in a rounded `sin`, `cos`, `atan2`, `sqrt`, or `hypot` result
 can alter a discrete decision, such as an AI behavior, contact, event, finish state, or phase.
-Before admitting a fixture, the Kotlin reference must replay it with a test-only perturbation of
-`-0.0001f` and
-`+0.0001f` applied independently to each such rounded result that contributes directly or through
-derived values to a predicate. This includes square-root-derived distances and normalized vectors
-used by `RaceRules`, AI path/obstacle decisions, and collision branches. Both
-replays must retain the canonical discrete trace; otherwise the fixture is JVM-only until it can be
-reframed away from the decision boundary or the contract specifies a deterministic math library.
+Before admitting a fixture, the Kotlin reference validator must model an additive error selected
+independently from the closed interval `[-0.0001f, +0.0001f]` for every such rounded result that
+contributes directly or through derived values to a predicate. This includes square-root-derived
+distances and normalized vectors used by `RaceRules`, AI path/obstacle decisions, and collision
+branches. The
+validator must conservatively propagate the full Cartesian product of those independent closed
+perturbation intervals through each affected predicate and prove that only the canonical Boolean
+outcome is possible. Exhaustive replays of all independently signed endpoint combinations are an
+acceptable equivalent; two uniform-sign replays or changing one result at a time are not. If the
+validator cannot prove that every combination retains the canonical discrete trace, the fixture is
+JVM-only until it is reframed away from the boundary or the contract specifies deterministic math.
 
 The initial state above is an assertion of the fresh constructor-derived state, not a restore
 payload. Version 1 requires exactly `LOADING`, profile-default countdown duration, zero accumulator
