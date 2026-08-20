@@ -37,6 +37,13 @@ ordered pipeline:
 6. Resolve car-to-car collisions in participant-list order.
 7. Move `RaceState` to `FINISHED` when the player has finished.
 
+After step 6, the fixed tick is complete: increment the operation's physical-step count and
+subtract one fixed delta from the accumulator. If the player finished during that tick, capture
+every participant's resulting state for rendering, transition to `FINISHED`, set the accumulator
+to exactly `0f`, and stop the `advance` loop. This deliberately discards both any sub-tick
+remainder and every additional whole tick supplied by that `advance`; no later step from the same
+operation is executed or emitted.
+
 Steps 2–5 run to completion for one participant before beginning the next; all participant updates
 finish before step 6. The participant order is stable: player first, followed by `ai-0` through
 `ai-4` in start-grid order. Collision pair order and same-tick finishing order are consequently
@@ -240,6 +247,11 @@ The version-1 encoding rules are:
   "impactSpeed": float }`. Track contacts use `null` for `otherParticipantId`; car contacts use
   the other participant's stable ID. Contacts are appended in the exact order produced while
   resolving track contacts for each participant, then car-pair contacts in participant-list order.
+  For a car pair `(first, second)` selected by increasing participant-list indices, emit exactly
+  one contact with `participantId` equal to `first.id` and `otherParticipantId` equal to
+  `second.id`. Its normal is the contact normal returned by `resolveCarCollision`: the negation of
+  the separation normal from `first` toward `second`, so it points from `second` toward `first`.
+  Do not emit a mirrored second contact.
 - `steps[].maxImpactSpeed` is the maximum impact speed from the player's track contacts and every
   car-pair contact in that physical step. It intentionally excludes track contacts for AI cars,
   matching `RaceSession`; therefore it cannot in general be recomputed as the maximum of the
@@ -327,11 +339,14 @@ orientation. Runners must preserve that per-product `Float` rounding and ordered
 they must not fuse the cross-product expression or accumulate it as `Float`. These are the only
 permitted double-precision arithmetic boundaries in the gameplay path.
 
-The cross-runtime corpus must also be decision-stable around the transcendental boundary. A fixture
-is ineligible when a small difference in a rounded `sin`, `cos`, or `atan2` result can alter a
-discrete decision, such as an AI behavior, contact, event, finish state, or phase. Before admitting
-a fixture, the Kotlin reference must replay it with a test-only perturbation of `-0.0001f` and
-`+0.0001f` applied independently to each such rounded result that contributes to a predicate. Both
+The cross-runtime corpus must also be decision-stable around runtime math results. A fixture is
+ineligible when a small difference in a rounded `sin`, `cos`, `atan2`, `sqrt`, or `hypot` result
+can alter a discrete decision, such as an AI behavior, contact, event, finish state, or phase.
+Before admitting a fixture, the Kotlin reference must replay it with a test-only perturbation of
+`-0.0001f` and
+`+0.0001f` applied independently to each such rounded result that contributes directly or through
+derived values to a predicate. This includes square-root-derived distances and normalized vectors
+used by `RaceRules`, AI path/obstacle decisions, and collision branches. Both
 replays must retain the canonical discrete trace; otherwise the fixture is JVM-only until it can be
 reframed away from the decision boundary or the contract specifies a deterministic math library.
 
@@ -353,8 +368,9 @@ There is no use of `kotlin.random.Random`, `java.util.Random`, `MathUtils.random
 threads, or unordered concurrent collections in the gameplay path.
 
 The only random-like gameplay code is `AiDriver.randomState`. It is a private 32-bit linear
-congruential generator used for periodic AI mistakes. Its initial signed 32-bit state is the XOR of
-the raw IEEE-754 float bits of the AI start position and its deterministic racing-line bias. Each
+congruential generator used for periodic AI mistakes. Its initial signed 32-bit state is exactly
+`initialPosition.x.toBits() xor initialPosition.y.toBits() xor racingLineBias.toBits()`, where each
+operand is the raw IEEE-754 binary32 bit pattern interpreted as a signed Kotlin `Int`. Each
 check replaces it with `(state * 1664525 + 1013904223) mod 2^32`, using two's-complement wraparound.
 The sample is the upper 24 bits interpreted as an unsigned integer, divided by `2^24`: in Kotlin,
 `(state ushr 8).toFloat() / 0x01000000`. A non-JVM implementation must use these state width,
@@ -366,8 +382,8 @@ public, the seed-to-AI-state derivation must be specified and golden fixtures ve
 
 Potential sources of variation that must be controlled are:
 
-- Floating-point `sin`, `cos`, `atan2`, `sqrt`, and XML number parsing can differ by a small number
-  of ULPs across runtimes. This is not an intentional random source.
+- Floating-point `sin`, `cos`, `atan2`, `sqrt`, `hypot`, and XML number parsing can differ by a
+  small number of ULPs across runtimes. This is not an intentional random source.
 - The exact TMX bytes and XML parser implementation define collision contour order and geometry.
   Fixture hashing prevents an asset update from looking like a simulation regression.
 - Live input arrival is asynchronous and is sampled once per render frame. Normalized commands in
@@ -415,6 +431,16 @@ again. When creating an `AiDriver`, Kotlin then applies a separate track overlay
 `aiByDifficulty.*.waypointRadius` is a base value, while the complete `Track` definition supplies
 the effective value (`10f` for track 01 and `7f` for track 02); runners must apply this overlay in
 that order. A later profile must be a new file and version, never an edit that changes v1's bytes.
+
+For each selected car model, derive its effective `CarConfig` from `baseCarConfig` by multiplying
+only these three fields, with binary32 rounding after each multiplication:
+`acceleration *= modelPerformance[model].acceleration`,
+`maxForwardSpeed *= modelPerformance[model].maxSpeed`, and
+`steeringSpeed *= modelPerformance[model].handling`. Copy every other `baseCarConfig` field
+unchanged; in particular, do not scale braking, reverse acceleration/speed, grip, drift, size, or
+collision fields. For opponent index `i` in the ordered `ai-0` through `ai-4` list, select
+`opponentRacingLineBiases[i % opponentRacingLineBiases.length]`. With the version-1 list this yields
+`[-0.65f, 0f, 0.65f, -0.65f, 0f]`; zipping, clamping, or redistributing the list is invalid.
 
 `Track.definitionSha256` is calculated from a separate canonical byte sequence, not from a
 platform JSON serializer. The encoder writes a single minified UTF-8 JSON value with no BOM, no
