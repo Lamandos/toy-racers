@@ -490,6 +490,10 @@ track        = {"id":string,"name":string,"worldBounds":rectangle,
 ```
 
 `SurfaceType` is exactly one of `ASPHALT`, `PARQUET`, `TILE`, `GRASS`, `BOOST`, or `OIL`.
+For version 1, the normative `isRoad` mapping is `ASPHALT`, `BOOST`, and `OIL` → `true`,
+and `PARQUET`, `TILE`, and `GRASS` → `false`. Runners must use this mapping for both the
+`SurfaceSpeedSystem` speed multiplier and AI recovery/safe-state decisions; they must not infer
+road status from the enum name, track geometry, or display styling.
 Arrays retain the current `Track` list order exactly; no sorting, deduplication, omission of empty
 arrays, coordinate rounding, or normalization is permitted. `definitionSha256` is the lowercase
 hex SHA-256 of the resulting bytes. This definition covers both TMX-derived values and every value
