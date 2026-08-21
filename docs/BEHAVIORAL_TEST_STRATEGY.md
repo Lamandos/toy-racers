@@ -248,7 +248,11 @@ The version-1 encoding rules are:
   "lapTimeSeconds": float, "bestLapTimeSeconds": float }`, or
   `{ "kind": "FINISHED", "participantId": string, "finishPosition": integer }`. Emit a
   `CHECKPOINT_PASSED` event when a gate is crossed; a start-line crossing emits
-  `LAP_COMPLETED`, followed by `FINISHED` when that lap reaches the required count.
+  `LAP_COMPLETED`, followed by `FINISHED` when that lap reaches the required count. Append events
+  in participant-list execution order as each participant's `RaceRules.update` completes. Within
+  one participant update, emit `LAP_COMPLETED` before `FINISHED`; no other pair of event kinds can
+  be emitted by the same participant on one physical step. Do not sort the completed step's event
+  array by kind or participant ID.
 - Each `contact` is `{ "participantId": string, "otherParticipantId": string|null,
   "type": CollisionType, "normalX": float, "normalY": float, "penetration": float,
   "impactSpeed": float }`. Track contacts use `null` for `otherParticipantId`; car contacts use
