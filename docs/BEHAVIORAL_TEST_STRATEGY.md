@@ -238,9 +238,12 @@ The version-1 encoding rules are:
 - `participants[].ai?` is omitted for the player and required for every AI participant. Its object
   is `{ "behaviorState": AiBehaviorState, "targetWaypointIndex": integer,
   "command": { "throttle": float, "brake": float, "steering": float } | null }`. `command` is
-  the normalized command returned by that driver for the recorded physical step, or `null` if the
+  the normalized command returned by that driver for the snapshot's just-completed fixed tick.
+  When an `advance` executes several physical steps, use the command from the highest
+  `fixedTick` included in that snapshot's `steps` prefix; for the final post-operation snapshot,
+  this is the command from the operation's last executed physical step. It is `null` when the
   enclosing operation executed no physical step. A snapshot must not reuse a command from an
-  earlier step.
+  earlier operation or step.
 - Each `steps[]` entry is `{ "fixedTick": integer, "events": [event, ...],
   "maxImpactSpeed": float, "contacts": [contact, ...] }`. `event` is one of
   `{ "kind": "CHECKPOINT_PASSED", "participantId": string, "checkpointOrder": integer }`,
@@ -342,13 +345,23 @@ round to binary32 after each operation as Kotlin `Float` does. Runners must not 
 double precision, fuse operations, or use extended-precision registers when those choices can alter
 a comparison or fixed-step count. The intentional transcendental boundary matches the Kotlin
 reference: `sin`, `cos`, `atan2`, `toRadians`, and `toDegrees` are evaluated through their explicit
-`Double` calls where the source converts to `Double`, then their results are rounded to `Float`
-before entering simulation state. `CollisionSystem.outwardNormal` has a separate double-precision
-boundary: each cross product is calculated as `Float`, converted to `Double`, and then accumulated
-in the vertex-list order as a binary64 signed area. Its binary64 sign chooses the normal's
-orientation. Runners must preserve that per-product `Float` rounding and ordered binary64 sum;
-they must not fuse the cross-product expression or accumulate it as `Float`. These are the only
-permitted double-precision arithmetic boundaries in the gameplay path.
+`Double` calls where the source converts to `Double`, retaining binary64 intermediates across a
+composed expression until its final `.toFloat()` conversion. In particular, convert the Float
+heading to binary64, apply `Math.toRadians`, and keep the result in binary64 through `sin`/`cos`,
+rounding only those final trigonometric results to `Float`; for headings, keep the binary64 result
+of `atan2` through `Math.toDegrees` and round only the resulting degrees to `Float`. Never round
+an intermediate `toRadians`, `atan2`, or `toDegrees` result to `Float` before the next call.
+`TrackLoader` has one additional geometry boundary for non-circular ellipses: with
+`ELLIPSE_SEGMENTS = 24`, compute each angle in binary64 as the left-associated expression
+`((Math.PI * 2.0) * index) / 24.0`, using the standard binary64 `Math.PI` constant. Evaluate
+`sin(angle)` and `cos(angle)` in binary64, convert each result to `Float`, and only then perform
+the Float radius and position arithmetic that produces the vertex. `CollisionSystem.outwardNormal`
+has a separate double-precision boundary: each cross product is calculated as `Float`, converted
+to `Double`, and then accumulated in the vertex-list order as a binary64 signed area. Its binary64
+sign chooses the normal's orientation. Runners must preserve these explicit Float-rounding points,
+the per-product rounding, and the ordered binary64 sum; they must not fuse the cross-product
+expression or accumulate it as `Float`. These are the only permitted double-precision arithmetic
+boundaries in the gameplay path.
 
 The cross-runtime corpus must also be decision-stable around runtime math results. A fixture is
 ineligible when a small difference in a rounded `sin`, `cos`, `atan2`, `sqrt`, or `hypot` result
