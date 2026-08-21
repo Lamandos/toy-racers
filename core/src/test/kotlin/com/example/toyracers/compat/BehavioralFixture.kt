@@ -69,7 +69,7 @@ internal object BehavioralFixtureLoader {
                     ?.map(::initialState)
                     .orEmpty(),
             fullRace = value.getBoolean("fullRace", false),
-        )
+        ).also(::validateScenario)
 
     private fun inputSegment(value: JsonValue): BehavioralInputSegment =
         BehavioralInputSegment(
@@ -134,4 +134,25 @@ internal object BehavioralFixtureLoader {
     private fun JsonValue.booleanOrNull(name: String): Boolean? = get(name)?.asBoolean()
 
     private fun JsonValue.children(): List<JsonValue> = generateSequence(child) { it.next }.toList()
+
+    private fun validateScenario(scenario: BehavioralScenario) {
+        require(SCENARIO_ID.matches(scenario.id)) { "Invalid scenario ID: ${scenario.id}" }
+        require(scenario.inputOrigin in INPUT_ORIGINS) { "Unknown input origin: ${scenario.inputOrigin}" }
+        require(scenario.ticks > 0) { "Scenario ${scenario.id} must have positive ticks" }
+        require(scenario.snapshotIntervalTicks > 0) {
+            "Scenario ${scenario.id} must have a positive snapshot interval"
+        }
+        require(scenario.inputSegments.isNotEmpty()) { "Scenario ${scenario.id} has no input segments" }
+        scenario.inputSegments.forEach { segment ->
+            require(segment.fromTick in 1..scenario.ticks && segment.toTick in segment.fromTick..scenario.ticks) {
+                "Scenario ${scenario.id} has an invalid input range ${segment.fromTick}..${segment.toTick}"
+            }
+        }
+        require(scenario.inputSegments.zipWithNext().all { (first, second) -> first.toTick < second.fromTick }) {
+            "Scenario ${scenario.id} has overlapping or unordered input ranges"
+        }
+    }
+
+    private val SCENARIO_ID = Regex("[a-z0-9]+(?:-[a-z0-9]+)*")
+    private val INPUT_ORIGINS = setOf("keyboard", "touch")
 }

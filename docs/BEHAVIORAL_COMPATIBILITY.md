@@ -16,11 +16,23 @@ Run the suite locally or in CI with one command:
 ## Fixture contract
 
 Scenario inputs live in `core/src/test/resources/compat/scenarios.json` and have
-`"schemaVersion": 1`. A scenario declares a stable ID, seed, built-in `trackId`, player car,
-input origin, simulation tick count, sampling interval, and `inputSegments`. Segments are inclusive
-tick ranges and contain only normalized `throttle`, `brake`, and `steering` values. The optional
-`initialStates` block is a test-only API boundary for a fully specified starting state; it adds no
-gameplay rules.
+`"schemaVersion": 1`. Their formal, machine-readable contract is
+[`scenario.schema.json`](../core/src/main/resources/compat/scenario.schema.json), which uses JSON
+Schema draft 2020-12. A scenario declares a stable ID, seed, built-in `trackId`, player car, input
+origin, simulation tick count, sampling interval, and `inputSegments`. Segments are inclusive
+one-based tick ranges. A range omits any control that should be zero and may span an arbitrary
+number of simulation ticks. The optional `initialStates` block is a test-only API boundary for a
+fully specified starting state; it adds no gameplay rules.
+
+The schema's identifiers are deliberately language-neutral: tracks are `track-01` and `track-02`,
+while selectable cars are `red-stripe`, `blue-stripe`, `yellow-sport`, `green-racer`, and
+`orange-truck`. Kotlin enum constant names are never input or output contract values. Scenario
+inputs are normalized at the simulation boundary (`throttle` and `brake` to `0..1`, `steering` to
+`-1..1`), so fixture values outside those ranges are permitted only to assert that boundary rule.
+The current game model fixes the racers to `player` plus five deterministic AI opponents
+(`ai-0` through `ai-4`); their observed snapshots are emitted as an ordered `participants` array
+rather than serialized engine objects. The schema therefore supports targeting an initial state at
+any current racer without inventing an unsupported custom grid.
 
 The long complete-race replay is stored in a separate input fixture,
 `full-race-input.json`, and referenced by `inputScript`. This keeps a normal scenario readable
@@ -59,9 +71,10 @@ twice and requires byte-identical normalized traces before comparing the checked
 
 ## Dart/Flame adapter checklist
 
-1. Read the schema-1 scenario files as JSON; do not reinterpret UI-origin fields as screen events.
+1. Validate and read schema-1 scenario files as JSON; do not reinterpret `inputOrigin` as screen
+   events.
 2. Initialize the requested track, car, seed, and optional initial state.
-3. Reproduce the `COUNTDOWN` then `RACING` transition and apply one normalized input per fixed tick.
+3. Reproduce the `countdown` then `racing` transition and apply one normalized input per fixed tick.
 4. Emit the schema-1 snapshot fields in the same ordering and values, with the same six-decimal
    float normalization.
 5. Compare the adapter's trace with the checked-in golden using exact discrete values and the

@@ -1,6 +1,7 @@
 package com.example.toyracers.compat
 
 import com.badlogic.gdx.utils.JsonReader
+import com.badlogic.gdx.utils.JsonValue
 import com.example.toyracers.car.CarModel
 import com.example.toyracers.track.TrackId
 import org.junit.Assert.assertEquals
@@ -17,6 +18,7 @@ class BehavioralCompatibilityTest {
     fun `versioned behavioral fixtures match the Kotlin reference implementation`() {
         val scenarios = BehavioralFixtureLoader.scenarios()
         validateFixtureCoverage(scenarios)
+        assertScenarioSchemaMatchesGameModel()
         val actual = scenarios.map(runner::run)
         if (System.getProperty(UPDATE_GOLDENS_PROPERTY) == "true") {
             writeGoldens(actual)
@@ -44,7 +46,10 @@ class BehavioralCompatibilityTest {
 
     private fun assertTracksAndCarsAreCovered(scenarios: List<BehavioralScenario>) {
         assertEquals(TrackId.entries.map(TrackId::value).toSet(), scenarios.map(BehavioralScenario::trackId).toSet())
-        assertEquals(CarModel.entries.map { it.name }.toSet(), scenarios.map(BehavioralScenario::playerCar).toSet())
+        assertEquals(
+            CarModel.entries.map(CarModel::scenarioId).toSet(),
+            scenarios.map(BehavioralScenario::playerCar).toSet(),
+        )
         assertEquals(setOf("keyboard", "touch"), scenarios.map(BehavioralScenario::inputOrigin).toSet())
     }
 
@@ -55,6 +60,39 @@ class BehavioralCompatibilityTest {
         assertTrue(scenarios.count { it.ticks >= 5_000 } >= 5)
         assertTrue(scenarios.all { it.snapshotIntervalTicks > 0 })
         assertTrue(scenarios.all { it.inputSegments.isNotEmpty() })
+    }
+
+    private fun assertScenarioSchemaMatchesGameModel() {
+        val schema = readScenarioSchema()
+        val scenarioProperties = schema.get("\$defs").get("scenario").get("properties")
+
+        assertEquals(
+            BehavioralFixtureLoader.SCHEMA_VERSION,
+            schema.get("properties").get("schemaVersion").getInt("const"),
+        )
+        assertEquals(
+            TrackId.entries.map(TrackId::value).toSet(),
+            enumValues(scenarioProperties.get("trackId").get("enum")),
+        )
+        assertEquals(
+            CarModel.entries.map(CarModel::scenarioId).toSet(),
+            enumValues(scenarioProperties.get("playerCar").get("enum")),
+        )
+        assertEquals(
+            setOf("keyboard", "touch"),
+            enumValues(scenarioProperties.get("inputOrigin").get("enum")),
+        )
+        assertEquals(
+            setOf("player", "ai-0", "ai-1", "ai-2", "ai-3", "ai-4"),
+            enumValues(
+                schema
+                    .get("\$defs")
+                    .get("initialState")
+                    .get("properties")
+                    .get("id")
+                    .get("enum"),
+            ),
+        )
     }
 
     private fun assertObservableFeatureCoverage(scenarios: List<BehavioralScenario>) {
@@ -100,7 +138,7 @@ class BehavioralCompatibilityTest {
                 .samples
                 .last()
                 .snapshot
-        assertEquals("FINISHED", finalSnapshot.phase)
+        assertEquals("finished", finalSnapshot.phase)
         assertTrue(finalSnapshot.participants.first().finished)
         assertEquals(finalSnapshot.requiredLaps, finalSnapshot.participants.first().completedLaps)
     }
@@ -133,7 +171,7 @@ class BehavioralCompatibilityTest {
         assertTrue(players.any { it.currentCheckpointIndex > 0 })
         assertTrue(players.any { it.completedLaps > 0 })
         assertTrue(players.any { it.finished && it.finishPosition == 1 })
-        assertTrue(snapshots.any { it.phase == "FINISHED" && it.playerPosition == 1 })
+        assertTrue(snapshots.any { it.phase == "finished" && it.playerPosition == 1 })
     }
 
     private fun assertSurfaceAndRecoveryCoverage(traces: List<BehavioralTrace>) {
@@ -147,12 +185,12 @@ class BehavioralCompatibilityTest {
                         .first()
                         .surface
                 }.toSet()
-        assertEquals(setOf("ASPHALT", "PARQUET", "TILE"), surfaces)
+        assertEquals(setOf("asphalt", "parquet", "tile"), surfaces)
         assertTrue(
             traces
                 .flatMap { it.samples }
                 .flatMap { it.snapshot.participants }
-                .any { it.aiBehavior == "RECOVER" },
+                .any { it.aiBehavior == "recover" },
         )
     }
 
@@ -167,6 +205,14 @@ class BehavioralCompatibilityTest {
     ) {
         assertTrue("Expected at least $minimum $tag scenarios", scenarios.count { tag in it.tags } >= minimum)
     }
+
+    private fun readScenarioSchema(): JsonValue {
+        val stream = requireNotNull(javaClass.classLoader.getResourceAsStream("compat/scenario.schema.json"))
+        return stream.bufferedReader().use(JsonReader()::parse)
+    }
+
+    private fun enumValues(value: JsonValue): Set<String> =
+        generateSequence(value.child) { it.next }.map(JsonValue::asString).toSet()
 
     private fun writeGoldens(traces: List<BehavioralTrace>) {
         Files.writeString(GOLDEN_SOURCE, BehavioralTraceJson.encodeGoldens(traces) + "\n")

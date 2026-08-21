@@ -1,11 +1,14 @@
 package com.example.toyracers.compat
 
+import com.example.toyracers.ai.AiBehaviorState
 import com.example.toyracers.ai.AiDifficulty
 import com.example.toyracers.car.CarModel
 import com.example.toyracers.car.CarPhysics
 import com.example.toyracers.input.PlayerInput
 import com.example.toyracers.race.RaceParticipant
+import com.example.toyracers.race.RacePhase
 import com.example.toyracers.race.RaceSession
+import com.example.toyracers.track.SurfaceType
 import com.example.toyracers.track.TrackId
 import com.example.toyracers.track.TrackLoader
 
@@ -22,7 +25,7 @@ class BehavioralCompatibilityHarness(
     private val session =
         RaceSession(
             track = track,
-            playerCarModel = CarModel.valueOf(configuration.playerCar),
+            playerCarModel = CarModel.fromScenarioId(configuration.playerCar),
             opponentDifficulty = AiDifficulty.valueOf(configuration.opponentDifficulty),
         )
     private val seed = configuration.seed
@@ -70,7 +73,7 @@ class BehavioralCompatibilityHarness(
         BehavioralSnapshot(
             seed = seed,
             simulationTicks = simulationTicks,
-            phase = session.raceState.phase.name,
+            phase = phaseId(session.raceState.phase),
             countdownRemainingSeconds = session.raceState.countdownRemainingSeconds,
             playerPosition = session.playerPosition,
             requiredLaps = session.requiredLaps,
@@ -85,9 +88,9 @@ class BehavioralCompatibilityHarness(
     private fun participantSnapshot(participant: RaceParticipant): BehavioralParticipantSnapshot =
         BehavioralParticipantSnapshot(
             id = participant.id,
-            car = participant.carModel.name,
-            surface = track.surfaceAt(participant.state.x, participant.state.y).name,
-            aiBehavior = participant.driver?.behaviorState?.name,
+            car = participant.carModel.scenarioId,
+            surface = surfaceId(track.surfaceAt(participant.state.x, participant.state.y)),
+            aiBehavior = participant.driver?.behaviorState?.let(::aiBehaviorId),
             x = participant.state.x,
             y = participant.state.y,
             rotationDeg = participant.state.rotationDeg,
@@ -105,6 +108,35 @@ class BehavioralCompatibilityHarness(
             finished = participant.progress.finished,
             finishPosition = participant.progress.finishPosition,
         )
+
+    private fun phaseId(phase: RacePhase): String =
+        when (phase) {
+            RacePhase.LOADING -> "loading"
+            RacePhase.READY -> "ready"
+            RacePhase.COUNTDOWN -> "countdown"
+            RacePhase.RACING -> "racing"
+            RacePhase.PAUSED -> "paused"
+            RacePhase.FINISHED -> "finished"
+        }
+
+    private fun surfaceId(surface: SurfaceType): String =
+        when (surface) {
+            SurfaceType.ASPHALT -> "asphalt"
+            SurfaceType.PARQUET -> "parquet"
+            SurfaceType.TILE -> "tile"
+            SurfaceType.GRASS -> "grass"
+            SurfaceType.BOOST -> "boost"
+            SurfaceType.OIL -> "oil"
+        }
+
+    private fun aiBehaviorId(behavior: AiBehaviorState): String =
+        when (behavior) {
+            AiBehaviorState.FOLLOW_ROUTE -> "follow-route"
+            AiBehaviorState.AVOID -> "avoid"
+            AiBehaviorState.OVERTAKE -> "overtake"
+            AiBehaviorState.RECOVER -> "recover"
+            AiBehaviorState.FINISHED -> "finished"
+        }
 }
 
 /** Stable race options shared by Kotlin's reference runner and a future adapter. */

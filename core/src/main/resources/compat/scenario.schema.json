@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Lamandos/toy-racers/schemas/behavioral-scenario-v1.json",
+  "title": "Toy Racers behavioral scenario",
+  "description": "Language-neutral, fixed-timestep input for the Toy Racers reference simulation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "scenarios"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "scenarios": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/scenario" }
+    }
+  },
+  "$defs": {
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "seed",
+        "trackId",
+        "playerCar",
+        "inputOrigin",
+        "tags",
+        "ticks",
+        "snapshotIntervalTicks"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "seed": { "type": "integer" },
+        "trackId": {
+          "type": "string",
+          "enum": ["track-01", "track-02"]
+        },
+        "playerCar": {
+          "type": "string",
+          "enum": [
+            "red-stripe",
+            "blue-stripe",
+            "yellow-sport",
+            "green-racer",
+            "orange-truck"
+          ]
+        },
+        "inputOrigin": {
+          "type": "string",
+          "enum": ["keyboard", "touch"]
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        "ticks": { "type": "integer", "minimum": 1 },
+        "snapshotIntervalTicks": { "type": "integer", "minimum": 1 },
+        "inputSegments": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/inputSegment" }
+        },
+        "inputScript": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*\\.json$"
+        },
+        "initialStates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/initialState" }
+        },
+        "fullRace": { "type": "boolean" }
+      },
+      "oneOf": [
+        { "required": ["inputSegments"], "not": { "required": ["inputScript"] } },
+        { "required": ["inputScript"], "not": { "required": ["inputSegments"] } }
+      ]
+    },
+    "inputSegment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fromTick", "toTick"],
+      "properties": {
+        "fromTick": { "type": "integer", "minimum": 1 },
+        "toTick": { "type": "integer", "minimum": 1 },
+        "throttle": { "type": "number" },
+        "brake": { "type": "number" },
+        "steering": { "type": "number" }
+      }
+    },
+    "initialState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["player", "ai-0", "ai-1", "ai-2", "ai-3", "ai-4"]
+        },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "rotationDeg": { "type": "number" },
+        "speed": { "type": "number" },
+        "velocityX": { "type": "number" },
+        "velocityY": { "type": "number" },
+        "angularVelocity": { "type": "number" },
+        "lateralSpeed": { "type": "number" },
+        "driftAmount": { "type": "number" },
+        "surfaceSpeedMultiplier": { "type": "number" },
+        "currentCheckpointIndex": { "type": "integer", "minimum": 0 },
+        "completedLaps": { "type": "integer", "minimum": 0 },
+        "totalRaceTime": { "type": "number", "minimum": 0 },
+        "finished": { "type": "boolean" },
+        "finishPosition": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

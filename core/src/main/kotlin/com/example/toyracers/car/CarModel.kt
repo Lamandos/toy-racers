@@ -2,35 +2,49 @@ package com.example.toyracers.car
 
 /** Player-selectable models with balanced deterministic performance profiles. */
 enum class CarModel(
+    val scenarioId: String,
     val displayName: String,
     val assetPath: String,
     val performance: CarPerformance,
 ) {
     RED_STRIPE(
+        "red-stripe",
         "RED STRIPE",
         "sprites/cars/red-stripe.png",
         CarPerformance(acceleration = 1.10f, maxSpeed = 0.95f, handling = 0.80f),
     ),
     BLUE_STRIPE(
+        "blue-stripe",
         "BLUE STRIPE",
         "sprites/cars/blue-stripe.png",
         CarPerformance(acceleration = 0.95f, maxSpeed = 0.80f, handling = 1.10f),
     ),
     YELLOW_SPORT(
+        "yellow-sport",
         "YELLOW SPORT",
         "sprites/cars/yellow-sport.png",
         CarPerformance(acceleration = 0.80f, maxSpeed = 1.10f, handling = 0.95f),
     ),
     GREEN_RACER(
+        "green-racer",
         "GREEN RACER",
         "sprites/cars/green-racer.png",
         CarPerformance(acceleration = 0.95f, maxSpeed = 1.10f, handling = 0.80f),
     ),
     ORANGE_TRUCK(
+        "orange-truck",
         "ORANGE TRUCK",
         "sprites/cars/orange-truck.png",
         CarPerformance(acceleration = 0.80f, maxSpeed = 0.95f, handling = 1.10f),
     ),
+    ;
+
+    companion object {
+        /** Resolves the stable language-neutral ID used by behavioral scenarios. */
+        fun fromScenarioId(scenarioId: String): CarModel =
+            entries.firstOrNull { it.scenarioId == scenarioId }
+                ?: throw IllegalArgumentException("Unknown scenario car: $scenarioId")
+    }
 }
 
 /** Relative tuning applied to the common car baseline. */
