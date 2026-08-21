@@ -69,11 +69,13 @@
         },
         "inputSegments": {
           "type": "array",
+          "description": "Each segment must also satisfy 1 <= fromTick <= toTick <= scenario.ticks, and segments must be ordered and non-overlapping. These cross-field constraints are enforced by the reference loader.",
           "minItems": 1,
           "items": { "$ref": "#/$defs/inputSegment" }
         },
         "inputScript": {
           "type": "string",
+          "description": "The referenced document must validate against input-script.schema.json.",
           "pattern": "^[a-z0-9][a-z0-9-]*\\.json$"
         },
         "initialStates": {
@@ -82,6 +84,36 @@
         },
         "fullRace": { "type": "boolean" }
       },
+      "allOf": [
+        {
+          "if": { "properties": { "trackId": { "const": "track-01" } } },
+          "then": {
+            "properties": {
+              "initialStates": {
+                "items": {
+                  "properties": {
+                    "currentCheckpointIndex": { "maximum": 3 }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "trackId": { "const": "track-02" } } },
+          "then": {
+            "properties": {
+              "initialStates": {
+                "items": {
+                  "properties": {
+                    "currentCheckpointIndex": { "maximum": 5 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
       "oneOf": [
         { "required": ["inputSegments"], "not": { "required": ["inputScript"] } },
         { "required": ["inputScript"], "not": { "required": ["inputSegments"] } }
@@ -108,22 +140,52 @@
           "type": "string",
           "enum": ["player", "ai-0", "ai-1", "ai-2", "ai-3", "ai-4"]
         },
-        "x": { "type": "number" },
-        "y": { "type": "number" },
-        "rotationDeg": { "type": "number" },
-        "speed": { "type": "number" },
-        "velocityX": { "type": "number" },
-        "velocityY": { "type": "number" },
-        "angularVelocity": { "type": "number" },
-        "lateralSpeed": { "type": "number" },
-        "driftAmount": { "type": "number" },
+        "x": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
+        "y": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
+        "rotationDeg": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
+        "speed": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
+        "velocityX": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
+        "velocityY": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
+        "angularVelocity": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
+        "lateralSpeed": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
+        "driftAmount": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
         "surfaceSpeedMultiplier": { "type": "number", "minimum": 0, "maximum": 1 },
-        "currentCheckpointIndex": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
-        "completedLaps": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
-        "totalRaceTime": { "type": "number", "minimum": 0 },
+        "currentCheckpointIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5,
+          "description": "The reference loader narrows this to the selected track's checkpoint count: 3 for track-01 or 5 for track-02."
+        },
+        "completedLaps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3,
+          "description": "The reference race uses three required laps."
+        },
+        "totalRaceTime": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3.4028234663852886e+38
+        },
         "finished": { "type": "boolean" },
         "finishPosition": { "type": "integer", "minimum": 1, "maximum": 2147483647 }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["finished"],
+            "properties": { "finished": { "const": true } }
+          },
+          "then": { "required": ["finishPosition"] }
+        },
+        {
+          "if": { "required": ["finishPosition"] },
+          "then": {
+            "required": ["finished"],
+            "properties": { "finished": { "const": true } }
+          }
+        }
+      ]
     }
   }
 }

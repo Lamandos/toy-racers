@@ -59,6 +59,84 @@ class BehavioralCompatibilityTest {
     }
 
     @Test
+    fun `fixture loader accepts integral JSON number representations`() {
+        val scenario =
+            parseScenario(
+                """
+                {
+                  "id": "integral-number-fixture", "seed": 1.0, "trackId": "track-01",
+                  "playerCar": "red-stripe", "inputOrigin": "keyboard", "tags": [],
+                  "ticks": 1e0, "snapshotIntervalTicks": 1.0,
+                  "inputSegments": [{"fromTick": 1e0, "toTick": 1.0}]
+                }
+                """.trimIndent(),
+            ).single()
+
+        assertEquals(1L, scenario.seed)
+        assertEquals(1, scenario.ticks)
+        assertEquals(1, scenario.inputSegments.single().toTick)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `fixture loader rejects Float overflow in initial state`() {
+        parseScenario(
+            """
+            {
+              "id": "float-overflow", "seed": 1, "trackId": "track-01",
+              "playerCar": "red-stripe", "inputOrigin": "keyboard", "tags": [],
+              "ticks": 1, "snapshotIntervalTicks": 1,
+              "inputSegments": [{"fromTick": 1, "toTick": 1}],
+              "initialStates": [{"id": "player", "x": 1e100}]
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `fixture loader rejects finished initial state without position`() {
+        parseScenario(
+            """
+            {
+              "id": "missing-finish-position", "seed": 1, "trackId": "track-01",
+              "playerCar": "red-stripe", "inputOrigin": "keyboard", "tags": [],
+              "ticks": 1, "snapshotIntervalTicks": 1,
+              "inputSegments": [{"fromTick": 1, "toTick": 1}],
+              "initialStates": [{"id": "player", "finished": true}]
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `fixture loader rejects progress beyond the selected track`() {
+        parseScenario(
+            """
+            {
+              "id": "invalid-checkpoint", "seed": 1, "trackId": "track-01",
+              "playerCar": "red-stripe", "inputOrigin": "keyboard", "tags": [],
+              "ticks": 1, "snapshotIntervalTicks": 1,
+              "inputSegments": [{"fromTick": 1, "toTick": 1}],
+              "initialStates": [{"id": "player", "currentCheckpointIndex": 4}]
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `fixture loader rejects segment outside scenario ticks`() {
+        parseScenario(
+            """
+            {
+              "id": "invalid-segment-range", "seed": 1, "trackId": "track-01",
+              "playerCar": "red-stripe", "inputOrigin": "keyboard", "tags": [],
+              "ticks": 1, "snapshotIntervalTicks": 1,
+              "inputSegments": [{"fromTick": 1, "toTick": 2}]
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
     fun `versioned behavioral fixtures match the Kotlin reference implementation`() {
         val scenarios = BehavioralFixtureLoader.scenarios()
         validateFixtureCoverage(scenarios)
@@ -254,6 +332,11 @@ class BehavioralCompatibilityTest {
         val stream = requireNotNull(javaClass.classLoader.getResourceAsStream("compat/scenario.schema.json"))
         return stream.bufferedReader().use(JsonReader()::parse)
     }
+
+    private fun parseScenario(value: String): List<BehavioralScenario> =
+        BehavioralFixtureLoader.parseScenarioDocument(
+            JsonReader().parse("{\"schemaVersion\":1,\"scenarios\":[$value]}"),
+        )
 
     private fun enumValues(value: JsonValue): Set<String> =
         generateSequence(value.child) { it.next }.map(JsonValue::asString).toSet()

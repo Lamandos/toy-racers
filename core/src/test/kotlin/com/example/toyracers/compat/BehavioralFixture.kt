@@ -3,7 +3,9 @@ package com.example.toyracers.compat
 import com.badlogic.gdx.utils.JsonReader
 import com.badlogic.gdx.utils.JsonValue
 import com.example.toyracers.car.CarModel
+import com.example.toyracers.race.RaceRules
 import com.example.toyracers.track.TrackId
+import com.example.toyracers.track.TrackLoader
 
 internal data class BehavioralScenario(
     val id: String,
@@ -32,12 +34,10 @@ internal object BehavioralFixtureLoader {
     const val FIXTURE_RESOURCE = "compat/scenarios.json"
     const val GOLDEN_RESOURCE = "compat/goldens.json"
 
-    fun scenarios(): List<BehavioralScenario> {
-        val root = readJson(FIXTURE_RESOURCE)
+    fun scenarios(): List<BehavioralScenario> = parseScenarioDocument(readJson(FIXTURE_RESOURCE))
+
+    internal fun parseScenarioDocument(root: JsonValue): List<BehavioralScenario> {
         validateScenarioDocument(root)
-        require(root.getInt("schemaVersion") == SCHEMA_VERSION) {
-            "Unsupported scenario schema version"
-        }
         return root.get("scenarios").children().map(::scenario)
     }
 
@@ -203,7 +203,9 @@ internal object BehavioralFixtureLoader {
             }
         }
 
-        value.get("initialStates")?.let { validateInitialStates(it, "$path.initialStates") }
+        value.get("initialStates")?.let {
+            validateInitialStates(it, "$path.initialStates", value.getString("trackId"))
+        }
         value.get("fullRace")?.let { requireBoolean(it, "$path.fullRace") }
     }
 
@@ -250,8 +252,10 @@ internal object BehavioralFixtureLoader {
     private fun validateInitialStates(
         value: JsonValue,
         path: String,
+        trackId: String,
     ) {
         require(value.isArray) { "$path must be an array" }
+        val maxCheckpointIndex = TRACK_CHECKPOINT_COUNTS.getValue(trackId).toLong()
         value.children().forEachIndexed { index, initialState ->
             val statePath = "$path[$index]"
             require(initialState.isObject) { "$statePath must be an object" }
@@ -268,20 +272,20 @@ internal object BehavioralFixtureLoader {
                 "lateralSpeed",
                 "driftAmount",
             ).forEach { name ->
-                initialState.get(name)?.let { requireNumber(it, "$statePath.$name") }
+                initialState.get(name)?.let { requireFloat(it, "$statePath.$name") }
             }
             initialState.get("surfaceSpeedMultiplier")?.let {
-                requireNumber(it, "$statePath.surfaceSpeedMultiplier", minimum = 0.0, maximum = 1.0)
+                requireFloat(it, "$statePath.surfaceSpeedMultiplier", minimum = 0.0, maximum = 1.0)
             }
             initialState.get("totalRaceTime")?.let {
-                requireNumber(it, "$statePath.totalRaceTime", minimum = 0.0)
+                requireFloat(it, "$statePath.totalRaceTime", minimum = 0.0)
             }
             initialState.get("currentCheckpointIndex")?.let {
                 requireInteger(
                     it,
                     "$statePath.currentCheckpointIndex",
                     minimum = 0,
-                    maximum = MAX_INT_VALUE,
+                    maximum = maxCheckpointIndex,
                 )
             }
             initialState.get("completedLaps")?.let {
@@ -289,7 +293,7 @@ internal object BehavioralFixtureLoader {
                     it,
                     "$statePath.completedLaps",
                     minimum = 0,
-                    maximum = MAX_INT_VALUE,
+                    maximum = RaceRules.DEFAULT_LAP_COUNT.toLong(),
                 )
             }
             initialState.get("finishPosition")?.let {
@@ -301,6 +305,14 @@ internal object BehavioralFixtureLoader {
                 )
             }
             initialState.get("finished")?.let { requireBoolean(it, "$statePath.finished") }
+            val finished = initialState.get("finished")?.asBoolean() ?: false
+            val hasFinishPosition = initialState.get("finishPosition") != null
+            require(!finished || hasFinishPosition) {
+                "$statePath.finishPosition is required when finished is true"
+            }
+            require(!hasFinishPosition || finished) {
+                "$statePath.finished must be true when finishPosition is provided"
+            }
         }
     }
 
@@ -345,10 +357,33 @@ internal object BehavioralFixtureLoader {
         minimum: Double? = null,
         maximum: Double? = null,
     ) {
-        require(value.isNumber) { "$path must be a number" }
-        val number = value.asDouble()
+        val number = numericValue(value, path)
         minimum?.let { require(number >= it) { "$path must be at least $it" } }
         maximum?.let { require(number <= it) { "$path must be at most $it" } }
+    }
+
+    private fun requireFloat(
+        value: JsonValue,
+        path: String,
+        minimum: Double? = null,
+        maximum: Double? = null,
+    ) {
+        val number = numericValue(value, path)
+        require(number in -MAX_FLOAT_VALUE..MAX_FLOAT_VALUE) {
+            "$path must fit in a finite Float"
+        }
+        minimum?.let { require(number >= it) { "$path must be at least $it" } }
+        maximum?.let { require(number <= it) { "$path must be at most $it" } }
+    }
+
+    private fun numericValue(
+        value: JsonValue,
+        path: String,
+    ): Double {
+        require(value.isNumber) { "$path must be a number" }
+        val number = value.asDouble()
+        require(number.isFinite()) { "$path must be finite" }
+        return number
     }
 
     private fun requireEnum(
@@ -366,9 +401,19 @@ internal object BehavioralFixtureLoader {
         minimum: Long? = null,
         maximum: Long? = null,
     ) {
-        require(value.isLong) { "$path must be an integer" }
-        minimum?.let { require(value.asLong() >= it) { "$path must be at least $it" } }
-        maximum?.let { require(value.asLong() <= it) { "$path must be at most $it" } }
+        val integer =
+            if (value.isLong) {
+                value.asLong()
+            } else {
+                val number = numericValue(value, path)
+                require(number % 1.0 == 0.0) { "$path must be an integer" }
+                require(number >= MIN_LONG_AS_DOUBLE && number < POSITIVE_LONG_LIMIT) {
+                    "$path must fit in a signed 64-bit integer"
+                }
+                number.toLong()
+            }
+        minimum?.let { require(integer >= it) { "$path must be at least $it" } }
+        maximum?.let { require(integer <= it) { "$path must be at most $it" } }
     }
 
     private fun requireBoolean(
@@ -403,6 +448,10 @@ internal object BehavioralFixtureLoader {
     private val PLAYER_CARS = CarModel.entries.map(CarModel::scenarioId).toSet()
     private val INPUT_ORIGINS = setOf("keyboard", "touch")
     private val INITIAL_STATE_IDS = setOf("player", "ai-0", "ai-1", "ai-2", "ai-3", "ai-4")
+    private val TRACK_CHECKPOINT_COUNTS =
+        TrackId.entries.associate { trackId ->
+            trackId.value to TrackLoader().load(trackId).checkpoints.size
+        }
     private val ROOT_PROPERTIES = setOf("schemaVersion", "scenarios")
     private val INPUT_SCRIPT_PROPERTIES = setOf("schemaVersion", "segments")
     private val INPUT_SEGMENT_PROPERTIES = setOf("fromTick", "toTick", "throttle", "brake", "steering")
@@ -440,4 +489,8 @@ internal object BehavioralFixtureLoader {
             "initialStates",
             "fullRace",
         )
+
+    private const val MAX_FLOAT_VALUE = 3.4028234663852886E38
+    private const val MIN_LONG_AS_DOUBLE = -9.223372036854776E18
+    private const val POSITIVE_LONG_LIMIT = 9.223372036854776E18
 }

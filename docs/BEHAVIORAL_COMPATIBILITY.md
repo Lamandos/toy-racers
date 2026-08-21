@@ -22,7 +22,11 @@ Schema draft 2020-12. A scenario declares a stable ID, seed, built-in `trackId`,
 origin, simulation tick count, sampling interval, and `inputSegments`. Segments are inclusive
 one-based tick ranges. A range omits any control that should be zero and may span an arbitrary
 number of simulation ticks. The optional `initialStates` block is a test-only API boundary for a
-fully specified starting state; it adds no gameplay rules.
+fully specified starting state; it adds no gameplay rules. Initial numeric values must be finite and
+representable as Kotlin `Float`; `currentCheckpointIndex` is bounded by the selected track's
+checkpoint count (3 for `track-01`, 5 for `track-02`), and `completedLaps` is bounded by the
+reference race's three required laps. A finished initial state must provide `finishPosition`, and
+`finishPosition` is only valid when `finished` is true.
 
 The schema's identifiers are deliberately language-neutral: tracks are `track-01` and `track-02`,
 while selectable cars are `red-stripe`, `blue-stripe`, `yellow-sport`, `green-racer`, and
@@ -37,6 +41,10 @@ any current racer without inventing an unsupported custom grid.
 The long complete-race replay is stored in a separate input fixture,
 `full-race-input.json`, and referenced by `inputScript`. This keeps a normal scenario readable
 while retaining every player input needed to replay its full three-lap race from the start grid.
+Referenced scripts use the published [`input-script.schema.json`](../core/src/main/resources/compat/input-script.schema.json)
+document shape: an object containing only `schemaVersion: 1` and a non-empty `segments` array.
+The reference loader additionally requires every segment to satisfy
+`1 <= fromTick <= toTick <= scenario.ticks`, and requires segments to be ordered and non-overlapping.
 `inputOrigin` records whether the same normalized `PlayerInput` came from the keyboard-equivalent
 or touch-equivalent adapter. The simulation itself receives the normalized command, never UI clicks.
 
