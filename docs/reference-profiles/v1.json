@@ -49,7 +49,8 @@
   },
   "raceSessionConfig": {
     "opponentRacingLineBiases": ["bf266666", "00000000", "3f266666"],
-    "safeStateMinSpeed": "40000000"
+    "safeStateMinSpeed": "40000000",
+    "finishedBrakingMinSpeed": "3c23d70a"
   },
   "aiByDifficulty": {
     "NORMAL": {

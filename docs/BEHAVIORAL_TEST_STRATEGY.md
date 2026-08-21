@@ -239,6 +239,12 @@ The version-1 encoding rules are:
   is `{ "behaviorState": AiBehaviorState, "targetWaypointIndex": integer,
   "command": { "throttle": float, "brake": float, "steering": float } | null }`. `command` is
   the normalized command returned by that driver for the snapshot's just-completed fixed tick.
+  The `behaviorState` and `targetWaypointIndex` are sampled from the same AI update as that
+  command: immediately after `AiDriver.update` returns and before the session consumes a respawn
+  request or calls `restoreLastSafeState`. If that update requests a respawn, preserve its
+  pre-reset behavior state (normally `RECOVER`, or `FINISHED` for an already-finished off-track
+  participant) and target waypoint in this step's observation; the next physical step observes
+  the `FOLLOW_ROUTE` state and target produced by `AiDriver.reset`.
   When an `advance` executes several physical steps, use the command from the highest
   `fixedTick` included in that snapshot's `steps` prefix; for the final post-operation snapshot,
   this is the command from the operation's last executed physical step. It is `null` when the
@@ -315,7 +321,7 @@ Scenarios are committed JSON fixtures rather than recordings of a live screen. A
     "playerCar": "RED_STRIPE",
     "opponentCars": ["BLUE_STRIPE", "YELLOW_SPORT", "GREEN_RACER", "ORANGE_TRUCK", "BLUE_STRIPE"],
     "aiDifficulty": "NORMAL",
-    "profileSha256": "86cecabf57030f9330148aa8276c9a0c9fff1686f6d5aa00c17b89842e5d5ddb"
+    "profileSha256": "7d16f7b87a8789eb29f1657dfdf07bd22876628f4e35cc38af86c79ee486cfcc"
   },
   "initialState": {
     "phase": "LOADING",
@@ -465,7 +471,10 @@ again. When creating an `AiDriver`, Kotlin then applies a separate track overlay
 `waypointRadius` is replaced by `Track.racingLineWaypointRadius`. Thus the profile's
 `aiByDifficulty.*.waypointRadius` is a base value, while the complete `Track` definition supplies
 the effective value (`10f` for track 01 and `7f` for track 02); runners must apply this overlay in
-that order. A later profile must be a new file and version, never an edit that changes v1's bytes.
+that order. `raceSessionConfig.finishedBrakingMinSpeed` is `0.01f`: when an AI participant is
+already finished, it emits full brake input exactly when `speed > 0.01f`, and emits
+`PlayerInput.NONE` otherwise. A later profile must be a new file and version, never an edit that
+changes v1's bytes.
 
 For each selected car model, derive its effective `CarConfig` from `baseCarConfig` by multiplying
 only these three fields, with binary32 rounding after each multiplication:
