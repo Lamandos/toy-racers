@@ -76,6 +76,10 @@ internal class RaceSession(
     val requiredLaps: Int
         get() = raceRules.requiredLaps
 
+    internal fun synchronizeFinishOrdering() {
+        raceRules.synchronizeFinishOrdering(participants.map(RaceParticipant::progress))
+    }
+
     private val participants = listOf(player) + opponents
     private val positionTracker = PositionTracker(track)
     private val raceRules = RaceRules(track)

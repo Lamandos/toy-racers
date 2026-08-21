@@ -19,6 +19,20 @@ class CarModelTest {
     }
 
     @Test
+    fun `scenario car IDs are unique and do not expose enum names`() {
+        val scenarioIds = CarModel.entries.map(CarModel::scenarioId)
+
+        assertEquals(CarModel.entries.size, scenarioIds.toSet().size)
+        assertEquals(CarModel.entries.toList(), scenarioIds.map(CarModel::fromScenarioId))
+        assertTrue(scenarioIds.all { '-' in it })
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `scenario car IDs reject Kotlin enum names`() {
+        CarModel.fromScenarioId(CarModel.RED_STRIPE.name)
+    }
+
+    @Test
     fun `every unselected model becomes an opponent`() {
         CarModel.entries.forEach { playerModel ->
             val opponents = opponentModelsFor(playerModel)

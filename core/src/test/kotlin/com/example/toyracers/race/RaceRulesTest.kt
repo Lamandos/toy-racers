@@ -85,6 +85,18 @@ class RaceRulesTest {
     }
 
     @Test
+    fun `injected finish ordering continues after existing result`() {
+        val rules = RaceRules(track, requiredLaps = 1)
+        val existingResult = RaceProgress(finished = true, finishPosition = 1)
+        val nextResult = RaceProgress()
+
+        rules.synchronizeFinishOrdering(listOf(existingResult))
+        completeLap(rules, nextResult)
+
+        assertEquals(2, nextResult.finishPosition)
+    }
+
+    @Test
     fun `respawn movement cannot count a checkpoint`() {
         val rules = RaceRules(track)
         val progress = RaceProgress()
