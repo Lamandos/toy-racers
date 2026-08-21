@@ -61,8 +61,12 @@
           "items": { "type": "string" },
           "uniqueItems": true
         },
-        "ticks": { "type": "integer", "minimum": 1 },
-        "snapshotIntervalTicks": { "type": "integer", "minimum": 1 },
+        "ticks": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+        "snapshotIntervalTicks": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
         "inputSegments": {
           "type": "array",
           "minItems": 1,
@@ -88,8 +92,8 @@
       "additionalProperties": false,
       "required": ["fromTick", "toTick"],
       "properties": {
-        "fromTick": { "type": "integer", "minimum": 1 },
-        "toTick": { "type": "integer", "minimum": 1 },
+        "fromTick": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+        "toTick": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
         "throttle": { "type": "number" },
         "brake": { "type": "number" },
         "steering": { "type": "number" }
@@ -113,12 +117,12 @@
         "angularVelocity": { "type": "number" },
         "lateralSpeed": { "type": "number" },
         "driftAmount": { "type": "number" },
-        "surfaceSpeedMultiplier": { "type": "number" },
-        "currentCheckpointIndex": { "type": "integer", "minimum": 0 },
-        "completedLaps": { "type": "integer", "minimum": 0 },
+        "surfaceSpeedMultiplier": { "type": "number", "minimum": 0, "maximum": 1 },
+        "currentCheckpointIndex": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+        "completedLaps": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
         "totalRaceTime": { "type": "number", "minimum": 0 },
         "finished": { "type": "boolean" },
-        "finishPosition": { "type": "integer", "minimum": 1 }
+        "finishPosition": { "type": "integer", "minimum": 1, "maximum": 2147483647 }
       }
     }
   }

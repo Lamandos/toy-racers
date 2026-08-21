@@ -194,16 +194,40 @@ internal object BehavioralTraceJson {
         expected: JsonValue,
         actual: JsonValue,
         path: String,
+    ): String? =
+        if (FLOAT_FIELDS.contains(path.substringAfterLast('.'))) {
+            floatingPointDifference(expected, actual, path)
+        } else {
+            integerDifference(expected, actual, path)
+        }
+
+    private fun floatingPointDifference(
+        expected: JsonValue,
+        actual: JsonValue,
+        path: String,
     ): String? {
         val expectedValue = expected.asDouble()
         val actualValue = actual.asDouble()
-        val differs =
-            if (FLOAT_FIELDS.contains(path.substringAfterLast('.'))) {
-                abs(expectedValue - actualValue) > FLOAT_TOLERANCE
-            } else {
-                expectedValue != actualValue
-            }
-        return if (differs) "$path expected $expectedValue but was $actualValue" else null
+        return if (abs(expectedValue - actualValue) > FLOAT_TOLERANCE) {
+            "$path expected $expectedValue but was $actualValue"
+        } else {
+            null
+        }
+    }
+
+    private fun integerDifference(
+        expected: JsonValue,
+        actual: JsonValue,
+        path: String,
+    ): String? {
+        if (!expected.isLong || !actual.isLong) return "$path must contain integer JSON numbers"
+        val expectedValue = expected.asLong()
+        val actualValue = actual.asLong()
+        return if (expectedValue != actualValue) {
+            "$path expected $expectedValue but was $actualValue"
+        } else {
+            null
+        }
     }
 
     private fun StringBuilder.field(

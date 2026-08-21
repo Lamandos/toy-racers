@@ -144,6 +144,9 @@ internal object BehavioralFixtureLoader {
         root.requireProperties(ROOT_PROPERTIES, "$")
         val schemaVersion = root.required("schemaVersion", "$")
         requireInteger(schemaVersion, "$.schemaVersion")
+        require(schemaVersion.asLong() == SCHEMA_VERSION.toLong()) {
+            "Unsupported scenario schema version"
+        }
         val scenarios = root.required("scenarios", "$")
         require(scenarios.isArray && scenarios.size > 0) {
             "$.scenarios must be a non-empty array"
@@ -159,16 +162,29 @@ internal object BehavioralFixtureLoader {
     ) {
         require(value.isObject) { "$path must be an object" }
         value.requireProperties(SCENARIO_PROPERTIES, path)
-        requireString(value.required("id", path), "$path.id")
+        val id = value.required("id", path)
+        requireString(id, "$path.id")
+        require(SCENARIO_ID.matches(id.asString())) { "$path.id has an invalid format" }
         requireEnum(value.required("trackId", path), "$path.trackId", TRACK_IDS)
         requireEnum(value.required("playerCar", path), "$path.playerCar", PLAYER_CARS)
         requireEnum(value.required("inputOrigin", path), "$path.inputOrigin", INPUT_ORIGINS)
-        requireInteger(value.required("seed", path), "$path.seed")
-        requireInteger(value.required("ticks", path), "$path.ticks", minimum = 1)
+        requireInteger(
+            value.required("seed", path),
+            "$path.seed",
+            minimum = Long.MIN_VALUE,
+            maximum = Long.MAX_VALUE,
+        )
+        requireInteger(
+            value.required("ticks", path),
+            "$path.ticks",
+            minimum = 1,
+            maximum = MAX_INT_VALUE,
+        )
         requireInteger(
             value.required("snapshotIntervalTicks", path),
             "$path.snapshotIntervalTicks",
             minimum = 1,
+            maximum = MAX_INT_VALUE,
         )
         validateTags(value.required("tags", path), "$path.tags")
 
@@ -198,6 +214,9 @@ internal object BehavioralFixtureLoader {
         require(root.isObject) { "$path must be an object" }
         root.requireProperties(INPUT_SCRIPT_PROPERTIES, path)
         requireInteger(root.required("schemaVersion", path), "$path.schemaVersion")
+        require(root.getLong("schemaVersion") == SCHEMA_VERSION.toLong()) {
+            "Unsupported input script schema version"
+        }
         validateInputSegments(root.required("segments", path), "$path.segments")
     }
 
@@ -210,8 +229,18 @@ internal object BehavioralFixtureLoader {
             val segmentPath = "$path[$index]"
             require(segment.isObject) { "$segmentPath must be an object" }
             segment.requireProperties(INPUT_SEGMENT_PROPERTIES, segmentPath)
-            requireInteger(segment.required("fromTick", segmentPath), "$segmentPath.fromTick", minimum = 1)
-            requireInteger(segment.required("toTick", segmentPath), "$segmentPath.toTick", minimum = 1)
+            requireInteger(
+                segment.required("fromTick", segmentPath),
+                "$segmentPath.fromTick",
+                minimum = 1,
+                maximum = MAX_INT_VALUE,
+            )
+            requireInteger(
+                segment.required("toTick", segmentPath),
+                "$segmentPath.toTick",
+                minimum = 1,
+                maximum = MAX_INT_VALUE,
+            )
             listOf("throttle", "brake", "steering").forEach { name ->
                 segment.get(name)?.let { requireNumber(it, "$segmentPath.$name") }
             }
@@ -238,19 +267,38 @@ internal object BehavioralFixtureLoader {
                 "angularVelocity",
                 "lateralSpeed",
                 "driftAmount",
-                "surfaceSpeedMultiplier",
-                "totalRaceTime",
             ).forEach { name ->
                 initialState.get(name)?.let { requireNumber(it, "$statePath.$name") }
             }
+            initialState.get("surfaceSpeedMultiplier")?.let {
+                requireNumber(it, "$statePath.surfaceSpeedMultiplier", minimum = 0.0, maximum = 1.0)
+            }
+            initialState.get("totalRaceTime")?.let {
+                requireNumber(it, "$statePath.totalRaceTime", minimum = 0.0)
+            }
             initialState.get("currentCheckpointIndex")?.let {
-                requireInteger(it, "$statePath.currentCheckpointIndex", minimum = 0)
+                requireInteger(
+                    it,
+                    "$statePath.currentCheckpointIndex",
+                    minimum = 0,
+                    maximum = MAX_INT_VALUE,
+                )
             }
             initialState.get("completedLaps")?.let {
-                requireInteger(it, "$statePath.completedLaps", minimum = 0)
+                requireInteger(
+                    it,
+                    "$statePath.completedLaps",
+                    minimum = 0,
+                    maximum = MAX_INT_VALUE,
+                )
             }
             initialState.get("finishPosition")?.let {
-                requireInteger(it, "$statePath.finishPosition", minimum = 1)
+                requireInteger(
+                    it,
+                    "$statePath.finishPosition",
+                    minimum = 1,
+                    maximum = MAX_INT_VALUE,
+                )
             }
             initialState.get("finished")?.let { requireBoolean(it, "$statePath.finished") }
         }
@@ -294,8 +342,13 @@ internal object BehavioralFixtureLoader {
     private fun requireNumber(
         value: JsonValue,
         path: String,
+        minimum: Double? = null,
+        maximum: Double? = null,
     ) {
         require(value.isNumber) { "$path must be a number" }
+        val number = value.asDouble()
+        minimum?.let { require(number >= it) { "$path must be at least $it" } }
+        maximum?.let { require(number <= it) { "$path must be at most $it" } }
     }
 
     private fun requireEnum(
@@ -311,9 +364,11 @@ internal object BehavioralFixtureLoader {
         value: JsonValue,
         path: String,
         minimum: Long? = null,
+        maximum: Long? = null,
     ) {
         require(value.isLong) { "$path must be an integer" }
         minimum?.let { require(value.asLong() >= it) { "$path must be at least $it" } }
+        maximum?.let { require(value.asLong() <= it) { "$path must be at most $it" } }
     }
 
     private fun requireBoolean(
@@ -341,6 +396,7 @@ internal object BehavioralFixtureLoader {
         }
     }
 
+    private const val MAX_INT_VALUE = 2147483647L
     private val SCENARIO_ID = Regex("[a-z0-9]+(?:-[a-z0-9]+)*")
     private val INPUT_SCRIPT = Regex("[a-z0-9][a-z0-9-]*\\.json")
     private val TRACK_IDS = TrackId.entries.map(TrackId::value).toSet()

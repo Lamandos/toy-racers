@@ -54,6 +54,7 @@ class BehavioralCompatibilityHarness(
                 }
             initial.applyTo(participant)
         }
+        session.synchronizeFinishOrdering()
     }
 
     /** Advances exactly one fixed simulation tick and returns the observed state. */
@@ -198,7 +199,12 @@ data class BehavioralInitialState(
         angularVelocity?.let { participant.state.angularVelocity = it }
         lateralSpeed?.let { participant.state.lateralSpeed = it }
         driftAmount?.let { participant.state.driftAmount = it }
-        surfaceSpeedMultiplier?.let { participant.surfaceSpeedState.speedMultiplier = it }
+        surfaceSpeedMultiplier?.let {
+            require(it in 0f..1f) {
+                "Surface speed multiplier must be between 0 and 1"
+            }
+            participant.surfaceSpeedState.speedMultiplier = it
+        }
         currentCheckpointIndex?.let { participant.progress.currentCheckpointIndex = it }
         completedLaps?.let { participant.progress.completedLaps = it }
         totalRaceTime?.let { participant.progress.totalRaceTime = it }

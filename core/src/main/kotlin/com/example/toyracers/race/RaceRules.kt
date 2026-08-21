@@ -22,6 +22,25 @@ class RaceRules(
         require(requiredLaps > 0) { "Required lap count must be positive" }
     }
 
+    internal fun synchronizeFinishOrdering(progresses: Collection<RaceProgress>) {
+        val finishPositions =
+            progresses
+                .filter { it.finished }
+                .map { progress ->
+                    requireNotNull(progress.finishPosition) {
+                        "Finished progress must have a finish position"
+                    }
+                }
+        require(finishPositions.size == finishPositions.toSet().size) {
+            "Finish positions must be unique"
+        }
+        val highestPosition = finishPositions.maxOrNull() ?: return
+        require(highestPosition < Int.MAX_VALUE) {
+            "Finish position is too large to assign another result"
+        }
+        nextFinishPosition = maxOf(nextFinishPosition, highestPosition + 1)
+    }
+
     fun update(
         progress: RaceProgress,
         previousPosition: TrackPoint,

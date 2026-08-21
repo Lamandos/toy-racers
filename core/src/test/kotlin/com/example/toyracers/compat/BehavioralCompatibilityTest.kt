@@ -23,6 +23,27 @@ class BehavioralCompatibilityTest {
     }
 
     @Test
+    fun `golden comparison preserves full-width integer precision`() {
+        val expected = JsonReader().parse("{\"seed\":9223372036854775806}")
+        val actual = JsonReader().parse("{\"seed\":9223372036854775807}")
+
+        assertNotNull(BehavioralTraceJson.firstDifference(expected, actual))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `compatibility harness rejects invalid surface multiplier`() {
+        BehavioralCompatibilityHarness(
+            BehavioralRaceConfiguration(
+                seed = 1L,
+                trackId = "track-01",
+                playerCar = "red-stripe",
+            ),
+        ).setInitialStates(
+            listOf(BehavioralInitialState(id = "player", surfaceSpeedMultiplier = -0.1f)),
+        )
+    }
+
+    @Test
     fun `compatibility harness accepts stable difficulty IDs`() {
         val harness =
             BehavioralCompatibilityHarness(
