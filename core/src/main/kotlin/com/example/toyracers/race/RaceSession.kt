@@ -86,6 +86,10 @@ internal class RaceSession(
     private var accumulator = 0f
 
     val playerPosition: Int
+        get() = participantPositions.getValue(player.id)
+
+    /** Positions keyed by the stable participant identifiers used by simulation and snapshots. */
+    val participantPositions: Map<String, Int>
         get() =
             positionTracker
                 .positions(
@@ -96,7 +100,7 @@ internal class RaceSession(
                             position = participant.state.position(),
                         )
                     },
-                ).getValue(player.id)
+                )
 
     /**
      * Returns a visual-only state between the last two fixed simulation steps.
