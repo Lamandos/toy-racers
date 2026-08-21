@@ -43,26 +43,48 @@ internal object BehavioralTraceJson {
         path: String = "$",
     ): String? =
         when {
-            expected.isObject && actual.isObject -> {
-                objectDifference(expected, actual, path)
+            expected.isObject || actual.isObject -> {
+                if (!expected.isObject || !actual.isObject) {
+                    typeDifference(expected, actual, path)
+                } else {
+                    objectDifference(expected, actual, path)
+                }
             }
 
-            expected.isArray && actual.isArray -> {
-                arrayDifference(expected, actual, path)
+            expected.isArray || actual.isArray -> {
+                if (!expected.isArray || !actual.isArray) {
+                    typeDifference(expected, actual, path)
+                } else {
+                    arrayDifference(expected, actual, path)
+                }
             }
 
-            expected.isNumber && actual.isNumber -> {
-                numberDifference(expected, actual, path)
+            expected.isNumber || actual.isNumber -> {
+                if (!expected.isNumber || !actual.isNumber) {
+                    typeDifference(expected, actual, path)
+                } else {
+                    numberDifference(expected, actual, path)
+                }
             }
 
-            expected.asString() != actual.asString() -> {
-                "$path expected ${expected.asString()} but was ${actual.asString()}"
+            expected.type() != actual.type() -> {
+                typeDifference(expected, actual, path)
             }
 
             else -> {
-                null
+                if (expected.asString() != actual.asString()) {
+                    "$path expected ${expected.asString()} but was ${actual.asString()}"
+                } else {
+                    null
+                }
             }
         }
+
+    private fun typeDifference(
+        expected: JsonValue,
+        actual: JsonValue,
+        path: String,
+    ): String = "$path expected JSON type ${expected.type()} but was ${actual.type()}"
 
     private fun StringBuilder.sample(sample: BehavioralTraceSample) {
         append('{')

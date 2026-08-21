@@ -15,6 +15,29 @@ class BehavioralCompatibilityTest {
     private val runner = BehavioralScenarioRunner()
 
     @Test
+    fun `golden comparison rejects mismatched discrete JSON types`() {
+        val expected = JsonReader().parse("{\"value\":false}")
+        val actual = JsonReader().parse("{\"value\":\"false\"}")
+
+        assertNotNull(BehavioralTraceJson.firstDifference(expected, actual))
+    }
+
+    @Test
+    fun `compatibility harness accepts stable difficulty IDs`() {
+        val harness =
+            BehavioralCompatibilityHarness(
+                BehavioralRaceConfiguration(
+                    seed = 1L,
+                    trackId = "track-01",
+                    playerCar = "red-stripe",
+                    opponentDifficulty = "hard",
+                ),
+            )
+
+        assertEquals("countdown", harness.start().phase)
+    }
+
+    @Test
     fun `versioned behavioral fixtures match the Kotlin reference implementation`() {
         val scenarios = BehavioralFixtureLoader.scenarios()
         validateFixtureCoverage(scenarios)

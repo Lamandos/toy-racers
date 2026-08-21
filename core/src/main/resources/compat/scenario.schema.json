@@ -33,7 +33,11 @@
           "type": "string",
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
         },
-        "seed": { "type": "integer" },
+        "seed": {
+          "type": "integer",
+          "minimum": -9223372036854775808,
+          "maximum": 9223372036854775807
+        },
         "trackId": {
           "type": "string",
           "enum": ["track-01", "track-02"]

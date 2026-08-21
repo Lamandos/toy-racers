@@ -23,8 +23,8 @@ internal class BehavioralScenarioRunner {
                 ),
             )
         val samples = mutableListOf<BehavioralTraceSample>()
-        samples += BehavioralTraceSample("countdown", 0, harness.start())
         harness.setInitialStates(scenario.initialStates)
+        samples += BehavioralTraceSample("countdown", 0, harness.start())
         samples += BehavioralTraceSample("racing", 0, harness.finishCountdown())
         addSimulationSamples(harness, scenario, samples)
         return BehavioralTrace(scenario.id, scenario.seed, samples)
@@ -39,9 +39,15 @@ internal class BehavioralScenarioRunner {
         (1..scenario.ticks).forEach { tick ->
             inputSegmentIndex = scenario.nextInputSegmentIndex(inputSegmentIndex, tick)
             val snapshot = harness.advance(scenario.inputAt(tick, inputSegmentIndex))
-            if (tick == 1 || tick % scenario.snapshotIntervalTicks == 0 || tick == scenario.ticks) {
+            val shouldSample =
+                tick == 1 ||
+                    tick % scenario.snapshotIntervalTicks == 0 ||
+                    tick == scenario.ticks ||
+                    snapshot.phase == "finished"
+            if (shouldSample) {
                 samples += BehavioralTraceSample("simulation", tick, snapshot)
             }
+            if (snapshot.phase == "finished") return
         }
     }
 

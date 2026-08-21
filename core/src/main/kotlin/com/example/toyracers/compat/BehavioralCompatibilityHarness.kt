@@ -26,7 +26,7 @@ class BehavioralCompatibilityHarness(
         RaceSession(
             track = track,
             playerCarModel = CarModel.fromScenarioId(configuration.playerCar),
-            opponentDifficulty = AiDifficulty.valueOf(configuration.opponentDifficulty),
+            opponentDifficulty = difficultyFromId(configuration.opponentDifficulty),
         )
     private val seed = configuration.seed
     private var simulationTicks = 0
@@ -137,6 +137,14 @@ class BehavioralCompatibilityHarness(
             AiBehaviorState.RECOVER -> "recover"
             AiBehaviorState.FINISHED -> "finished"
         }
+
+    private fun difficultyFromId(id: String): AiDifficulty =
+        when (id) {
+            "easy", "EASY" -> AiDifficulty.EASY
+            "normal", "NORMAL" -> AiDifficulty.NORMAL
+            "hard", "HARD" -> AiDifficulty.HARD
+            else -> error("Unknown compatibility difficulty ID: $id")
+        }
 }
 
 /** Stable race options shared by Kotlin's reference runner and a future adapter. */
@@ -144,7 +152,7 @@ data class BehavioralRaceConfiguration(
     val seed: Long,
     val trackId: String,
     val playerCar: String,
-    val opponentDifficulty: String = AiDifficulty.NORMAL.name,
+    val opponentDifficulty: String = "normal",
 )
 
 /** Normalized input; keyboard and touch adapters both produce this value. */
