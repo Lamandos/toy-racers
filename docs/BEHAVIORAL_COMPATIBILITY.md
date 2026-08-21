@@ -60,9 +60,26 @@ checked in and are never updated by an ordinary test run. A trace records the co
 transition, its first physical tick, then periodic normalized snapshots. A failure reports the first
 sampled tick and JSON field that differs.
 
-All non-float state is exact: IDs, cars, phases, surfaces, AI states, ticks, ranking, checkpoints,
-laps, finish state, and booleans. Float fields use an absolute tolerance of `0.0001`, implemented
-by `BehavioralTraceJson.FLOAT_TOLERANCE`. The JSON writer normalizes floats to six decimal places.
+## Normalized snapshot contract
+
+[`snapshot.schema.json`](../core/src/main/resources/compat/snapshot.schema.json) is the formal,
+machine-readable schema for a snapshot. Every snapshot includes `schemaVersion: 1`, the simulation
+tick, race state, countdown state and remaining time, elapsed simulation time, and the player's
+current lap/progress. Its participant records include only the stable ID and simulated equivalence
+data: position, velocity, rotation, angular velocity, longitudinal and lateral speed, drift amount,
+surface, checkpoint, completed lap, race position, and finish flag. The race-level `ranking`,
+`finishedParticipants`, and `finishResults` capture the resulting order and completed timings.
+
+Arrays have a fixed order: `participants` by ascending participant ID; `ranking` by race position
+then ID; and finished IDs/results by finish position then ID. Snapshot output deliberately excludes
+input metadata such as the seed, car selection, AI internals, collision diagnostics, runtime object
+identifiers, memory addresses, FPS, rendering state, and platform metadata.
+
+All non-float state is exact. Float fields are finite, serialized as locale-independent fixed-point
+values with six digits after the decimal point, and canonicalize negative zero to `0.000000`.
+Comparisons accept an absolute tolerance of `0.0001`, implemented by
+`BehavioralTraceJson.FLOAT_TOLERANCE`; this tolerance applies after parsing JSON and does not relax
+discrete fields.
 
 ## Updating Kotlin reference goldens
 
@@ -83,8 +100,8 @@ twice and requires byte-identical normalized traces before comparing the checked
    events.
 2. Initialize the requested track, car, seed, and optional initial state.
 3. Reproduce the `countdown` then `racing` transition and apply one normalized input per fixed tick.
-4. Emit the schema-1 snapshot fields in the same ordering and values, with the same six-decimal
-   float normalization.
+4. Emit the schema-1 snapshot fields in the schema's array order and values, with the same
+   six-decimal float normalization.
 5. Compare the adapter's trace with the checked-in golden using exact discrete values and the
    documented float tolerance.
 
