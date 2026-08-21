@@ -339,6 +339,13 @@ and rounded to IEEE-754 binary32 with round-to-nearest, ties-to-even before vali
 execution. Integer counters remain JSON integers. The example's `0.016666667` therefore becomes
 the same binary32 value as Kotlin's `1f / 60f`.
 
+Validation must then reject any non-finite binary32 result before execution. This includes a JSON
+decimal that is finite at the input boundary but overflows during conversion, such as `1e100`
+becoming positive infinity. In particular, `deltaSeconds` must be finite after binary32 conversion
+and strictly positive before it is added to the accumulator; reject it rather than entering the
+fixed-step loop. The same post-conversion finiteness rule applies to every scenario float, including
+negative overflow to negative infinity and values that convert to `NaN`.
+
 After input conversion, all simulation state and scalar arithmetic must remain IEEE-754 binary32:
 accumulator and countdown updates, physics, collision, surface, race-rule, and AI calculations
 round to binary32 after each operation as Kotlin `Float` does. Runners must not retain values in
