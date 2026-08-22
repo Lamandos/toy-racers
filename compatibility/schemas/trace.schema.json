@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/Lamandos/toy-racers/schemas/behavioral-trace-v2.json",
+  "$id": "./trace.schema.json",
   "title": "Toy Racers normalized behavioral golden trace",
   "description": "Versioned trace envelope containing sampled normalized behavioral snapshots.",
   "type": "object",
