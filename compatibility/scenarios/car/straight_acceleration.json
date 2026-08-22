@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "straight-acceleration",
+      "seed": 42,
+      "trackId": "track-01",
+      "playerCar": "red-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["car", "physics", "throttle"],
+      "ticks": 180,
+      "snapshotIntervalTicks": 60,
+      "inputSegments": [
+        {
+          "fromTick": 1,
+          "toTick": 180,
+          "throttle": 1
+        }
+      ]
+    }
+  ]
+}

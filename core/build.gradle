@@ -38,6 +38,27 @@ tasks.register('behavioralCompatibilityTest', Test) {
   filter.includeTestsMatching 'com.example.toyracers.compat.BehavioralCompatibilityTest'
 }
 
+tasks.register('runBehaviorScenario', JavaExec) {
+  group = 'application'
+  description = 'Runs one versioned behavior scenario without a graphics backend.'
+  dependsOn classes
+  classpath = sourceSets.main.runtimeClasspath + files(rootProject.file('assets'))
+  mainClass.set('com.example.toyracers.compat.BehaviorScenarioCliKt')
+  workingDir = rootProject.projectDir
+  def scenarioProperty = providers.gradleProperty('scenario')
+  def outputProperty = providers.gradleProperty('output')
+  doFirst {
+    def scenario = scenarioProperty.orNull
+    def output = outputProperty.orNull
+    if (scenario == null || output == null) {
+      throw new GradleException(
+        'runBehaviorScenario requires -Pscenario=<file> and -Poutput=<file>',
+      )
+    }
+    args '--scenario', scenario, '--output', output
+  }
+}
+
 dependencies {
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
   api "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"

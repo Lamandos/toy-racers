@@ -2,15 +2,15 @@ package com.example.toyracers.compat
 
 import com.badlogic.gdx.utils.JsonValue
 import java.util.Locale
-import kotlin.math.abs
 
 internal object BehavioralTraceJson {
+    const val SCHEMA_VERSION = 2
     const val FLOAT_TOLERANCE = 0.0001
 
     fun encode(trace: BehavioralTrace): String =
         buildString {
             append('{')
-            field("schemaVersion", BehavioralFixtureLoader.GOLDEN_SCHEMA_VERSION)
+            field("schemaVersion", SCHEMA_VERSION)
             append(',')
             field("scenarioId", trace.scenarioId)
             append(',')
@@ -26,7 +26,7 @@ internal object BehavioralTraceJson {
     fun encodeGoldens(traces: List<BehavioralTrace>): String =
         buildString {
             append("{\"schemaVersion\":")
-            append(BehavioralFixtureLoader.GOLDEN_SCHEMA_VERSION)
+            append(SCHEMA_VERSION)
             append(",\"traces\":{")
             traces.forEachIndexed { index, trace ->
                 if (index > 0) append(',')
@@ -41,50 +41,7 @@ internal object BehavioralTraceJson {
         expected: JsonValue,
         actual: JsonValue,
         path: String = "$",
-    ): String? =
-        when {
-            expected.isObject || actual.isObject -> {
-                if (!expected.isObject || !actual.isObject) {
-                    typeDifference(expected, actual, path)
-                } else {
-                    objectDifference(expected, actual, path)
-                }
-            }
-
-            expected.isArray || actual.isArray -> {
-                if (!expected.isArray || !actual.isArray) {
-                    typeDifference(expected, actual, path)
-                } else {
-                    arrayDifference(expected, actual, path)
-                }
-            }
-
-            expected.isNumber || actual.isNumber -> {
-                if (!expected.isNumber || !actual.isNumber) {
-                    typeDifference(expected, actual, path)
-                } else {
-                    numberDifference(expected, actual, path)
-                }
-            }
-
-            expected.type() != actual.type() -> {
-                typeDifference(expected, actual, path)
-            }
-
-            else -> {
-                if (expected.asString() != actual.asString()) {
-                    "$path expected ${expected.asString()} but was ${actual.asString()}"
-                } else {
-                    null
-                }
-            }
-        }
-
-    private fun typeDifference(
-        expected: JsonValue,
-        actual: JsonValue,
-        path: String,
-    ): String = "$path expected JSON type ${expected.type()} but was ${actual.type()}"
+    ): String? = BehavioralTraceComparator.firstDifference(expected, actual, path)
 
     private fun StringBuilder.sample(sample: BehavioralTraceSample) {
         append('{')
@@ -196,73 +153,6 @@ internal object BehavioralTraceJson {
         append('}')
     }
 
-    private fun objectDifference(
-        expected: JsonValue,
-        actual: JsonValue,
-        path: String,
-    ): String? {
-        if (expected.size != actual.size) return "$path object field count differs"
-        return expected.children().firstNotNullOfOrNull { expectedChild ->
-            val name = checkNotNull(expectedChild.name)
-            val actualChild = actual.get(name) ?: return@firstNotNullOfOrNull "$path.$name is missing"
-            firstDifference(expectedChild, actualChild, "$path.$name")
-        }
-    }
-
-    private fun arrayDifference(
-        expected: JsonValue,
-        actual: JsonValue,
-        path: String,
-    ): String? {
-        if (expected.size != actual.size) return "$path array size differs: ${expected.size} vs ${actual.size}"
-        return expected
-            .children()
-            .zip(actual.children())
-            .mapIndexedNotNull { index, pair ->
-                firstDifference(pair.first, pair.second, "$path[$index]")
-            }.firstOrNull()
-    }
-
-    private fun numberDifference(
-        expected: JsonValue,
-        actual: JsonValue,
-        path: String,
-    ): String? =
-        if (FLOAT_FIELDS.contains(path.substringAfterLast('.'))) {
-            floatingPointDifference(expected, actual, path)
-        } else {
-            integerDifference(expected, actual, path)
-        }
-
-    private fun floatingPointDifference(
-        expected: JsonValue,
-        actual: JsonValue,
-        path: String,
-    ): String? {
-        val expectedValue = expected.asDouble()
-        val actualValue = actual.asDouble()
-        return if (abs(expectedValue - actualValue) > FLOAT_TOLERANCE) {
-            "$path expected $expectedValue but was $actualValue"
-        } else {
-            null
-        }
-    }
-
-    private fun integerDifference(
-        expected: JsonValue,
-        actual: JsonValue,
-        path: String,
-    ): String? {
-        if (!expected.isLong || !actual.isLong) return "$path must contain integer JSON numbers"
-        val expectedValue = expected.asLong()
-        val actualValue = actual.asLong()
-        return if (expectedValue != actualValue) {
-            "$path expected $expectedValue but was $actualValue"
-        } else {
-            null
-        }
-    }
-
     private fun StringBuilder.field(
         name: String,
         value: String,
@@ -328,24 +218,6 @@ internal object BehavioralTraceJson {
         append(value.replace("\\", "\\\\").replace("\"", "\\\""))
         append('"')
     }
-
-    private fun JsonValue.children(): List<JsonValue> = generateSequence(child) { it.next }.toList()
-
-    private val FLOAT_FIELDS =
-        setOf(
-            "remainingSeconds",
-            "elapsedSimulationTime",
-            "x",
-            "y",
-            "rotation",
-            "velocityX",
-            "velocityY",
-            "angularVelocity",
-            "longitudinalSpeed",
-            "lateralSpeed",
-            "driftAmount",
-            "bestLapTime",
-        )
 
     private const val NEGATIVE_ZERO = "-0.000000"
     private const val ZERO = "0.000000"

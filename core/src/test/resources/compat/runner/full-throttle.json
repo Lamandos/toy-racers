@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "segments": [
+    {
+      "fromTick": 1,
+      "toTick": 3,
+      "throttle": 1
+    }
+  ]
+}
