@@ -17,8 +17,9 @@ compatibility/
 Scenario filenames are stable and use `snake_case`; their JSON `id` values are stable,
 lowercase-kebab-case, and must be unique across every category. The path is the pairing rule: for
 example, `scenarios/car/straight_acceleration.json` is verified against
-`golden/car/straight_acceleration.json`. Input-script files kept beside a scenario must end in
-`.input.json`; they are not scenarios and have no golden of their own.
+`golden/car/straight_acceleration.json`. Input-script files kept beside a scenario may use any
+`.json` filename; referenced scripts are excluded from scenario discovery and have no golden of
+their own.
 
 The recommended categories are `car`, `collision`, `race`, `track`, `surface`, `ai`, and
 `full_race`. Add a scenario to the narrowest category that owns the behaviour being locked down.

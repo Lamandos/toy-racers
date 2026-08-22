@@ -1,6 +1,7 @@
 package com.example.toyracers.compat
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.nio.file.Files
 import java.nio.file.Path
@@ -41,6 +42,28 @@ class CompatibilityGoldenMasterTest {
         }
     }
 
+    @Test
+    fun `referenced input scripts are not treated as scenarios by their file name`() {
+        val temporaryDirectory = Files.createTempDirectory("compatibility-script-")
+        try {
+            val scenarios = temporaryDirectory.resolve("scenarios/car")
+            val goldens = temporaryDirectory.resolve("golden")
+            Files.createDirectories(scenarios)
+            Files.writeString(scenarios.resolve("test.json"), scriptedScenarioDocument())
+            Files.writeString(scenarios.resolve("full-race-input.json"), inputScriptDocument())
+            val master = CompatibilityGoldenMaster(scenarios.parent, goldens)
+
+            val changed = master.regenerate()
+
+            assertEquals(listOf(goldens.resolve("car/test.json")), changed)
+            assertTrue(Files.isRegularFile(goldens.resolve("car/test.json")))
+        } finally {
+            Files.walk(temporaryDirectory).use { paths ->
+                paths.sorted(java.util.Comparator.reverseOrder()).forEach(Files::deleteIfExists)
+            }
+        }
+    }
+
     private fun compatibilityDirectory(): Path =
         Path.of(requireNotNull(System.getProperty(COMPATIBILITY_DIRECTORY_PROPERTY))).toAbsolutePath()
 
@@ -54,6 +77,27 @@ class CompatibilityGoldenMasterTest {
             "ticks": 1, "snapshotIntervalTicks": 1,
             "inputSegments": [{"fromTick": 1, "toTick": 1}]
           }]
+        }
+        """.trimIndent()
+
+    private fun scriptedScenarioDocument(): String =
+        """
+        {
+          "schemaVersion": 1,
+          "scenarios": [{
+            "id": "test-scripted-golden", "seed": 1, "trackId": "track-01",
+            "playerCar": "red-stripe", "inputOrigin": "keyboard", "tags": [],
+            "ticks": 1, "snapshotIntervalTicks": 1,
+            "inputScript": "full-race-input.json"
+          }]
+        }
+        """.trimIndent()
+
+    private fun inputScriptDocument(): String =
+        """
+        {
+          "schemaVersion": 1,
+          "segments": [{"fromTick": 1, "toTick": 1}]
         }
         """.trimIndent()
 

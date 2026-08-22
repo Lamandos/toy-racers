@@ -31,7 +31,9 @@ The only command that can rewrite these goldens is the explicit maintenance scri
 ```
 
 It lists every changed golden path for review. The rules for when an update is acceptable are in
-the [compatibility README](../compatibility/README.md).
+the [compatibility README](../compatibility/README.md). This command covers the new
+file-per-scenario fixtures only; the legacy Kotlin reference set remains in
+`core/src/test/resources/compat/` and has its own explicit regeneration command below.
 
 ## Headless scenario runner
 
@@ -135,10 +137,17 @@ discrete fields.
 ## Updating Kotlin reference goldens
 
 Do not regenerate a golden to hide a gameplay change. First document the intended change or an
-observed gameplay bug in a separate issue, then use the explicit repository command above and
-review its output. Commit the corresponding scenario and golden changes together. The normal
-behavioral test suite is read-only: it runs each scenario twice and requires byte-identical
-normalized traces before comparing the checked-in fixture.
+observed gameplay bug in a separate issue, then regenerate the legacy Kotlin reference goldens with:
+
+```sh
+./gradlew :core:behavioralCompatibilityTest -DupdateBehavioralGoldens=true --rerun-tasks --no-daemon
+```
+
+This updates `core/src/test/resources/compat/goldens.json`, which is used by the 50 scenarios in
+`core/src/test/resources/compat/scenarios.json`. Review the complete trace diff before committing
+it. For the file-per-scenario repository fixtures, use the explicit maintenance script described
+above. The normal behavioral test suite is read-only: it runs each scenario twice and requires
+byte-identical normalized traces before comparing the checked-in fixture.
 
 ## Dart/Flame adapter checklist
 

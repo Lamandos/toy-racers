@@ -1,6 +1,7 @@
 package com.example.toyracers.compat
 
 import com.badlogic.gdx.utils.JsonReader
+import com.badlogic.gdx.utils.JsonValue
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
 import java.nio.file.Path
@@ -41,9 +42,11 @@ internal class CompatibilityGoldenMaster(
 
     private fun fixtures(): List<GoldenFixture> {
         require(Files.isDirectory(scenarios)) { "Scenario directory does not exist: $scenarios" }
+        val files = jsonFiles(scenarios)
+        val referencedScripts = files.flatMap(::referencedInputScripts).toSet()
         val fixtures =
-            jsonFiles(scenarios)
-                .filterNot { it.fileName.toString().endsWith(INPUT_SCRIPT_SUFFIX) }
+            files
+                .filterNot(referencedScripts::contains)
                 .map(::fixture)
         require(fixtures.isNotEmpty()) { "No compatibility scenarios found in $scenarios" }
         val duplicateIds =
@@ -56,6 +59,21 @@ internal class CompatibilityGoldenMaster(
             "Compatibility scenario IDs must be unique: ${duplicateIds.joinToString(", ")}"
         }
         return fixtures
+    }
+
+    private fun referencedInputScripts(path: Path): List<Path> {
+        val root = Files.newBufferedReader(path, UTF_8).use(JsonReader()::parse)
+        val scenarios = root.get("scenarios")?.takeIf { it.isArray } ?: return emptyList()
+        return scenarios
+            .children()
+            .mapNotNull { scenario ->
+                scenario
+                    .get(INPUT_SCRIPT_FIELD)
+                    ?.takeIf { it.isString }
+                    ?.asString()
+                    ?.let(path.parent::resolve)
+                    ?.normalize()
+            }
     }
 
     private fun fixture(path: Path): GoldenFixture {
@@ -98,6 +116,8 @@ internal class CompatibilityGoldenMaster(
         }
     }
 
+    private fun JsonValue.children(): List<JsonValue> = generateSequence(child) { it.next }.toList()
+
     private data class GoldenFixture(
         val golden: Path,
         val scenario: BehavioralScenario,
@@ -105,6 +125,6 @@ internal class CompatibilityGoldenMaster(
 
     private companion object {
         const val JSON_SUFFIX = ".json"
-        const val INPUT_SCRIPT_SUFFIX = ".input.json"
+        const val INPUT_SCRIPT_FIELD = "inputScript"
     }
 }
