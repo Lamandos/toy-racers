@@ -13,6 +13,31 @@ Run the suite locally or in CI with one command:
 
 `qualityCheck`, used by the repository's CI workflow, also executes this test through `:core:test`.
 
+## Headless scenario runner
+
+The `runBehaviorScenario` Gradle task replays exactly one scenario document through the existing
+`RaceSession` simulation and writes its normalized trace. It creates no game, screen, renderer,
+audio device, touch adapter, or window, so it works on a machine without a monitor or GPU.
+
+```sh
+./gradlew runBehaviorScenario \
+  -Pscenario=compatibility/scenarios/car/straight_acceleration.json \
+  -Poutput=build/behavior/actual.json
+```
+
+The task uses the repository root as its working directory. `scenario` must point to a
+schema-versioned document containing exactly one scenario; any `inputScript` it references is
+loaded from the same directory. The supplied seed is passed into the deterministic race
+configuration and is recorded in the trace. The current game model has no externally seeded
+random source, so the seed does not alter existing gameplay behaviour. Inputs are applied once per
+inclusive, one-based simulation tick, and every physical step uses
+`CarPhysics.FIXED_DELTA_SECONDS` (`1/60` second). Countdown and racing transition snapshots, the
+first physical tick, each configured interval, the final tick, and a finish tick are saved in the
+output trace. It applies every requested tick even when the race has already finished; the game
+then performs no more physical steps under its existing rules. Invalid options, files, schemas,
+tracks, or output writes cause the task to fail with
+a non-zero exit code.
+
 ## Fixture contract
 
 Scenario inputs live in `core/src/test/resources/compat/scenarios.json` and have
@@ -25,8 +50,8 @@ number of simulation ticks. The optional `initialStates` block is a test-only AP
 fully specified starting state; it adds no gameplay rules. Initial numeric values must be finite and
 representable as Kotlin `Float`; `currentCheckpointIndex` is bounded by the selected track's
 checkpoint count (3 for `track-01`, 5 for `track-02`), and `completedLaps` is bounded by the
-reference race's three required laps. A finished initial state must provide `finishPosition`, and
-`finishPosition` is only valid when `finished` is true.
+reference race's three required laps. A finished initial state must provide `finishPosition` in the
+range `1..6`, and `finishPosition` is only valid when `finished` is true.
 
 The schema's identifiers are deliberately language-neutral: tracks are `track-01` and `track-02`,
 while selectable cars are `red-stripe`, `blue-stripe`, `yellow-sport`, `green-racer`, and
