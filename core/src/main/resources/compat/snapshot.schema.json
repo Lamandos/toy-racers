@@ -101,7 +101,12 @@
         "y": { "type": "number" },
         "velocityX": { "type": "number" },
         "velocityY": { "type": "number" },
-        "rotation": { "type": "number", "description": "Degrees." },
+        "rotation": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 360,
+          "description": "Degrees normalized to [0, 360)."
+        },
         "angularVelocity": { "type": "number", "description": "Degrees per second." },
         "longitudinalSpeed": { "type": "number" },
         "lateralSpeed": { "type": "number" },

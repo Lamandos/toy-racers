@@ -365,6 +365,8 @@ class BehavioralCompatibilityTest {
             setOf("asphalt", "parquet", "tile", "grass", "boost", "oil"),
             enumValues(participantProperties.get("surface").get("enum")),
         )
+        assertEquals(0, participantProperties.get("rotation").getInt("minimum"))
+        assertEquals(360, participantProperties.get("rotation").getInt("exclusiveMaximum"))
     }
 
     private fun assertObservableFeatureCoverage(scenarios: List<BehavioralScenario>) {
