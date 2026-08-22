@@ -9,8 +9,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.nio.file.Files
-import java.nio.file.Path
 
 class BehavioralCompatibilityTest {
     private val runner = BehavioralScenarioRunner()
@@ -262,15 +260,11 @@ class BehavioralCompatibilityTest {
         assertScenarioSchemaMatchesGameModel()
         assertSnapshotSchemaMatchesContract()
         val actual = scenarios.map(runner::run)
-        if (System.getProperty(UPDATE_GOLDENS_PROPERTY) == "true") {
-            writeGoldens(actual)
-        } else {
-            assertGoldenTraces(actual)
-            assertDeterministic(scenarios, actual)
-            assertInputOriginsAreEquivalent(actual)
-            assertObservedFeatureCoverage(actual)
-            assertCompleteRaceReplay(scenarios, actual)
-        }
+        assertGoldenTraces(actual)
+        assertDeterministic(scenarios, actual)
+        assertInputOriginsAreEquivalent(actual)
+        assertObservedFeatureCoverage(actual)
+        assertCompleteRaceReplay(scenarios, actual)
     }
 
     private fun validateFixtureCoverage(scenarios: List<BehavioralScenario>) {
@@ -483,13 +477,4 @@ class BehavioralCompatibilityTest {
 
     private fun enumValues(value: JsonValue): Set<String> =
         generateSequence(value.child) { it.next }.map(JsonValue::asString).toSet()
-
-    private fun writeGoldens(traces: List<BehavioralTrace>) {
-        Files.writeString(GOLDEN_SOURCE, BehavioralTraceJson.encodeGoldens(traces) + "\n")
-    }
-
-    private companion object {
-        const val UPDATE_GOLDENS_PROPERTY = "updateBehavioralGoldens"
-        val GOLDEN_SOURCE: Path = Path.of("src/test/resources/compat/goldens.json")
-    }
 }

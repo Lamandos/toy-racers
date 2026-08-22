@@ -1,0 +1,110 @@
+package com.example.toyracers.compat
+
+import com.badlogic.gdx.utils.JsonReader
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Files
+import java.nio.file.Path
+
+/** Verifies and explicitly regenerates the checked-in, file-per-scenario golden traces. */
+internal class CompatibilityGoldenMaster(
+    scenarioDirectory: Path,
+    goldenDirectory: Path,
+) {
+    private val scenarios = scenarioDirectory.toAbsolutePath().normalize()
+    private val goldens = goldenDirectory.toAbsolutePath().normalize()
+    private val runner = BehavioralScenarioRunner(continueAfterFinish = true)
+
+    fun verify() {
+        val fixtures = fixtures()
+        verifyNoOrphanedGoldens(fixtures)
+        val differences = fixtures.mapNotNull(::difference)
+        check(differences.isEmpty()) {
+            "Compatibility golden verification failed:\n${differences.joinToString("\n")}"
+        }
+    }
+
+    fun regenerate(): List<Path> {
+        val fixtures = fixtures()
+        verifyNoOrphanedGoldens(fixtures)
+        return fixtures.mapNotNull { fixture ->
+            val generated = generatedGolden(fixture)
+            val existing = fixture.golden.takeIf(Files::isRegularFile)?.let(Files::readString)
+            if (existing == generated) {
+                null
+            } else {
+                fixture.golden.parent?.let(Files::createDirectories)
+                Files.writeString(fixture.golden, generated, UTF_8)
+                fixture.golden
+            }
+        }
+    }
+
+    private fun fixtures(): List<GoldenFixture> {
+        require(Files.isDirectory(scenarios)) { "Scenario directory does not exist: $scenarios" }
+        val fixtures =
+            jsonFiles(scenarios)
+                .filterNot { it.fileName.toString().endsWith(INPUT_SCRIPT_SUFFIX) }
+                .map(::fixture)
+        require(fixtures.isNotEmpty()) { "No compatibility scenarios found in $scenarios" }
+        val duplicateIds =
+            fixtures
+                .groupBy { it.scenario.id }
+                .filterValues { it.size > 1 }
+                .keys
+                .sorted()
+        require(duplicateIds.isEmpty()) {
+            "Compatibility scenario IDs must be unique: ${duplicateIds.joinToString(", ")}"
+        }
+        return fixtures
+    }
+
+    private fun fixture(path: Path): GoldenFixture {
+        val relative = scenarios.relativize(path)
+        val golden = goldens.resolve(relative).normalize()
+        check(golden.startsWith(goldens)) { "Invalid golden path for scenario: $path" }
+        return GoldenFixture(golden, BehavioralScenarioLoader.load(path))
+    }
+
+    private fun difference(fixture: GoldenFixture): String? {
+        if (!Files.isRegularFile(fixture.golden)) {
+            return "Missing golden for ${fixture.scenario.id}: ${fixture.golden}"
+        }
+        val expected = Files.newBufferedReader(fixture.golden, UTF_8).use(JsonReader()::parse)
+        val actual = JsonReader().parse(generatedGolden(fixture))
+        return BehavioralTraceJson.firstDifference(expected, actual)?.let { difference ->
+            "${fixture.scenario.id}: $difference"
+        }
+    }
+
+    private fun generatedGolden(fixture: GoldenFixture): String =
+        BehavioralTraceJson.encode(runner.run(fixture.scenario)) + "\n"
+
+    private fun verifyNoOrphanedGoldens(fixtures: List<GoldenFixture>) {
+        val expectedGoldens = fixtures.map(GoldenFixture::golden).toSet()
+        val unexpected = jsonFiles(goldens).filterNot(expectedGoldens::contains)
+        require(unexpected.isEmpty()) {
+            "Golden files without a matching scenario:\n${unexpected.joinToString("\n")}"
+        }
+    }
+
+    private fun jsonFiles(directory: Path): List<Path> {
+        if (!Files.isDirectory(directory)) return emptyList()
+        return Files.walk(directory).use { paths ->
+            paths
+                .filter(Files::isRegularFile)
+                .filter { path -> path.fileName.toString().endsWith(JSON_SUFFIX) }
+                .sorted()
+                .toList()
+        }
+    }
+
+    private data class GoldenFixture(
+        val golden: Path,
+        val scenario: BehavioralScenario,
+    )
+
+    private companion object {
+        const val JSON_SUFFIX = ".json"
+        const val INPUT_SCRIPT_SUFFIX = ".input.json"
+    }
+}

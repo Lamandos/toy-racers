@@ -26,7 +26,7 @@ sourceSets {
 }
 
 tasks.withType(Test).configureEach {
-  systemProperty 'updateBehavioralGoldens', System.getProperty('updateBehavioralGoldens', 'false')
+  systemProperty 'compatibilityDirectory', rootProject.file('compatibility').absolutePath
 }
 
 tasks.register('behavioralCompatibilityTest', Test) {
@@ -57,6 +57,29 @@ tasks.register('runBehaviorScenario', JavaExec) {
     }
     args '--scenario', scenario, '--output', output
   }
+}
+
+tasks.register('compatibilityGoldenTest', Test) {
+  group = 'verification'
+  description = 'Verifies checked-in file-per-scenario compatibility golden masters.'
+  dependsOn testClasses
+  testClassesDirs = sourceSets.test.output.classesDirs
+  classpath = sourceSets.test.runtimeClasspath
+  filter.includeTestsMatching 'com.example.toyracers.compat.CompatibilityGoldenMasterTest'
+}
+
+tasks.register('regenerateCompatibilityGoldens', JavaExec) {
+  group = 'maintenance'
+  description = 'Explicitly regenerates compatibility goldens and lists changed files.'
+  dependsOn classes
+  classpath = sourceSets.main.runtimeClasspath + files(rootProject.file('assets'))
+  mainClass.set('com.example.toyracers.compat.CompatibilityGoldenCliKt')
+  workingDir = rootProject.projectDir
+  args(
+    '--scenarios', rootProject.file('compatibility/scenarios').absolutePath,
+    '--goldens', rootProject.file('compatibility/golden').absolutePath,
+    '--regenerate',
+  )
 }
 
 dependencies {

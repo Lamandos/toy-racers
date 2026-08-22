@@ -13,6 +13,26 @@ Run the suite locally or in CI with one command:
 
 `qualityCheck`, used by the repository's CI workflow, also executes this test through `:core:test`.
 
+## Repository golden masters
+
+The file-per-scenario golden-master infrastructure lives in
+[`compatibility/`](../compatibility/README.md). Its scenarios are grouped by gameplay area and each
+one maps to a checked-in golden trace with the same relative path. The normal verification task is
+read-only:
+
+```sh
+./gradlew verifyCompatibilityGoldens
+```
+
+The only command that can rewrite these goldens is the explicit maintenance script:
+
+```sh
+./compatibility/tools/regenerate-goldens.sh
+```
+
+It lists every changed golden path for review. The rules for when an update is acceptable are in
+the [compatibility README](../compatibility/README.md).
+
 ## Headless scenario runner
 
 The `runBehaviorScenario` Gradle task replays exactly one scenario document through the existing
@@ -115,15 +135,10 @@ discrete fields.
 ## Updating Kotlin reference goldens
 
 Do not regenerate a golden to hide a gameplay change. First document the intended change or an
-observed gameplay bug in a separate issue, then review the trace diff. To intentionally establish a
-new Kotlin reference baseline, run:
-
-```sh
-./gradlew :core:behavioralCompatibilityTest -DupdateBehavioralGoldens=true --rerun-tasks --no-daemon
-```
-
-Commit the corresponding scenario and golden changes together. The normal task runs each scenario
-twice and requires byte-identical normalized traces before comparing the checked-in golden.
+observed gameplay bug in a separate issue, then use the explicit repository command above and
+review its output. Commit the corresponding scenario and golden changes together. The normal
+behavioral test suite is read-only: it runs each scenario twice and requires byte-identical
+normalized traces before comparing the checked-in fixture.
 
 ## Dart/Flame adapter checklist
 
