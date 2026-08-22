@@ -18,6 +18,7 @@ class BehavioralCompatibilityHarnessTest {
             listOf(
                 BehavioralInitialState(id = "player", rotationDeg = 725f),
                 BehavioralInitialState(id = "ai-0", rotationDeg = -10f),
+                BehavioralInitialState(id = "ai-1", rotationDeg = -0.000001f),
             ),
         )
 
@@ -25,5 +26,6 @@ class BehavioralCompatibilityHarnessTest {
 
         assertEquals(5f, participants.getValue("player").rotation, 0f)
         assertEquals(350f, participants.getValue("ai-0").rotation, 0f)
+        assertEquals(0f, participants.getValue("ai-1").rotation, 0f)
     }
 }

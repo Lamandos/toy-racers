@@ -182,11 +182,8 @@ class BehavioralCompatibilityHarness(
 
     private fun normalizeRotation(rotation: Float): Float {
         val wrapped = rotation % DEGREES_PER_TURN
-        return when {
-            wrapped < 0f -> wrapped + DEGREES_PER_TURN
-            wrapped == 0f -> 0f
-            else -> wrapped
-        }
+        val normalized = if (wrapped < 0f) wrapped + DEGREES_PER_TURN else wrapped
+        return if (normalized >= DEGREES_PER_TURN || normalized == 0f) 0f else normalized
     }
 
     private companion object {

@@ -50,8 +50,8 @@ number of simulation ticks. The optional `initialStates` block is a test-only AP
 fully specified starting state; it adds no gameplay rules. Initial numeric values must be finite and
 representable as Kotlin `Float`; `currentCheckpointIndex` is bounded by the selected track's
 checkpoint count (3 for `track-01`, 5 for `track-02`), and `completedLaps` is bounded by the
-reference race's three required laps. A finished initial state must provide `finishPosition`, and
-`finishPosition` is only valid when `finished` is true.
+reference race's three required laps. A finished initial state must provide `finishPosition` in the
+range `1..6`, and `finishPosition` is only valid when `finished` is true.
 
 The schema's identifiers are deliberately language-neutral: tracks are `track-01` and `track-02`,
 while selectable cars are `red-stripe`, `blue-stripe`, `yellow-sport`, `green-racer`, and

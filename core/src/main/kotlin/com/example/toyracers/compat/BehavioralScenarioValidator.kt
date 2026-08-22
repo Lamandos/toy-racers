@@ -155,7 +155,7 @@ internal object BehavioralScenarioValidator {
                 requireInteger(it, "$statePath.$COMPLETED_LAPS_FIELD", 0, RaceRules.DEFAULT_LAP_COUNT.toLong())
             }
             initialState.get(FINISH_POSITION_FIELD)?.let {
-                requireInteger(it, "$statePath.$FINISH_POSITION_FIELD", 1, MAX_INT_VALUE)
+                requireInteger(it, "$statePath.$FINISH_POSITION_FIELD", 1, MAX_FINISH_POSITION)
             }
             initialState.get(FINISHED_FIELD)?.let { requireBoolean(it, "$statePath.$FINISHED_FIELD") }
             val finished = initialState.get(FINISHED_FIELD)?.asBoolean() ?: false
@@ -309,6 +309,7 @@ internal object BehavioralScenarioValidator {
     private val PLAYER_CARS = CarModel.entries.map(CarModel::scenarioId).toSet()
     private val INPUT_ORIGINS = setOf("keyboard", "touch")
     private val INITIAL_STATE_IDS = setOf("player", "ai-0", "ai-1", "ai-2", "ai-3", "ai-4")
+    private val MAX_FINISH_POSITION = INITIAL_STATE_IDS.size.toLong()
     private val TRACK_CHECKPOINT_COUNTS =
         TrackId.entries.associate { trackId -> trackId.value to TrackLoader().load(trackId).checkpoints.size }
     private val ROOT_PROPERTIES = setOf(SCHEMA_VERSION_FIELD, SCENARIOS_FIELD)

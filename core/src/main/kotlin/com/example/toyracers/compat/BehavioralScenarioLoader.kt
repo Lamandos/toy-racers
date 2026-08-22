@@ -11,13 +11,14 @@ internal object BehavioralScenarioLoader {
     const val SCHEMA_VERSION = 1
 
     fun load(path: Path): BehavioralScenario {
-        require(Files.isRegularFile(path)) { "Scenario file does not exist: $path" }
-        val directory = path.toAbsolutePath().parent
+        val scenarioPath = path.toAbsolutePath().normalize()
+        require(Files.isRegularFile(scenarioPath)) { "Scenario file does not exist: $path" }
+        val directory = scenarioPath.parent
         val scenarios =
-            parseScenarioDocument(readJson(path)) { script ->
+            parseScenarioDocument(readJson(scenarioPath)) { script ->
                 val scriptPath = directory.resolve(script).normalize()
                 require(scriptPath.parent == directory) {
-                    "Scenario input script must be next to ${path.name}: $script"
+                    "Scenario input script must be next to ${scenarioPath.name}: $script"
                 }
                 require(Files.isRegularFile(scriptPath)) { "Input script does not exist: $scriptPath" }
                 readJson(scriptPath)
