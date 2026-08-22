@@ -50,10 +50,11 @@ internal class CompatibilityGoldenMaster(
     private fun fixtures(): List<GoldenFixture> {
         require(Files.isDirectory(scenarios)) { "Scenario directory does not exist: $scenarios" }
         val files = jsonFiles(scenarios)
+        val inputScripts = inputScriptPaths(files)
         val referencedScripts = files.flatMap(::referencedInputScripts).toSet()
         val fixtures =
             files
-                .filterNot(referencedScripts::contains)
+                .filterNot { path -> path in inputScripts && path in referencedScripts }
                 .map(::fixture)
         require(fixtures.isNotEmpty()) { "No compatibility scenarios found in $scenarios" }
         val duplicateIds =
@@ -67,6 +68,18 @@ internal class CompatibilityGoldenMaster(
         }
         return fixtures
     }
+
+    private fun inputScriptPaths(files: List<Path>): Set<Path> =
+        files
+            .filter { path ->
+                val root = readJson(path)
+                if (root.has(SCENARIOS_FIELD)) {
+                    false
+                } else {
+                    BehavioralScenarioValidator.validateInputScript(root, path.toString())
+                    true
+                }
+            }.toSet()
 
     private fun referencedInputScripts(path: Path): List<Path> {
         val root = Files.newBufferedReader(path, UTF_8).use(JsonReader()::parse)
@@ -123,6 +136,8 @@ internal class CompatibilityGoldenMaster(
         }
     }
 
+    private fun readJson(path: Path): JsonValue = Files.newBufferedReader(path, UTF_8).use(JsonReader()::parse)
+
     private fun JsonValue.children(): List<JsonValue> = generateSequence(child) { it.next }.toList()
 
     private data class GoldenFixture(
@@ -137,6 +152,7 @@ internal class CompatibilityGoldenMaster(
 
     private companion object {
         const val JSON_SUFFIX = ".json"
+        const val SCENARIOS_FIELD = "scenarios"
         const val INPUT_SCRIPT_FIELD = "inputScript"
     }
 }

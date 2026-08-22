@@ -11,7 +11,7 @@
     "scenarios": {
       "type": "array",
       "minItems": 1,
-      "maxItems": 1,
+      "description": "One or more scenarios. The file-per-scenario loader requires exactly one.",
       "items": { "$ref": "#/$defs/scenario" }
     }
   },
