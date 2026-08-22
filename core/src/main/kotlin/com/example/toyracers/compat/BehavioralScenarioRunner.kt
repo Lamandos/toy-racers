@@ -12,7 +12,9 @@ internal data class BehavioralTraceSample(
     val snapshot: BehavioralSnapshot,
 )
 
-internal class BehavioralScenarioRunner {
+internal class BehavioralScenarioRunner(
+    private val continueAfterFinish: Boolean = false,
+) {
     fun run(scenario: BehavioralScenario): BehavioralTrace {
         val harness =
             BehavioralCompatibilityHarness(
@@ -36,18 +38,21 @@ internal class BehavioralScenarioRunner {
         samples: MutableList<BehavioralTraceSample>,
     ) {
         var inputSegmentIndex = 0
-        (1..scenario.ticks).forEach { tick ->
+        var raceFinished = false
+        for (tick in 1..scenario.ticks) {
             inputSegmentIndex = scenario.nextInputSegmentIndex(inputSegmentIndex, tick)
             val snapshot = harness.advance(scenario.inputAt(tick, inputSegmentIndex))
+            val finishedThisTick = snapshot.raceState == "finished" && !raceFinished
             val shouldSample =
                 tick == 1 ||
                     tick % scenario.snapshotIntervalTicks == 0 ||
                     tick == scenario.ticks ||
-                    snapshot.raceState == "finished"
+                    finishedThisTick
             if (shouldSample) {
                 samples += BehavioralTraceSample("simulation", tick, snapshot)
             }
-            if (snapshot.raceState == "finished") return
+            raceFinished = raceFinished || finishedThisTick
+            if (raceFinished && !continueAfterFinish) break
         }
     }
 

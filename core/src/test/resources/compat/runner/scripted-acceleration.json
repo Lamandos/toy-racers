@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "scripted-acceleration",
+      "seed": 42,
+      "trackId": "track-01",
+      "playerCar": "red-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["car", "physics", "throttle"],
+      "ticks": 3,
+      "snapshotIntervalTicks": 2,
+      "inputScript": "full-throttle.json"
+    }
+  ]
+}

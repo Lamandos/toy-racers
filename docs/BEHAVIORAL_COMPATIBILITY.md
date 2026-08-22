@@ -13,6 +13,31 @@ Run the suite locally or in CI with one command:
 
 `qualityCheck`, used by the repository's CI workflow, also executes this test through `:core:test`.
 
+## Headless scenario runner
+
+The `runBehaviorScenario` Gradle task replays exactly one scenario document through the existing
+`RaceSession` simulation and writes its normalized trace. It creates no game, screen, renderer,
+audio device, touch adapter, or window, so it works on a machine without a monitor or GPU.
+
+```sh
+./gradlew runBehaviorScenario \
+  -Pscenario=compatibility/scenarios/car/straight_acceleration.json \
+  -Poutput=build/behavior/actual.json
+```
+
+The task uses the repository root as its working directory. `scenario` must point to a
+schema-versioned document containing exactly one scenario; any `inputScript` it references is
+loaded from the same directory. The supplied seed is passed into the deterministic race
+configuration and is recorded in the trace. The current game model has no externally seeded
+random source, so the seed does not alter existing gameplay behaviour. Inputs are applied once per
+inclusive, one-based simulation tick, and every physical step uses
+`CarPhysics.FIXED_DELTA_SECONDS` (`1/60` second). Countdown and racing transition snapshots, the
+first physical tick, each configured interval, the final tick, and a finish tick are saved in the
+output trace. It applies every requested tick even when the race has already finished; the game
+then performs no more physical steps under its existing rules. Invalid options, files, schemas,
+tracks, or output writes cause the task to fail with
+a non-zero exit code.
+
 ## Fixture contract
 
 Scenario inputs live in `core/src/test/resources/compat/scenarios.json` and have
