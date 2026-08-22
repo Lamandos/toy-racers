@@ -43,11 +43,11 @@ internal class BehavioralScenarioRunner {
                 tick == 1 ||
                     tick % scenario.snapshotIntervalTicks == 0 ||
                     tick == scenario.ticks ||
-                    snapshot.phase == "finished"
+                    snapshot.raceState == "finished"
             if (shouldSample) {
                 samples += BehavioralTraceSample("simulation", tick, snapshot)
             }
-            if (snapshot.phase == "finished") return
+            if (snapshot.raceState == "finished") return
         }
     }
 

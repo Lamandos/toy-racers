@@ -5,6 +5,7 @@ import com.badlogic.gdx.utils.JsonValue
 import com.example.toyracers.car.CarModel
 import com.example.toyracers.track.TrackId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -28,6 +29,55 @@ class BehavioralCompatibilityTest {
         val actual = JsonReader().parse("{\"seed\":9223372036854775807}")
 
         assertNotNull(BehavioralTraceJson.firstDifference(expected, actual))
+    }
+
+    @Test
+    fun `float serialization uses fixed precision and canonical zero`() {
+        val snapshot =
+            BehavioralSnapshot(
+                schemaVersion = BehavioralSnapshotSchema.VERSION,
+                simulationTick = 0,
+                raceState = "racing",
+                countdown = BehavioralCountdownSnapshot("complete", 0f),
+                elapsedSimulationTime = 0f,
+                currentLap = 1,
+                currentProgress = BehavioralProgressSnapshot(checkpoint = 0, completedLaps = 0),
+                participants =
+                    listOf(
+                        BehavioralParticipantSnapshot(
+                            id = "player",
+                            surface = "asphalt",
+                            x = -0f,
+                            y = 0f,
+                            rotation = 0f,
+                            velocityX = 0f,
+                            velocityY = 0f,
+                            angularVelocity = 0f,
+                            longitudinalSpeed = 0f,
+                            lateralSpeed = 0f,
+                            driftAmount = 0f,
+                            checkpoint = 0,
+                            lap = 0,
+                            racePosition = 1,
+                            finished = false,
+                        ),
+                    ),
+                ranking = listOf("player"),
+                finishedParticipants = emptyList(),
+                finishResults = emptyList(),
+            )
+
+        val encoded =
+            BehavioralTraceJson.encode(
+                BehavioralTrace(
+                    scenarioId = "canonical-zero",
+                    seed = 1L,
+                    samples = listOf(BehavioralTraceSample("simulation", 0, snapshot)),
+                ),
+            )
+
+        assertTrue(encoded.contains("\"x\":0.000000"))
+        assertFalse(encoded.contains("-0.000000"))
     }
 
     @Test(expected = IllegalArgumentException::class)
@@ -55,7 +105,76 @@ class BehavioralCompatibilityTest {
                 ),
             )
 
-        assertEquals("countdown", harness.start().phase)
+        assertEquals("countdown", harness.start().raceState)
+    }
+
+    @Test
+    fun `normalized snapshot has stable arrays and only contract fields`() {
+        val harness =
+            BehavioralCompatibilityHarness(
+                BehavioralRaceConfiguration(
+                    seed = 1L,
+                    trackId = "track-01",
+                    playerCar = "red-stripe",
+                ),
+            )
+        harness.setInitialStates(
+            listOf(
+                BehavioralInitialState(id = "ai-0", finished = true, finishPosition = 1),
+                BehavioralInitialState(
+                    id = "player",
+                    completedLaps = 3,
+                    finished = true,
+                    finishPosition = 2,
+                ),
+            ),
+        )
+        val snapshot = harness.start()
+
+        assertEquals(BehavioralSnapshotSchema.VERSION, snapshot.schemaVersion)
+        assertEquals("countdown", snapshot.raceState)
+        assertEquals("active", snapshot.countdown.state)
+        assertEquals(0f, snapshot.elapsedSimulationTime, 0.000001f)
+        assertEquals(3, snapshot.currentLap)
+        assertEquals(3, snapshot.currentProgress.completedLaps)
+        assertEquals(
+            listOf("ai-0", "ai-1", "ai-2", "ai-3", "ai-4", "player"),
+            snapshot.participants.map { it.id },
+        )
+        assertEquals(
+            snapshot
+                .participants
+                .sortedWith(
+                    compareBy<BehavioralParticipantSnapshot> { it.racePosition }
+                        .thenBy(BehavioralParticipantSnapshot::id),
+                ).map(BehavioralParticipantSnapshot::id),
+            snapshot.ranking,
+        )
+        assertEquals(listOf("ai-0", "player"), snapshot.finishedParticipants)
+        assertEquals(listOf(1, 2), snapshot.finishResults.map { it.finishPosition })
+        assertEquals(listOf("ai-0", "player"), snapshot.finishResults.map { it.participantId })
+
+        val encoded =
+            JsonReader().parse(
+                BehavioralTraceJson.encode(
+                    BehavioralTrace(
+                        scenarioId = "normalized-snapshot",
+                        seed = 1L,
+                        samples = listOf(BehavioralTraceSample("simulation", 1, snapshot)),
+                    ),
+                ),
+            )
+        val participant =
+            encoded
+                .get("samples")
+                .get(0)
+                .get("snapshot")
+                .get("participants")
+                .get(0)
+        assertNotNull(participant.get("longitudinalSpeed"))
+        assertFalse(participant.has("car"))
+        assertFalse(participant.has("aiBehavior"))
+        assertFalse(participant.has("surfaceSpeedMultiplier"))
     }
 
     @Test
@@ -141,6 +260,7 @@ class BehavioralCompatibilityTest {
         val scenarios = BehavioralFixtureLoader.scenarios()
         validateFixtureCoverage(scenarios)
         assertScenarioSchemaMatchesGameModel()
+        assertSnapshotSchemaMatchesContract()
         val actual = scenarios.map(runner::run)
         if (System.getProperty(UPDATE_GOLDENS_PROPERTY) == "true") {
             writeGoldens(actual)
@@ -217,6 +337,38 @@ class BehavioralCompatibilityTest {
         )
     }
 
+    private fun assertSnapshotSchemaMatchesContract() {
+        val schema = readSnapshotSchema()
+        val properties = schema.get("properties")
+        val participantProperties = schema.get("\$defs").get("participant").get("properties")
+
+        assertEquals(BehavioralSnapshotSchema.VERSION, properties.get("schemaVersion").getInt("const"))
+        assertEquals(
+            setOf(
+                "schemaVersion",
+                "simulationTick",
+                "raceState",
+                "countdown",
+                "elapsedSimulationTime",
+                "currentLap",
+                "currentProgress",
+                "participants",
+                "ranking",
+                "finishedParticipants",
+                "finishResults",
+            ),
+            generateSequence(properties.child) { it.next }.map { it.name }.toSet(),
+        )
+        assertFalse(participantProperties.has("car"))
+        assertFalse(participantProperties.has("aiBehavior"))
+        assertEquals(
+            setOf("asphalt", "parquet", "tile", "grass", "boost", "oil"),
+            enumValues(participantProperties.get("surface").get("enum")),
+        )
+        assertEquals(0, participantProperties.get("rotation").getInt("minimum"))
+        assertEquals(360, participantProperties.get("rotation").getInt("exclusiveMaximum"))
+    }
+
     private fun assertObservableFeatureCoverage(scenarios: List<BehavioralScenario>) {
         val tags = scenarios.flatMap { it.tags }.toSet()
         assertTrue(setOf("car-car", "car-track", "checkpoint", "lap", "finish", "ranking").all(tags::contains))
@@ -260,9 +412,10 @@ class BehavioralCompatibilityTest {
                 .samples
                 .last()
                 .snapshot
-        assertEquals("finished", finalSnapshot.phase)
-        assertTrue(finalSnapshot.participants.first().finished)
-        assertEquals(finalSnapshot.requiredLaps, finalSnapshot.participants.first().completedLaps)
+        assertEquals("finished", finalSnapshot.raceState)
+        val player = finalSnapshot.participants.participant("player")
+        assertTrue(player.finished)
+        assertEquals(finalSnapshot.currentLap, player.lap)
     }
 
     private fun assertInputOriginsAreEquivalent(traces: List<BehavioralTrace>) {
@@ -273,30 +426,20 @@ class BehavioralCompatibilityTest {
     }
 
     private fun assertObservedFeatureCoverage(traces: List<BehavioralTrace>) {
-        assertCollisionImpactCoverage(traces)
         assertRaceProgressCoverage(traces)
-        assertSurfaceAndRecoveryCoverage(traces)
-    }
-
-    private fun assertCollisionImpactCoverage(traces: List<BehavioralTrace>) {
-        val collisionTraces = traces.filter { it.scenarioId.startsWith("collision-") }
-        assertEquals(10, collisionTraces.size)
-        val impacts = collisionTraces.filter { it.firstPhysicalSnapshot().lastImpactSpeed > 0f }
-        assertTrue(impacts.size >= 7)
-        assertTrue(impacts.any { it.scenarioId.contains("car-car") })
-        assertTrue(impacts.any { it.scenarioId.contains("track") })
+        assertSurfaceCoverage(traces)
     }
 
     private fun assertRaceProgressCoverage(traces: List<BehavioralTrace>) {
         val snapshots = traces.flatMap { trace -> trace.samples.map(BehavioralTraceSample::snapshot) }
-        val players = snapshots.map { it.participants.first() }
-        assertTrue(players.any { it.currentCheckpointIndex > 0 })
-        assertTrue(players.any { it.completedLaps > 0 })
-        assertTrue(players.any { it.finished && it.finishPosition == 1 })
-        assertTrue(snapshots.any { it.phase == "finished" && it.playerPosition == 1 })
+        val players = snapshots.map { it.participants.participant("player") }
+        assertTrue(players.any { it.checkpoint > 0 })
+        assertTrue(players.any { it.lap > 0 })
+        assertTrue(snapshots.any { it.finishResults.any { result -> result.finishPosition == 1 } })
+        assertTrue(snapshots.any { it.raceState == "finished" && it.ranking.first() == "player" })
     }
 
-    private fun assertSurfaceAndRecoveryCoverage(traces: List<BehavioralTrace>) {
+    private fun assertSurfaceCoverage(traces: List<BehavioralTrace>) {
         val surfaces =
             traces
                 .filter { it.scenarioId.startsWith("surface-") }
@@ -304,21 +447,16 @@ class BehavioralCompatibilityTest {
                     it
                         .racingSnapshot()
                         .participants
-                        .first()
+                        .participant("player")
                         .surface
                 }.toSet()
         assertEquals(setOf("asphalt", "parquet", "tile"), surfaces)
-        assertTrue(
-            traces
-                .flatMap { it.samples }
-                .flatMap { it.snapshot.participants }
-                .any { it.aiBehavior == "recover" },
-        )
     }
 
-    private fun BehavioralTrace.firstPhysicalSnapshot(): BehavioralSnapshot = samples.first { it.tick == 1 }.snapshot
-
     private fun BehavioralTrace.racingSnapshot(): BehavioralSnapshot = samples.first { it.label == "racing" }.snapshot
+
+    private fun List<BehavioralParticipantSnapshot>.participant(id: String): BehavioralParticipantSnapshot =
+        first { it.id == id }
 
     private fun assertMinimumTagCount(
         scenarios: List<BehavioralScenario>,
@@ -330,6 +468,11 @@ class BehavioralCompatibilityTest {
 
     private fun readScenarioSchema(): JsonValue {
         val stream = requireNotNull(javaClass.classLoader.getResourceAsStream("compat/scenario.schema.json"))
+        return stream.bufferedReader().use(JsonReader()::parse)
+    }
+
+    private fun readSnapshotSchema(): JsonValue {
+        val stream = requireNotNull(javaClass.classLoader.getResourceAsStream("compat/snapshot.schema.json"))
         return stream.bufferedReader().use(JsonReader()::parse)
     }
 

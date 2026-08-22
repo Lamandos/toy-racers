@@ -10,7 +10,7 @@ internal object BehavioralTraceJson {
     fun encode(trace: BehavioralTrace): String =
         buildString {
             append('{')
-            field("schemaVersion", BehavioralFixtureLoader.SCHEMA_VERSION)
+            field("schemaVersion", BehavioralFixtureLoader.GOLDEN_SCHEMA_VERSION)
             append(',')
             field("scenarioId", trace.scenarioId)
             append(',')
@@ -26,7 +26,7 @@ internal object BehavioralTraceJson {
     fun encodeGoldens(traces: List<BehavioralTrace>): String =
         buildString {
             append("{\"schemaVersion\":")
-            append(BehavioralFixtureLoader.SCHEMA_VERSION)
+            append(BehavioralFixtureLoader.GOLDEN_SCHEMA_VERSION)
             append(",\"traces\":{")
             traces.forEachIndexed { index, trace ->
                 if (index > 0) append(',')
@@ -98,23 +98,38 @@ internal object BehavioralTraceJson {
 
     private fun StringBuilder.snapshot(snapshot: BehavioralSnapshot) {
         append('{')
-        field("seed", snapshot.seed)
+        field("schemaVersion", snapshot.schemaVersion)
         append(',')
-        field("simulationTicks", snapshot.simulationTicks)
+        field("simulationTick", snapshot.simulationTick)
         append(',')
-        field("phase", snapshot.phase)
+        field("raceState", snapshot.raceState)
+        append(",\"countdown\":")
+        countdown(snapshot.countdown)
         append(',')
-        floatField("countdownRemainingSeconds", snapshot.countdownRemainingSeconds)
+        floatField("elapsedSimulationTime", snapshot.elapsedSimulationTime)
         append(',')
-        field("playerPosition", snapshot.playerPosition)
-        append(',')
-        field("requiredLaps", snapshot.requiredLaps)
-        append(',')
-        floatField("lastImpactSpeed", snapshot.lastImpactSpeed)
+        field("currentLap", snapshot.currentLap)
+        append(",\"currentProgress\":")
+        progress(snapshot.currentProgress)
         append(",\"participants\":[")
         snapshot.participants.forEachIndexed { index, participant ->
             if (index > 0) append(',')
             participant(participant)
+        }
+        append("],\"ranking\":[")
+        snapshot.ranking.forEachIndexed { index, participantId ->
+            if (index > 0) append(',')
+            appendQuoted(participantId)
+        }
+        append("],\"finishedParticipants\":[")
+        snapshot.finishedParticipants.forEachIndexed { index, participantId ->
+            if (index > 0) append(',')
+            appendQuoted(participantId)
+        }
+        append("],\"finishResults\":[")
+        snapshot.finishResults.forEachIndexed { index, result ->
+            if (index > 0) append(',')
+            finishResult(result)
         }
         append("]}")
     }
@@ -123,19 +138,13 @@ internal object BehavioralTraceJson {
         append('{')
         field("id", participant.id)
         append(',')
-        field("car", participant.car)
-        append(',')
         field("surface", participant.surface)
-        append(',')
-        nullableStringField("aiBehavior", participant.aiBehavior)
         append(',')
         floatField("x", participant.x)
         append(',')
         floatField("y", participant.y)
         append(',')
-        floatField("rotationDeg", participant.rotationDeg)
-        append(',')
-        floatField("speed", participant.speed)
+        floatField("rotation", participant.rotation)
         append(',')
         floatField("velocityX", participant.velocityX)
         append(',')
@@ -143,23 +152,47 @@ internal object BehavioralTraceJson {
         append(',')
         floatField("angularVelocity", participant.angularVelocity)
         append(',')
+        floatField("longitudinalSpeed", participant.longitudinalSpeed)
+        append(',')
         floatField("lateralSpeed", participant.lateralSpeed)
         append(',')
         floatField("driftAmount", participant.driftAmount)
         append(',')
-        floatField("surfaceSpeedMultiplier", participant.surfaceSpeedMultiplier)
+        field("checkpoint", participant.checkpoint)
         append(',')
-        field("currentCheckpointIndex", participant.currentCheckpointIndex)
+        field("lap", participant.lap)
         append(',')
-        field("completedLaps", participant.completedLaps)
-        append(',')
-        floatField("totalRaceTime", participant.totalRaceTime)
-        append(',')
-        nullableFloatField("bestLapTime", participant.bestLapTime)
+        field("racePosition", participant.racePosition)
         append(',')
         field("finished", participant.finished)
+        append('}')
+    }
+
+    private fun StringBuilder.countdown(countdown: BehavioralCountdownSnapshot) {
+        append('{')
+        field("state", countdown.state)
         append(',')
-        nullableIntField("finishPosition", participant.finishPosition)
+        floatField("remainingSeconds", countdown.remainingSeconds)
+        append('}')
+    }
+
+    private fun StringBuilder.progress(progress: BehavioralProgressSnapshot) {
+        append('{')
+        field("checkpoint", progress.checkpoint)
+        append(',')
+        field("completedLaps", progress.completedLaps)
+        append('}')
+    }
+
+    private fun StringBuilder.finishResult(result: BehavioralFinishResultSnapshot) {
+        append('{')
+        field("participantId", result.participantId)
+        append(',')
+        field("finishPosition", result.finishPosition)
+        append(',')
+        floatField("elapsedSimulationTime", result.elapsedSimulationTime)
+        append(',')
+        nullableFloatField("bestLapTime", result.bestLapTime)
         append('}')
     }
 
@@ -275,15 +308,6 @@ internal object BehavioralTraceJson {
         appendFloat(value)
     }
 
-    private fun StringBuilder.nullableStringField(
-        name: String,
-        value: String?,
-    ) {
-        appendQuoted(name)
-        append(':')
-        if (value == null) append("null") else appendQuoted(value)
-    }
-
     private fun StringBuilder.nullableFloatField(
         name: String,
         value: Float?,
@@ -293,17 +317,10 @@ internal object BehavioralTraceJson {
         if (value == null) append("null") else appendFloat(value)
     }
 
-    private fun StringBuilder.nullableIntField(
-        name: String,
-        value: Int?,
-    ) {
-        appendQuoted(name)
-        append(':')
-        if (value == null) append("null") else append(value)
-    }
-
     private fun StringBuilder.appendFloat(value: Float) {
-        append(String.format(Locale.ROOT, "%.6f", value))
+        require(value.isFinite()) { "Snapshot floats must be finite JSON numbers" }
+        val serialized = String.format(Locale.ROOT, "%.6f", value)
+        append(if (serialized == NEGATIVE_ZERO) ZERO else serialized)
     }
 
     private fun StringBuilder.appendQuoted(value: String) {
@@ -316,19 +333,20 @@ internal object BehavioralTraceJson {
 
     private val FLOAT_FIELDS =
         setOf(
-            "countdownRemainingSeconds",
-            "lastImpactSpeed",
+            "remainingSeconds",
+            "elapsedSimulationTime",
             "x",
             "y",
-            "rotationDeg",
-            "speed",
+            "rotation",
             "velocityX",
             "velocityY",
             "angularVelocity",
+            "longitudinalSpeed",
             "lateralSpeed",
             "driftAmount",
-            "surfaceSpeedMultiplier",
-            "totalRaceTime",
             "bestLapTime",
         )
+
+    private const val NEGATIVE_ZERO = "-0.000000"
+    private const val ZERO = "0.000000"
 }
