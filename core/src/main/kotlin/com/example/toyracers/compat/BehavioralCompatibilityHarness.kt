@@ -111,7 +111,7 @@ class BehavioralCompatibilityHarness(
             surface = surfaceId(track.surfaceAt(participant.state.x, participant.state.y)),
             x = participant.state.x,
             y = participant.state.y,
-            rotation = participant.state.rotationDeg,
+            rotation = normalizeRotation(participant.state.rotationDeg),
             velocityX = participant.state.velocityX,
             velocityY = participant.state.velocityY,
             angularVelocity = participant.state.angularVelocity,
@@ -179,6 +179,19 @@ class BehavioralCompatibilityHarness(
             "hard", "HARD" -> AiDifficulty.HARD
             else -> error("Unknown compatibility difficulty ID: $id")
         }
+
+    private fun normalizeRotation(rotation: Float): Float {
+        val wrapped = rotation % DEGREES_PER_TURN
+        return when {
+            wrapped < 0f -> wrapped + DEGREES_PER_TURN
+            wrapped == 0f -> 0f
+            else -> wrapped
+        }
+    }
+
+    private companion object {
+        const val DEGREES_PER_TURN = 360f
+    }
 }
 
 /** Stable race options shared by Kotlin's reference runner and a future adapter. */
@@ -300,5 +313,5 @@ data class BehavioralFinishResultSnapshot(
 
 /** Schema constants shared by the Kotlin reference snapshot and its JSON schema. */
 object BehavioralSnapshotSchema {
-    const val VERSION = 1
+    const val VERSION = 2
 }

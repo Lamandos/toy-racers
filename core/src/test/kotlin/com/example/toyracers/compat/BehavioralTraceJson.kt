@@ -10,7 +10,7 @@ internal object BehavioralTraceJson {
     fun encode(trace: BehavioralTrace): String =
         buildString {
             append('{')
-            field("schemaVersion", BehavioralFixtureLoader.SCHEMA_VERSION)
+            field("schemaVersion", BehavioralFixtureLoader.GOLDEN_SCHEMA_VERSION)
             append(',')
             field("scenarioId", trace.scenarioId)
             append(',')
@@ -26,7 +26,7 @@ internal object BehavioralTraceJson {
     fun encodeGoldens(traces: List<BehavioralTrace>): String =
         buildString {
             append("{\"schemaVersion\":")
-            append(BehavioralFixtureLoader.SCHEMA_VERSION)
+            append(BehavioralFixtureLoader.GOLDEN_SCHEMA_VERSION)
             append(",\"traces\":{")
             traces.forEachIndexed { index, trace ->
                 if (index > 0) append(',')

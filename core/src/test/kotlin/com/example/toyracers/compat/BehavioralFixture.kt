@@ -31,6 +31,7 @@ internal data class BehavioralInputSegment(
 
 internal object BehavioralFixtureLoader {
     const val SCHEMA_VERSION = 1
+    const val GOLDEN_SCHEMA_VERSION = 2
     const val FIXTURE_RESOURCE = "compat/scenarios.json"
     const val GOLDEN_RESOURCE = "compat/goldens.json"
 
@@ -43,7 +44,7 @@ internal object BehavioralFixtureLoader {
 
     fun goldens(): JsonValue {
         val root = readJson(GOLDEN_RESOURCE)
-        require(root.getInt("schemaVersion") == SCHEMA_VERSION) {
+        require(root.getInt("schemaVersion") == GOLDEN_SCHEMA_VERSION) {
             "Unsupported golden schema version"
         }
         return root

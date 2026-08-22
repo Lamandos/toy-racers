@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/Lamandos/toy-racers/schemas/behavioral-snapshot-v1.json",
+  "$id": "https://github.com/Lamandos/toy-racers/schemas/behavioral-snapshot-v2.json",
   "title": "Toy Racers normalized behavioral snapshot",
   "description": "Versioned, rendering-independent state used to compare equivalent fixed-timestep race implementations.",
   "type": "object",
@@ -19,7 +19,7 @@
     "finishResults"
   ],
   "properties": {
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": { "const": 2 },
     "simulationTick": { "type": "integer", "minimum": 0 },
     "raceState": {
       "type": "string",
