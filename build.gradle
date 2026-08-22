@@ -139,3 +139,15 @@ tasks.register('qualityCheck') {
   dependsOn tasks.named('quickQualityCheck')
   dependsOn ':core:jacocoTestCoverageVerification', ':android:testDebugUnitTest'
 }
+
+tasks.register('verifyCompatibilityGoldens') {
+  group = 'verification'
+  description = 'Verifies checked-in compatibility golden masters without regenerating them.'
+  dependsOn ':core:compatibilityGoldenTest'
+}
+
+tasks.register('regenerateCompatibilityGoldens') {
+  group = 'maintenance'
+  description = 'Explicitly regenerates compatibility goldens and lists changed files.'
+  dependsOn ':core:regenerateCompatibilityGoldens'
+}

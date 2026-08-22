@@ -13,6 +13,28 @@ Run the suite locally or in CI with one command:
 
 `qualityCheck`, used by the repository's CI workflow, also executes this test through `:core:test`.
 
+## Repository golden masters
+
+The file-per-scenario golden-master infrastructure lives in
+[`compatibility/`](../compatibility/README.md). Its scenarios are grouped by gameplay area and each
+one maps to a checked-in golden trace with the same relative path. The normal verification task is
+read-only:
+
+```sh
+./gradlew verifyCompatibilityGoldens
+```
+
+The only command that can rewrite these goldens is the explicit maintenance script:
+
+```sh
+./compatibility/tools/regenerate-goldens.sh
+```
+
+It lists every changed golden path for review. The rules for when an update is acceptable are in
+the [compatibility README](../compatibility/README.md). This command covers the new
+file-per-scenario fixtures only; the legacy Kotlin reference set remains in
+`core/src/test/resources/compat/` and has its own explicit regeneration command below.
+
 ## Headless scenario runner
 
 The `runBehaviorScenario` Gradle task replays exactly one scenario document through the existing
@@ -115,15 +137,17 @@ discrete fields.
 ## Updating Kotlin reference goldens
 
 Do not regenerate a golden to hide a gameplay change. First document the intended change or an
-observed gameplay bug in a separate issue, then review the trace diff. To intentionally establish a
-new Kotlin reference baseline, run:
+observed gameplay bug in a separate issue, then regenerate the legacy Kotlin reference goldens with:
 
 ```sh
 ./gradlew :core:behavioralCompatibilityTest -DupdateBehavioralGoldens=true --rerun-tasks --no-daemon
 ```
 
-Commit the corresponding scenario and golden changes together. The normal task runs each scenario
-twice and requires byte-identical normalized traces before comparing the checked-in golden.
+This updates `core/src/test/resources/compat/goldens.json`, which is used by the 50 scenarios in
+`core/src/test/resources/compat/scenarios.json`. Review the complete trace diff before committing
+it. For the file-per-scenario repository fixtures, use the explicit maintenance script described
+above. The normal behavioral test suite is read-only: it runs each scenario twice and requires
+byte-identical normalized traces before comparing the checked-in fixture.
 
 ## Dart/Flame adapter checklist
 
