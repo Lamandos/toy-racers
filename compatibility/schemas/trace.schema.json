@@ -32,7 +32,7 @@
         },
         "tick": { "type": "integer", "minimum": 0 },
         "snapshot": {
-          "$ref": "https://github.com/Lamandos/toy-racers/schemas/behavioral-snapshot-v2.json"
+          "$ref": "snapshot.schema.json"
         }
       }
     }
