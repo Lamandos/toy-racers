@@ -26,6 +26,8 @@ sourceSets {
 }
 
 tasks.withType(Test).configureEach {
+  inputs.dir(rootProject.file('compatibility/scenarios'))
+  inputs.dir(rootProject.file('compatibility/golden'))
   systemProperty 'compatibilityDirectory', rootProject.file('compatibility').absolutePath
   systemProperty 'updateBehavioralGoldens', System.getProperty('updateBehavioralGoldens', 'false')
 }
@@ -63,8 +65,6 @@ tasks.register('runBehaviorScenario', JavaExec) {
 tasks.register('compatibilityGoldenTest', Test) {
   group = 'verification'
   description = 'Verifies checked-in file-per-scenario compatibility golden masters.'
-  inputs.dir(rootProject.file('compatibility/scenarios'))
-  inputs.dir(rootProject.file('compatibility/golden'))
   dependsOn testClasses
   testClassesDirs = sourceSets.test.output.classesDirs
   classpath = sourceSets.test.runtimeClasspath

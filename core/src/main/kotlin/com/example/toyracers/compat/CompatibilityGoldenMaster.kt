@@ -27,15 +27,22 @@ internal class CompatibilityGoldenMaster(
     fun regenerate(): List<Path> {
         val fixtures = fixtures()
         verifyNoOrphanedGoldens(fixtures)
-        return fixtures.mapNotNull { fixture ->
-            val generated = generatedGolden(fixture)
-            val existing = fixture.golden.takeIf(Files::isRegularFile)?.let(Files::readString)
-            if (existing == generated) {
+        val generatedGoldens =
+            fixtures.map { fixture ->
+                GeneratedGolden(fixture, generatedGolden(fixture))
+            }
+        return generatedGoldens.mapNotNull { generated ->
+            val existing =
+                generated.fixture.golden
+                    .takeIf(Files::isRegularFile)
+                    ?.let { Files.readString(it, UTF_8) }
+            if (existing == generated.content) {
                 null
             } else {
-                fixture.golden.parent?.let(Files::createDirectories)
-                Files.writeString(fixture.golden, generated, UTF_8)
-                fixture.golden
+                generated.fixture.golden.parent
+                    ?.let(Files::createDirectories)
+                Files.writeString(generated.fixture.golden, generated.content, UTF_8)
+                generated.fixture.golden
             }
         }
     }
@@ -121,6 +128,11 @@ internal class CompatibilityGoldenMaster(
     private data class GoldenFixture(
         val golden: Path,
         val scenario: BehavioralScenario,
+    )
+
+    private data class GeneratedGolden(
+        val fixture: GoldenFixture,
+        val content: String,
     )
 
     private companion object {
