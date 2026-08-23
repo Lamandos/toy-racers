@@ -1,5 +1,6 @@
 package com.example.toyracers.collision
 
+import com.example.toyracers.car.CarConfig
 import com.example.toyracers.car.CarState
 import com.example.toyracers.track.TrackLoader
 import org.junit.Assert.assertEquals
@@ -11,6 +12,7 @@ import kotlin.math.hypot
 class CollisionScenarioTest {
     private val collisionSystem = CollisionSystem()
     private val trackWithoutObjects = TrackLoader().load().copy(collisionShapes = emptyList())
+    private val carConfig = CarConfig()
 
     @Test
     fun `head-on car collision reports contact and transfers momentum`() {
@@ -120,12 +122,18 @@ class CollisionScenarioTest {
     fun `collision near track corner reports both boundary contacts and resolves position`() {
         val state = car(x = 0.5f, y = 0.5f, velocityX = -8f, velocityY = -8f)
 
-        val result = collisionSystem.resolveTrackCollision(state, CAR_RADIUS, trackWithoutObjects)
+        val result =
+            collisionSystem.resolveTrackCollision(
+                state = state,
+                radius = carConfig.collisionRadius,
+                longitudinalOffset = carConfig.collisionLongitudinalOffset,
+                track = trackWithoutObjects,
+            )
 
         assertEquals(2, result.contacts.size)
         assertTrue(result.contacts.all { it.type == CollisionType.WORLD_BOUNDARY })
-        assertEquals(1f, state.x, TOLERANCE)
-        assertEquals(1f, state.y, TOLERANCE)
+        assertEquals(1.62f, state.x, TOLERANCE)
+        assertEquals(carConfig.collisionRadius, state.y, TOLERANCE)
         assertEquals(0f, state.velocityX, TOLERANCE)
         assertEquals(0f, state.velocityY, TOLERANCE)
     }

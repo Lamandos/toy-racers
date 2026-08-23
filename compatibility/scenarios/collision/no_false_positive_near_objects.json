@@ -13,7 +13,7 @@
       "inputSegments": [{"fromTick": 1, "toTick": 4}],
       "initialStates": [
         {"id": "player", "x": 46.5, "y": 16.5, "rotationDeg": 0},
-        {"id": "ai-0", "x": 56.4, "y": 16.5, "rotationDeg": 0},
+        {"id": "ai-0", "x": 49.8, "y": 16.5, "rotationDeg": 0},
         {"id": "ai-1", "x": 75, "y": 18},
         {"id": "ai-2", "x": 90, "y": 36},
         {"id": "ai-3", "x": 72, "y": 54},
