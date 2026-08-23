@@ -72,6 +72,40 @@ class SnapshotComparisonEngineTest {
     }
 
     @Test
+    fun `negative zero in approximate fields is rejected`() {
+        val expected = traceWithParticipant("\"x\":0.0")
+        val actual = traceWithParticipant("\"x\":-0.0")
+
+        val mismatch = SnapshotComparisonEngine.compare(expected, actual).firstMismatch
+
+        assertEquals("x", mismatch?.field)
+        assertEquals("-0.0", mismatch?.actual)
+        assertEquals("negative zero", mismatch?.delta)
+    }
+
+    @Test
+    fun `sample object type mismatches preserve the sample tick`() {
+        val expected =
+            trace(
+                """
+                {"samples":[{"label":"simulation","tick":842,"snapshot":{}}]}
+                """,
+            )
+        val actual =
+            trace(
+                """
+                {"samples":[null]}
+                """,
+            )
+
+        val mismatch = SnapshotComparisonEngine.compare(expected, actual).firstMismatch
+
+        assertEquals(842L, mismatch?.tick)
+        assertEquals("simulation", mismatch?.sampleLabel)
+        assertEquals("samples[0]", mismatch?.field)
+    }
+
+    @Test
     fun `missing sample reports the first unmatched tick`() {
         val expected = trace("{\"samples\":[{\"tick\":0},{\"tick\":842}]}")
         val actual = trace("{\"samples\":[{\"tick\":0}]}")
@@ -93,6 +127,31 @@ class SnapshotComparisonEngineTest {
 
         assertEquals("ai-4", mismatch?.participant)
         assertEquals("finishPosition", mismatch?.field)
+    }
+
+    @Test
+    fun `finish result size mismatches identify the unmatched participant`() {
+        val expected =
+            trace(
+                """
+                {"samples":[{"tick":842,"snapshot":{"finishResults":[
+                  {"participantId":"ai-0"},{"participantId":"ai-4"}
+                ]}}]}
+                """,
+            )
+        val actual =
+            trace(
+                """
+                {"samples":[{"tick":842,"snapshot":{"finishResults":[
+                  {"participantId":"ai-0"}
+                ]}}]}
+                """,
+            )
+
+        val mismatch = SnapshotComparisonEngine.compare(expected, actual).firstMismatch
+
+        assertEquals("ai-4", mismatch?.participant)
+        assertEquals("finishResults.size", mismatch?.field)
     }
 
     @Test
@@ -160,6 +219,34 @@ class SnapshotComparisonEngineTest {
         assertTrue(report.contains("+0.117600"))
         assertTrue(report.contains("angular delta 0.110000"))
         assertFalse(report.contains("Following differences:"))
+    }
+
+    @Test
+    fun `failure report keeps same-tick samples separate`() {
+        val expected =
+            trace(
+                """
+                {"samples":[
+                  {"label":"countdown","tick":0,"snapshot":{"participants":[{"id":"player","x":1.0}]}},
+                  {"label":"racing","tick":0,"snapshot":{"participants":[{"id":"player","x":2.0}]}}
+                ]}
+                """,
+            )
+        val actual =
+            trace(
+                """
+                {"samples":[
+                  {"label":"countdown","tick":0,"snapshot":{"participants":[{"id":"player","x":1.1}]}},
+                  {"label":"racing","tick":0,"snapshot":{"participants":[{"id":"player","x":2.1}]}}
+                ]}
+                """,
+            )
+
+        val report = checkNotNull(SnapshotComparisonEngine.compare(expected, actual).failureReport("same_tick"))
+
+        assertTrue(report.contains("First mismatch: tick 0 (countdown)"))
+        assertTrue(report.contains("Following differences:"))
+        assertTrue(report.contains("tick 0 (racing)"))
     }
 
     private fun traceWithParticipant(fields: String) =

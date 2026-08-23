@@ -1,9 +1,7 @@
 package com.example.toyracers.compat
 
 import com.badlogic.gdx.utils.JsonValue
-import java.util.Locale
 import kotlin.math.abs
-import kotlin.math.max
 
 /**
  * Compares normalized behavioral traces from the Kotlin reference or another runtime.
@@ -63,7 +61,7 @@ internal object SnapshotComparisonEngine {
         collector: MismatchCollector,
     ) {
         if (!expected.isObject || !actual.isObject) {
-            collector.typeMismatch(context, path, expected, actual)
+            collector.typeMismatch(context.withObjectIdentifiers(expected, actual), path, expected, actual)
             return
         }
         val objectContext = context.withIdentifiers(expected)
@@ -99,7 +97,13 @@ internal object SnapshotComparisonEngine {
         val values = expected.children().zip(actual.children())
         if (path.isSampleArray()) {
             values.forEachIndexed { index, pair ->
-                compareValue(pair.first, pair.second, "$path[$index]", context, collector)
+                compareValue(
+                    pair.first,
+                    pair.second,
+                    "$path[$index]",
+                    context.withSampleIdentity(index, pair.first, pair.second),
+                    collector,
+                )
             }
             if (expected.size != actual.size) {
                 collector.arraySizeMismatch(
@@ -171,6 +175,10 @@ internal object SnapshotComparisonEngine {
             collector.nonFiniteNumber(context, path, expectedValue, actualValue)
             return
         }
+        if (expectedValue.isNegativeZero() || actualValue.isNegativeZero()) {
+            collector.negativeZero(context, path, expected, actual)
+            return
+        }
         if (field.isAngle && (!expectedValue.isNormalizedRotation() || !actualValue.isNormalizedRotation())) {
             collector.invalidRotation(context, path, expected, actual)
             return
@@ -187,6 +195,29 @@ internal object SnapshotComparisonEngine {
             participant =
                 value.get("id").stringValueOrNull()
                     ?: value.get("participantId").stringValueOrNull() ?: participant,
+        )
+
+    private fun ComparisonContext.withObjectIdentifiers(
+        expected: JsonValue,
+        actual: JsonValue,
+    ): ComparisonContext =
+        when {
+            expected.isObject -> withIdentifiers(expected)
+            actual.isObject -> withIdentifiers(actual)
+            else -> this
+        }
+
+    private fun ComparisonContext.withSampleIdentity(
+        index: Int,
+        expected: JsonValue,
+        actual: JsonValue,
+    ): ComparisonContext =
+        copy(
+            sampleIndex = index,
+            sampleLabel =
+                expected.get("label").stringValueOrNull()
+                    ?: actual.get("label").stringValueOrNull()
+                    ?: sampleLabel,
         )
 
     private fun JsonValue?.integerValueOrNull(): Long? = takeIf { it?.isLong == true }?.asLong()
@@ -206,7 +237,7 @@ internal object SnapshotComparisonEngine {
         actual: JsonValue,
         path: String,
     ): ComparisonContext {
-        if (!path.endsWith(".participants")) return this
+        if (!path.endsWith(".participants") && !path.endsWith(".finishResults")) return this
         val unmatchedParticipant = expected.get(actual.size) ?: actual.get(expected.size)
         return unmatchedParticipant?.let { withIdentifiers(it) } ?: this
     }
@@ -230,11 +261,6 @@ internal object SnapshotComparisonEngine {
     private fun JsonValue.children(): List<JsonValue> = generateSequence(child) { it.next }.toList()
 }
 
-private data class ComparisonContext(
-    val tick: Long? = null,
-    val participant: String? = null,
-)
-
 /** The result is reusable by golden tests and future external-runtime trace-file checks. */
 internal data class SnapshotComparison(
     val mismatches: List<SnapshotMismatch>,
@@ -253,7 +279,10 @@ internal data class SnapshotComparison(
             appendLine(TABLE_HEADER)
             val primaryMismatches =
                 mismatches.takeWhile { mismatch ->
-                    mismatch.tick == first.tick && mismatch.participant == first.participant
+                    mismatch.tick == first.tick &&
+                        mismatch.participant == first.participant &&
+                        mismatch.sampleIndex == first.sampleIndex &&
+                        mismatch.sampleLabel == first.sampleLabel
                 }
             primaryMismatches.forEach { appendLine(it.tableRow()) }
             val following = mismatches.drop(primaryMismatches.size)
@@ -270,32 +299,6 @@ internal data class SnapshotComparison(
         const val RACE_PARTICIPANT = "race"
         const val TABLE_HEADER = "field              expected       actual         delta"
     }
-}
-
-/** One observed contract violation, ordered by trace/sample/field position. */
-internal data class SnapshotMismatch(
-    val tick: Long?,
-    val participant: String?,
-    val field: String,
-    val expected: String,
-    val actual: String,
-    val delta: String,
-) {
-    fun compactDescription(): String = "$field expected $expected but was $actual ($delta)"
-
-    fun location(): String = tick?.let { "tick $it" } ?: "before first sample"
-
-    fun tableRow(): String =
-        String.format(
-            Locale.ROOT,
-            "%-18s %-14s %-14s %s",
-            field,
-            expected,
-            actual,
-            delta,
-        )
-
-    fun conciseDescription(): String = "${location()}, participant ${participant ?: "race"}: ${compactDescription()}"
 }
 
 private class MismatchCollector {
@@ -358,6 +361,13 @@ private class MismatchCollector {
         actual: JsonValue,
     ) = add(context, path, expected.displayValue(), actual.displayValue(), ROTATION_RANGE)
 
+    fun negativeZero(
+        context: ComparisonContext,
+        path: String,
+        expected: JsonValue,
+        actual: JsonValue,
+    ) = add(context, path, expected.displayValue(), actual.displayValue(), NEGATIVE_ZERO)
+
     fun duplicateObjectField(
         context: ComparisonContext,
         path: String,
@@ -391,6 +401,8 @@ private class MismatchCollector {
             SnapshotMismatch(
                 tick = context.tick,
                 participant = context.participant,
+                sampleIndex = context.sampleIndex,
+                sampleLabel = context.sampleLabel,
                 field = path.displayField(),
                 expected = expected,
                 actual = actual,
@@ -405,71 +417,11 @@ private class MismatchCollector {
         const val INTEGER_REQUIRED = "integer required"
         const val NON_FINITE_VALUE = "non-finite value"
         const val ROTATION_RANGE = "outside [0, 360)"
+        const val NEGATIVE_ZERO = "negative zero"
         const val UNIQUE_KEY = "unique key"
         const val DUPLICATE_KEY = "duplicate key"
     }
 }
-
-/** Numerical fields that may differ only by insignificant fixed-timestep rounding. */
-private enum class ApproximateSnapshotField(
-    private val fieldNames: Set<String>,
-    private val absoluteTolerance: Double,
-    private val relativeTolerance: Double?,
-    val isAngle: Boolean = false,
-) {
-    POSITION(setOf("x", "y"), SnapshotComparisonEngine.ABSOLUTE_TOLERANCE, null),
-    VELOCITY(setOf("velocityX", "velocityY"), SnapshotComparisonEngine.ABSOLUTE_TOLERANCE, null),
-    ROTATION(setOf("rotation"), SnapshotComparisonEngine.ABSOLUTE_TOLERANCE, null, isAngle = true),
-    ANGULAR_VELOCITY(setOf("angularVelocity"), SnapshotComparisonEngine.ABSOLUTE_TOLERANCE, null),
-    SPEED(
-        setOf("longitudinalSpeed", "lateralSpeed"),
-        SnapshotComparisonEngine.ABSOLUTE_TOLERANCE,
-        null,
-    ),
-    DRIFT(setOf("driftAmount"), SnapshotComparisonEngine.ABSOLUTE_TOLERANCE, null),
-    TIME(
-        setOf("remainingSeconds", "elapsedSimulationTime", "bestLapTime"),
-        SnapshotComparisonEngine.ABSOLUTE_TOLERANCE,
-        null,
-    ),
-    ;
-
-    fun delta(
-        expected: Double,
-        actual: Double,
-    ): Double =
-        if (isAngle) {
-            shortestSignedAngularDelta(actual - expected)
-        } else {
-            actual - expected
-        }
-
-    fun allowedTolerance(
-        expected: Double,
-        actual: Double,
-    ): Double =
-        relativeTolerance?.let { max(absoluteTolerance, it * max(abs(expected), abs(actual))) }
-            ?: absoluteTolerance
-
-    companion object {
-        fun forPath(path: String): ApproximateSnapshotField? {
-            val name = path.substringAfterLast('.')
-            return entries.firstOrNull { name in it.fieldNames }
-        }
-    }
-}
-
-private fun shortestSignedAngularDelta(difference: Double): Double {
-    val normalized = ((difference % FULL_TURN) + FULL_TURN) % FULL_TURN
-    return if (normalized > HALF_TURN) normalized - FULL_TURN else normalized
-}
-
-private fun Double.isNormalizedRotation(): Boolean = this >= 0.0 && this < FULL_TURN
-
-private fun angularDelta(difference: Double): String =
-    "angular delta ${String.format(Locale.ROOT, "%.6f", abs(difference))}"
-
-private fun numericDelta(difference: Double): String = String.format(Locale.ROOT, "%+.6f", difference)
 
 private fun JsonValue.displayValue(): String =
     when {
@@ -493,6 +445,3 @@ private fun Double.describeNumber(): String =
         this == Double.NEGATIVE_INFINITY -> "-Infinity"
         else -> toString()
     }
-
-private const val FULL_TURN = 360.0
-private const val HALF_TURN = FULL_TURN / 2.0
