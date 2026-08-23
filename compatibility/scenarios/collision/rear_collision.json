@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "rear-collision",
+      "seed": 8003,
+      "trackId": "track-01",
+      "playerCar": "yellow-sport",
+      "inputOrigin": "keyboard",
+      "tags": ["collision", "car-car", "rear"],
+      "ticks": 4,
+      "snapshotIntervalTicks": 1,
+      "inputSegments": [{"fromTick": 1, "toTick": 4, "throttle": 1}],
+      "initialStates": [
+        {"id": "player", "x": 15.5, "y": 5.5, "rotationDeg": 0, "speed": 18, "velocityX": 18},
+        {"id": "ai-0", "x": 18.5, "y": 5.5, "rotationDeg": 0, "speed": 4, "velocityX": 4},
+        {"id": "ai-1", "x": 25, "y": 6},
+        {"id": "ai-2", "x": 30, "y": 12},
+        {"id": "ai-3", "x": 24, "y": 18},
+        {"id": "ai-4", "x": 7, "y": 12}
+      ]
+    }
+  ]
+}

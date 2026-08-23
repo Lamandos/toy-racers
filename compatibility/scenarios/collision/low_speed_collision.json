@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "low-speed-collision",
+      "seed": 8005,
+      "trackId": "track-01",
+      "playerCar": "orange-truck",
+      "inputOrigin": "keyboard",
+      "tags": ["collision", "car-car", "low-speed"],
+      "ticks": 4,
+      "snapshotIntervalTicks": 1,
+      "inputSegments": [{"fromTick": 1, "toTick": 4}],
+      "initialStates": [
+        {"id": "player", "x": 15.5, "y": 5.5, "rotationDeg": 0, "speed": 2, "velocityX": 2},
+        {"id": "ai-0", "x": 18.5, "y": 5.5, "rotationDeg": 180, "speed": 2, "velocityX": -2},
+        {"id": "ai-1", "x": 25, "y": 6},
+        {"id": "ai-2", "x": 30, "y": 12},
+        {"id": "ai-3", "x": 24, "y": 18},
+        {"id": "ai-4", "x": 7, "y": 12}
+      ]
+    }
+  ]
+}
