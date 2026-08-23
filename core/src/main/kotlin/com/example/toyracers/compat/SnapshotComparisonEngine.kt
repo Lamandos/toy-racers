@@ -111,7 +111,8 @@ internal object SnapshotComparisonEngine {
             }
         } else {
             if (expected.size != actual.size) {
-                collector.arraySizeMismatch(context, path, expected.size, actual.size)
+                val mismatchContext = context.withUnmatchedParticipant(expected, actual, path)
+                collector.arraySizeMismatch(mismatchContext, path, expected.size, actual.size)
             }
             values.forEachIndexed { index, pair ->
                 compareValue(pair.first, pair.second, "$path[$index]", context, collector)
@@ -183,16 +184,14 @@ internal object SnapshotComparisonEngine {
     private fun ComparisonContext.withIdentifiers(value: JsonValue): ComparisonContext =
         copy(
             tick = value.get("tick").integerValueOrNull() ?: tick,
-            participant = value.get("id").stringValueOrNull() ?: participant,
+            participant =
+                value.get("id").stringValueOrNull()
+                    ?: value.get("participantId").stringValueOrNull() ?: participant,
         )
 
-    private fun JsonValue?.integerValueOrNull(): Long? =
-        takeIf { it?.isLong == true }
-            ?.asLong()
+    private fun JsonValue?.integerValueOrNull(): Long? = takeIf { it?.isLong == true }?.asLong()
 
-    private fun JsonValue?.stringValueOrNull(): String? =
-        takeIf { it?.isString == true }
-            ?.asString()
+    private fun JsonValue?.stringValueOrNull(): String? = takeIf { it?.isString == true }?.asString()
 
     private fun ComparisonContext.withSampleTick(
         expected: JsonValue,
@@ -200,6 +199,16 @@ internal object SnapshotComparisonEngine {
     ): ComparisonContext {
         val unmatchedSample = expected.get(actual.size) ?: actual.get(expected.size)
         return copy(tick = unmatchedSample?.get("tick").integerValueOrNull() ?: tick)
+    }
+
+    private fun ComparisonContext.withUnmatchedParticipant(
+        expected: JsonValue,
+        actual: JsonValue,
+        path: String,
+    ): ComparisonContext {
+        if (!path.endsWith(".participants")) return this
+        val unmatchedParticipant = expected.get(actual.size) ?: actual.get(expected.size)
+        return unmatchedParticipant?.let { withIdentifiers(it) } ?: this
     }
 
     private fun reportDuplicateObjectFields(

@@ -85,6 +85,32 @@ class SnapshotComparisonEngineTest {
     }
 
     @Test
+    fun `finish result mismatches identify the finished participant`() {
+        val expected = traceWithFinishResult("\"finishPosition\":1")
+        val actual = traceWithFinishResult("\"finishPosition\":2")
+
+        val mismatch = SnapshotComparisonEngine.compare(expected, actual).firstMismatch
+
+        assertEquals("ai-4", mismatch?.participant)
+        assertEquals("finishPosition", mismatch?.field)
+    }
+
+    @Test
+    fun `participant size mismatches identify the unmatched participant`() {
+        val expected = traceWithParticipants("player", "ai-4")
+        val missingParticipant = traceWithParticipants("player")
+        val unexpectedParticipant = traceWithParticipants("player", "ai-4")
+
+        listOf(
+            SnapshotComparisonEngine.compare(expected, missingParticipant).firstMismatch to "ai-4",
+            SnapshotComparisonEngine.compare(missingParticipant, unexpectedParticipant).firstMismatch to "ai-4",
+        ).forEach { (mismatch, participant) ->
+            assertEquals(participant, mismatch?.participant)
+            assertEquals("participants.size", mismatch?.field)
+        }
+    }
+
+    @Test
     fun `duplicate object fields are rejected`() {
         val expected = traceWithParticipant("\"x\":10.0")
         val actual = traceWithParticipant("\"x\":10.0,\"x\":10.0")
@@ -142,6 +168,20 @@ class SnapshotComparisonEngineTest {
             {"samples":[{"tick":842,"snapshot":{"participants":[{"id":"player",$fields}]}}]}
             """,
         )
+
+    private fun traceWithFinishResult(field: String) =
+        trace(
+            """
+            {"samples":[{"tick":842,"snapshot":{"finishResults":[
+              {"participantId":"ai-4",$field}
+            ]}}]}
+            """,
+        )
+
+    private fun traceWithParticipants(vararg ids: String): com.badlogic.gdx.utils.JsonValue {
+        val participants = ids.joinToString { id -> """{"id":"$id"}""" }
+        return trace("""{"samples":[{"tick":842,"snapshot":{"participants":[$participants]}}]}""")
+    }
 
     private fun trace(document: String) = JsonReader().parse(document.trimIndent())
 
