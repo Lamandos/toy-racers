@@ -151,7 +151,9 @@ boundaries near zero.
 contain the same non-finite value. The engine retains the first mismatching tick and participant,
 prints a table of the mismatched fields with expected/actual values and deltas, then lists a small
 number of following differences. This makes the same comparator suitable for checked-in Kotlin
-goldens and a future Dart runtime's output files.
+goldens and a future Dart runtime's output files. It also rejects rotations outside the required
+`[0, 360)` range and duplicate JSON object keys rather than normalizing ambiguous or invalid trace
+output into a passing comparison.
 
 ## Updating Kotlin reference goldens
 

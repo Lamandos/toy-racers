@@ -61,6 +61,42 @@ class SnapshotComparisonEngineTest {
     }
 
     @Test
+    fun `rotations outside the normalized contract are rejected`() {
+        val expected = traceWithParticipant("\"rotation\":0.0")
+        val actual = traceWithParticipant("\"rotation\":360.0")
+
+        val mismatch = SnapshotComparisonEngine.compare(expected, actual).firstMismatch
+
+        assertEquals("rotation", mismatch?.field)
+        assertEquals("outside [0, 360)", mismatch?.delta)
+    }
+
+    @Test
+    fun `missing sample reports the first unmatched tick`() {
+        val expected = trace("{\"samples\":[{\"tick\":0},{\"tick\":842}]}")
+        val actual = trace("{\"samples\":[{\"tick\":0}]}")
+
+        val comparison = SnapshotComparisonEngine.compare(expected, actual)
+        val mismatch = comparison.firstMismatch
+
+        assertEquals(842L, mismatch?.tick)
+        assertEquals("samples.size", mismatch?.field)
+        assertTrue(checkNotNull(comparison.failureReport("drift_right_long")).contains("First mismatch: tick 842"))
+    }
+
+    @Test
+    fun `duplicate object fields are rejected`() {
+        val expected = traceWithParticipant("\"x\":10.0")
+        val actual = traceWithParticipant("\"x\":10.0,\"x\":10.0")
+
+        val mismatch = SnapshotComparisonEngine.compare(expected, actual).firstMismatch
+
+        assertEquals("player", mismatch?.participant)
+        assertEquals("x", mismatch?.field)
+        assertEquals("duplicate key", mismatch?.delta)
+    }
+
+    @Test
     fun `non finite approximate values are rejected explicitly`() {
         listOf(Double.NaN to "NaN", Double.POSITIVE_INFINITY to "Infinity").forEach { (value, label) ->
             val expected = traceWithParticipant("\"x\":10.0")

@@ -67,7 +67,11 @@ internal object SnapshotComparisonEngine {
             return
         }
         val objectContext = context.withIdentifiers(expected)
-        expected.children().forEach { expectedChild ->
+        val expectedChildren = expected.children()
+        val actualChildren = actual.children()
+        reportDuplicateObjectFields(expectedChildren, objectContext, path, "expected", collector)
+        reportDuplicateObjectFields(actualChildren, objectContext, path, "actual", collector)
+        expectedChildren.forEach { expectedChild ->
             val name = checkNotNull(expectedChild.name)
             val actualChild = actual.get(name)
             if (actualChild == null) {
@@ -76,7 +80,7 @@ internal object SnapshotComparisonEngine {
                 compareValue(expectedChild, actualChild, "$path.$name", objectContext, collector)
             }
         }
-        actual.children().filter { actualChild -> expected.get(actualChild.name) == null }.forEach { actualChild ->
+        actualChildren.filter { actualChild -> expected.get(actualChild.name) == null }.forEach { actualChild ->
             collector.unexpectedField(objectContext, "$path.${actualChild.name}", actualChild)
         }
     }
@@ -92,11 +96,26 @@ internal object SnapshotComparisonEngine {
             collector.typeMismatch(context, path, expected, actual)
             return
         }
-        if (expected.size != actual.size) {
-            collector.arraySizeMismatch(context, path, expected.size, actual.size)
-        }
-        expected.children().zip(actual.children()).forEachIndexed { index, values ->
-            compareValue(values.first, values.second, "$path[$index]", context, collector)
+        val values = expected.children().zip(actual.children())
+        if (path.isSampleArray()) {
+            values.forEachIndexed { index, pair ->
+                compareValue(pair.first, pair.second, "$path[$index]", context, collector)
+            }
+            if (expected.size != actual.size) {
+                collector.arraySizeMismatch(
+                    context.withSampleTick(expected, actual),
+                    path,
+                    expected.size,
+                    actual.size,
+                )
+            }
+        } else {
+            if (expected.size != actual.size) {
+                collector.arraySizeMismatch(context, path, expected.size, actual.size)
+            }
+            values.forEachIndexed { index, pair ->
+                compareValue(pair.first, pair.second, "$path[$index]", context, collector)
+            }
         }
     }
 
@@ -151,6 +170,10 @@ internal object SnapshotComparisonEngine {
             collector.nonFiniteNumber(context, path, expectedValue, actualValue)
             return
         }
+        if (field.isAngle && (!expectedValue.isNormalizedRotation() || !actualValue.isNormalizedRotation())) {
+            collector.invalidRotation(context, path, expected, actual)
+            return
+        }
         val delta = field.delta(expectedValue, actualValue)
         if (abs(delta) > field.allowedTolerance(expectedValue, actualValue)) {
             collector.approximateMismatch(context, path, expected, actual, delta, field.isAngle)
@@ -170,6 +193,30 @@ internal object SnapshotComparisonEngine {
     private fun JsonValue?.stringValueOrNull(): String? =
         takeIf { it?.isString == true }
             ?.asString()
+
+    private fun ComparisonContext.withSampleTick(
+        expected: JsonValue,
+        actual: JsonValue,
+    ): ComparisonContext {
+        val unmatchedSample = expected.get(actual.size) ?: actual.get(expected.size)
+        return copy(tick = unmatchedSample?.get("tick").integerValueOrNull() ?: tick)
+    }
+
+    private fun reportDuplicateObjectFields(
+        children: List<JsonValue>,
+        context: ComparisonContext,
+        path: String,
+        source: String,
+        collector: MismatchCollector,
+    ) {
+        val names = mutableSetOf<String>()
+        children.forEach { child ->
+            val name = checkNotNull(child.name)
+            if (!names.add(name)) collector.duplicateObjectField(context, "$path.$name", source)
+        }
+    }
+
+    private fun String.isSampleArray(): Boolean = endsWith(".samples")
 
     private fun JsonValue.children(): List<JsonValue> = generateSequence(child) { it.next }.toList()
 }
@@ -295,6 +342,19 @@ private class MismatchCollector {
         actual: Double,
     ) = add(context, path, expected.describeNumber(), actual.describeNumber(), NON_FINITE_VALUE)
 
+    fun invalidRotation(
+        context: ComparisonContext,
+        path: String,
+        expected: JsonValue,
+        actual: JsonValue,
+    ) = add(context, path, expected.displayValue(), actual.displayValue(), ROTATION_RANGE)
+
+    fun duplicateObjectField(
+        context: ComparisonContext,
+        path: String,
+        source: String,
+    ) = add(context, path, UNIQUE_KEY, "duplicate $source key", DUPLICATE_KEY)
+
     fun approximateMismatch(
         context: ComparisonContext,
         path: String,
@@ -322,7 +382,7 @@ private class MismatchCollector {
             SnapshotMismatch(
                 tick = context.tick,
                 participant = context.participant,
-                field = path.substringAfterLast('.'),
+                field = path.displayField(),
                 expected = expected,
                 actual = actual,
                 delta = delta,
@@ -335,6 +395,9 @@ private class MismatchCollector {
         const val EXACT_MISMATCH = "exact"
         const val INTEGER_REQUIRED = "integer required"
         const val NON_FINITE_VALUE = "non-finite value"
+        const val ROTATION_RANGE = "outside [0, 360)"
+        const val UNIQUE_KEY = "unique key"
+        const val DUPLICATE_KEY = "duplicate key"
     }
 }
 
@@ -392,6 +455,8 @@ private fun shortestSignedAngularDelta(difference: Double): Double {
     return if (normalized > HALF_TURN) normalized - FULL_TURN else normalized
 }
 
+private fun Double.isNormalizedRotation(): Boolean = this >= 0.0 && this < FULL_TURN
+
 private fun angularDelta(difference: Double): String =
     "angular delta ${String.format(Locale.ROOT, "%.6f", abs(difference))}"
 
@@ -406,6 +471,11 @@ private fun JsonValue.displayValue(): String =
     }
 
 private fun JsonValue.typeName(): String = "JSON ${type()}"
+
+private fun String.displayField(): String =
+    substringAfterLast('.').let { name ->
+        if (name == "size") "${substringBeforeLast('.').substringAfterLast('.')}.size" else name
+    }
 
 private fun Double.describeNumber(): String =
     when {
