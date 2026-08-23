@@ -16,8 +16,8 @@ class CollisionScenarioTest {
 
     @Test
     fun `head-on car collision reports contact and transfers momentum`() {
-        val first = car(x = 0f, velocityX = 12f)
-        val second = car(x = 1.5f, velocityX = -12f)
+        val first = car(x = 0f, rotationDeg = 0f, velocityX = 12f)
+        val second = car(x = 2.5f, rotationDeg = 180f, velocityX = -12f)
 
         val result = collide(first, second)
 
@@ -30,8 +30,8 @@ class CollisionScenarioTest {
 
     @Test
     fun `side collision reports contact and redirects lateral movement`() {
-        val first = car(y = 0f, velocityY = 8f)
-        val second = car(y = 1.5f)
+        val first = car(y = 0f, rotationDeg = 90f, velocityY = 8f)
+        val second = car(y = 2.5f, rotationDeg = 270f)
 
         val result = collide(first, second)
 
@@ -43,8 +43,8 @@ class CollisionScenarioTest {
 
     @Test
     fun `rear collision reports contact and accelerates leading car`() {
-        val first = car(x = 0f, velocityX = 8f)
-        val second = car(x = 1.5f, velocityX = 2f)
+        val first = car(x = 0f, rotationDeg = 0f, velocityX = 8f)
+        val second = car(x = 2.5f, rotationDeg = 0f, velocityX = 2f)
 
         val result = collide(first, second)
 
@@ -56,8 +56,8 @@ class CollisionScenarioTest {
 
     @Test
     fun `glancing collision reports contact and imparts diagonal velocity`() {
-        val first = car(x = 0f, y = 0f, velocityX = 10f)
-        val second = car(x = 1.5f, y = 0.8f)
+        val first = car(x = 0f, y = 0f, rotationDeg = 20f, velocityX = 10f)
+        val second = car(x = 2.5f, y = 0.8f, rotationDeg = 200f)
 
         val result = collide(first, second)
 
@@ -69,8 +69,8 @@ class CollisionScenarioTest {
 
     @Test
     fun `low speed collision preserves a low impact result and separates cars`() {
-        val first = car(x = 0f, velocityX = 1f)
-        val second = car(x = 1.5f)
+        val first = car(x = 0f, rotationDeg = 0f, velocityX = 1f)
+        val second = car(x = 2.5f, rotationDeg = 180f)
 
         val result = collide(first, second)
 
@@ -82,8 +82,8 @@ class CollisionScenarioTest {
 
     @Test
     fun `high speed collision caps impulse while reporting full impact`() {
-        val first = car(x = 0f, velocityX = 100f)
-        val second = car(x = 1.5f)
+        val first = car(x = 0f, rotationDeg = 0f, velocityX = 100f)
+        val second = car(x = 2.5f, rotationDeg = 180f)
 
         val result = collide(first, second)
 
@@ -97,10 +97,11 @@ class CollisionScenarioTest {
     fun `car track collision reports world boundary and removes outward velocity`() {
         val state = car(x = 0.2f, y = 6f, velocityX = -10f)
 
-        val result = collisionSystem.resolveTrackCollision(state, CAR_RADIUS, trackWithoutObjects)
+        val result =
+            collisionSystem.resolveTrackCollision(state, CAR_RADIUS, trackWithoutObjects)
 
         assertTrackContact(result)
-        assertEquals(1f, state.x, TOLERANCE)
+        assertEquals(CAR_RADIUS, state.x, TOLERANCE)
         assertEquals(0f, state.velocityX, TOLERANCE)
     }
 
@@ -113,7 +114,7 @@ class CollisionScenarioTest {
             state.velocityX = -4f
             val result = collisionSystem.resolveTrackCollision(state, CAR_RADIUS, trackWithoutObjects)
             assertTrackContact(result)
-            assertEquals(1f, state.x, TOLERANCE)
+            assertEquals(CAR_RADIUS, state.x, TOLERANCE)
             assertEquals(0f, state.velocityX, TOLERANCE)
         }
     }
@@ -140,8 +141,8 @@ class CollisionScenarioTest {
 
     @Test
     fun `cars separating after collision increase their distance on the next tick`() {
-        val first = car(x = 0f, velocityX = 8f)
-        val second = car(x = 1.5f)
+        val first = car(x = 0f, rotationDeg = 0f, velocityX = 8f)
+        val second = car(x = 2.5f, rotationDeg = 180f)
 
         assertCarContact(collide(first, second))
         val distanceAfterCollision = distanceBetween(first, second)
@@ -153,14 +154,14 @@ class CollisionScenarioTest {
 
     @Test
     fun `near but non touching cars do not report a false positive or change state`() {
-        val first = car(x = 0f)
-        val second = car(x = 2.01f)
+        val first = car(x = 0f, rotationDeg = 0f)
+        val second = car(x = 3.25f, rotationDeg = 180f)
 
         val result = collide(first, second)
 
         assertFalse(result.collided)
         assertEquals(0f, first.x, TOLERANCE)
-        assertEquals(2.01f, second.x, TOLERANCE)
+        assertEquals(3.25f, second.x, TOLERANCE)
         assertEquals(0f, first.velocityX, TOLERANCE)
         assertEquals(0f, second.velocityX, TOLERANCE)
     }
@@ -171,20 +172,24 @@ class CollisionScenarioTest {
     ): CollisionResult =
         collisionSystem.resolveCarCollision(
             first = first,
-            firstRadius = CAR_RADIUS,
+            firstRadius = carConfig.collisionRadius,
+            firstLongitudinalOffset = carConfig.collisionLongitudinalOffset,
             second = second,
-            secondRadius = CAR_RADIUS,
+            secondRadius = carConfig.collisionRadius,
+            secondLongitudinalOffset = carConfig.collisionLongitudinalOffset,
         )
 
     private fun car(
         x: Float = 0f,
         y: Float = 0f,
+        rotationDeg: Float = 0f,
         velocityX: Float = 0f,
         velocityY: Float = 0f,
     ): CarState =
         CarState(
             x = x,
             y = y,
+            rotationDeg = rotationDeg,
             velocityX = velocityX,
             velocityY = velocityY,
         )
@@ -203,7 +208,10 @@ class CollisionScenarioTest {
         first: CarState,
         second: CarState,
     ) {
-        assertTrue(distanceBetween(first, second) >= CAR_DIAMETER - TOLERANCE)
+        assertTrue(
+            distanceBetween(first, second) >=
+                carConfig.collisionRadius * 2f - TOLERANCE,
+        )
     }
 
     private fun distanceBetween(
@@ -213,7 +221,6 @@ class CollisionScenarioTest {
 
     private companion object {
         const val CAR_RADIUS = 1f
-        const val CAR_DIAMETER = CAR_RADIUS * 2f
         const val TOLERANCE = 0.001f
     }
 }
