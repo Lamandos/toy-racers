@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "zero-input-rolling-resistance",
+      "seed": 7012,
+      "trackId": "track-01",
+      "playerCar": "red-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["car", "physics", "idle", "rolling-resistance"],
+      "ticks": 60,
+      "snapshotIntervalTicks": 15,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 60}
+      ],
+      "initialStates": [
+        {"id": "player", "speed": 20, "velocityX": 20}
+      ]
+    }
+  ]
+}

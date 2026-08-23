@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "long-running-physics-stability",
+      "seed": 7013,
+      "trackId": "track-02",
+      "playerCar": "blue-stripe",
+      "inputOrigin": "touch",
+      "tags": ["car", "physics", "stability", "long-running", "throttle", "steering"],
+      "ticks": 6000,
+      "snapshotIntervalTicks": 1000,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 1500, "throttle": 1, "steering": 0.8},
+        {"fromTick": 1501, "toTick": 3000, "throttle": 1, "steering": -0.8},
+        {"fromTick": 3001, "toTick": 4500, "throttle": 1, "steering": 0.8},
+        {"fromTick": 4501, "toTick": 6000, "throttle": 1, "steering": -0.8}
+      ]
+    }
+  ]
+}

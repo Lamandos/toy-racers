@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "steering-while-reversing",
+      "seed": 7007,
+      "trackId": "track-01",
+      "playerCar": "red-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["car", "physics", "steering", "reverse"],
+      "ticks": 30,
+      "snapshotIntervalTicks": 10,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 30, "steering": 1}
+      ],
+      "initialStates": [
+        {"id": "player", "speed": -12, "velocityX": -12}
+      ]
+    }
+  ]
+}

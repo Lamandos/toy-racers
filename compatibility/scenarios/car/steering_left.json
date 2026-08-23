@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "steering-left",
+      "seed": 7005,
+      "trackId": "track-01",
+      "playerCar": "red-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["car", "physics", "steering", "left"],
+      "ticks": 30,
+      "snapshotIntervalTicks": 10,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 30, "steering": -1}
+      ],
+      "initialStates": [
+        {"id": "player", "speed": 12, "velocityX": 12}
+      ]
+    }
+  ]
+}

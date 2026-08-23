@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "throttle-brake-transition",
+      "seed": 7011,
+      "trackId": "track-01",
+      "playerCar": "red-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["car", "physics", "throttle", "brake", "transition"],
+      "ticks": 90,
+      "snapshotIntervalTicks": 15,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 60, "throttle": 1},
+        {"fromTick": 61, "toTick": 90, "brake": 1}
+      ]
+    }
+  ]
+}
