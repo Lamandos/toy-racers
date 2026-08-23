@@ -30,8 +30,8 @@ class CollisionScenarioTest {
 
     @Test
     fun `side collision reports contact and redirects lateral movement`() {
-        val first = car(y = 0f, rotationDeg = 90f, velocityY = 8f)
-        val second = car(y = 2.5f, rotationDeg = 270f)
+        val first = car(y = 0f, rotationDeg = 0f, velocityY = 8f)
+        val second = car(y = 2f, rotationDeg = 90f)
 
         val result = collide(first, second)
 
@@ -97,11 +97,10 @@ class CollisionScenarioTest {
     fun `car track collision reports world boundary and removes outward velocity`() {
         val state = car(x = 0.2f, y = 6f, velocityX = -10f)
 
-        val result =
-            collisionSystem.resolveTrackCollision(state, CAR_RADIUS, trackWithoutObjects)
+        val result = resolveTrackCollision(state)
 
         assertTrackContact(result)
-        assertEquals(CAR_RADIUS, state.x, TOLERANCE)
+        assertEquals(EXPECTED_BOUNDARY_CENTER, state.x, TOLERANCE)
         assertEquals(0f, state.velocityX, TOLERANCE)
     }
 
@@ -112,9 +111,9 @@ class CollisionScenarioTest {
         repeat(3) {
             state.x = 0.5f
             state.velocityX = -4f
-            val result = collisionSystem.resolveTrackCollision(state, CAR_RADIUS, trackWithoutObjects)
+            val result = resolveTrackCollision(state)
             assertTrackContact(result)
-            assertEquals(CAR_RADIUS, state.x, TOLERANCE)
+            assertEquals(EXPECTED_BOUNDARY_CENTER, state.x, TOLERANCE)
             assertEquals(0f, state.velocityX, TOLERANCE)
         }
     }
@@ -179,6 +178,14 @@ class CollisionScenarioTest {
             secondLongitudinalOffset = carConfig.collisionLongitudinalOffset,
         )
 
+    private fun resolveTrackCollision(state: CarState): CollisionResult =
+        collisionSystem.resolveTrackCollision(
+            state = state,
+            radius = carConfig.collisionRadius,
+            longitudinalOffset = carConfig.collisionLongitudinalOffset,
+            track = trackWithoutObjects,
+        )
+
     private fun car(
         x: Float = 0f,
         y: Float = 0f,
@@ -208,10 +215,27 @@ class CollisionScenarioTest {
         first: CarState,
         second: CarState,
     ) {
-        assertTrue(
-            distanceBetween(first, second) >=
-                carConfig.collisionRadius * 2f - TOLERANCE,
-        )
+        val firstCircles =
+            carCollisionCircles(
+                first,
+                carConfig.collisionRadius,
+                carConfig.collisionLongitudinalOffset,
+            )
+        val secondCircles =
+            carCollisionCircles(
+                second,
+                carConfig.collisionRadius,
+                carConfig.collisionLongitudinalOffset,
+            )
+        firstCircles.forEach { firstCircle ->
+            secondCircles.forEach { secondCircle ->
+                val distance = hypot(secondCircle.x - firstCircle.x, secondCircle.y - firstCircle.y)
+                assertTrue(
+                    "Collision circles still overlap: first=$firstCircle, second=$secondCircle",
+                    distance >= firstCircle.radius + secondCircle.radius - TOLERANCE,
+                )
+            }
+        }
     }
 
     private fun distanceBetween(
@@ -220,7 +244,7 @@ class CollisionScenarioTest {
     ): Float = hypot(second.x - first.x, second.y - first.y)
 
     private companion object {
-        const val CAR_RADIUS = 1f
+        const val EXPECTED_BOUNDARY_CENTER = 1.62f
         const val TOLERANCE = 0.001f
     }
 }
