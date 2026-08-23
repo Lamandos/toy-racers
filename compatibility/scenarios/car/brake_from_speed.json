@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "brake-from-speed",
+      "seed": 7003,
+      "trackId": "track-01",
+      "playerCar": "red-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["car", "physics", "brake"],
+      "ticks": 15,
+      "snapshotIntervalTicks": 5,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 15, "brake": 1}
+      ],
+      "initialStates": [
+        {"id": "player", "speed": 20, "velocityX": 20}
+      ]
+    }
+  ]
+}

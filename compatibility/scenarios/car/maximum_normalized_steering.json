@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "maximum-normalized-steering",
+      "seed": 7014,
+      "trackId": "track-01",
+      "playerCar": "red-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["car", "physics", "steering", "boundary", "normalization"],
+      "ticks": 20,
+      "snapshotIntervalTicks": 5,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 20, "steering": 1}
+      ],
+      "initialStates": [
+        {"id": "player", "speed": 12, "velocityX": 12}
+      ]
+    }
+  ]
+}

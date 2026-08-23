@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "drift-threshold-transition",
+      "seed": 7016,
+      "trackId": "track-01",
+      "playerCar": "red-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["car", "physics", "drift", "boundary", "transition", "steering"],
+      "ticks": 40,
+      "snapshotIntervalTicks": 10,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 20, "steering": 0.64},
+        {"fromTick": 21, "toTick": 40, "steering": 0.68}
+      ],
+      "initialStates": [
+        {"id": "player", "speed": 24, "velocityX": 24}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "acceleration-to-max-speed",
+      "seed": 7002,
+      "trackId": "track-01",
+      "playerCar": "red-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["car", "physics", "throttle", "max-speed"],
+      "ticks": 120,
+      "snapshotIntervalTicks": 30,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 120, "throttle": 1}
+      ]
+    }
+  ]
+}

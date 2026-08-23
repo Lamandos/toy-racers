@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "drift-exit",
+      "seed": 7009,
+      "trackId": "track-01",
+      "playerCar": "red-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["car", "physics", "drift", "drift-exit"],
+      "ticks": 30,
+      "snapshotIntervalTicks": 10,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 30}
+      ],
+      "initialStates": [
+        {"id": "player", "speed": 24, "velocityX": 24, "driftAmount": 0.8}
+      ]
+    }
+  ]
+}

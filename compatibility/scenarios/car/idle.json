@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "idle",
+      "seed": 7001,
+      "trackId": "track-01",
+      "playerCar": "red-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["car", "physics", "idle"],
+      "ticks": 120,
+      "snapshotIntervalTicks": 60,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 120}
+      ],
+      "initialStates": [
+        {"id": "player", "x": 4, "y": 68}
+      ]
+    }
+  ]
+}

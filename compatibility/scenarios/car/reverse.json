@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "reverse",
+      "seed": 7004,
+      "trackId": "track-01",
+      "playerCar": "red-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["car", "physics", "brake", "reverse"],
+      "ticks": 90,
+      "snapshotIntervalTicks": 30,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 90, "brake": 1}
+      ],
+      "initialStates": [
+        {"id": "player", "x": 80, "y": 17}
+      ]
+    }
+  ]
+}

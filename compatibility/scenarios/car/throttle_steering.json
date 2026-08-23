@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "throttle-steering",
+      "seed": 7010,
+      "trackId": "track-01",
+      "playerCar": "red-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["car", "physics", "throttle", "steering"],
+      "ticks": 45,
+      "snapshotIntervalTicks": 15,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 45, "throttle": 1, "steering": -0.7}
+      ]
+    }
+  ]
+}

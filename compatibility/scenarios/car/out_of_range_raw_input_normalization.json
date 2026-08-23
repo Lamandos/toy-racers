@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "out-of-range-raw-input-normalization",
+      "seed": 7015,
+      "trackId": "track-01",
+      "playerCar": "red-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["car", "physics", "boundary", "normalization", "throttle", "steering"],
+      "ticks": 30,
+      "snapshotIntervalTicks": 10,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 30, "throttle": 2, "brake": -1, "steering": -3}
+      ]
+    }
+  ]
+}
