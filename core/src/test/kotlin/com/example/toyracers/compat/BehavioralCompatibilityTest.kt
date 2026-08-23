@@ -381,8 +381,11 @@ class BehavioralCompatibilityTest {
             val expected = goldens.get(trace.scenarioId)
             assertNotNull("Missing golden trace for ${trace.scenarioId}", expected)
             val actualJson = JsonReader().parse(BehavioralTraceJson.encode(trace))
-            val difference = BehavioralTraceJson.firstDifference(checkNotNull(expected), actualJson)
-            assertEquals("First mismatch in ${trace.scenarioId}: $difference", null, difference)
+            val report =
+                SnapshotComparisonEngine
+                    .compare(checkNotNull(expected), actualJson)
+                    .failureReport(trace.scenarioId)
+            assertEquals("First mismatch in ${trace.scenarioId}:\n$report", null, report)
         }
     }
 

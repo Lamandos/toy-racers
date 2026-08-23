@@ -128,11 +128,30 @@ fields were added. Version-1 consumers must migrate to version 2 or remain pinne
 reference commit; they must not parse version-2 data as version 1. Scenario and input-script
 documents remain at schema version 1 because their input shape is unchanged.
 
-All non-float state is exact. Float fields are finite, serialized as locale-independent fixed-point
-values with six digits after the decimal point, and canonicalize negative zero to `0.000000`.
-Comparisons accept an absolute tolerance of `0.0001`, implemented by
-`BehavioralTraceJson.FLOAT_TOLERANCE`; this tolerance applies after parsing JSON and does not relax
-discrete fields.
+All non-float state is exact: IDs, ticks, state/surface enums, checkpoints, laps, finish flags,
+race positions, and every ordered array value must be identical. Float fields are finite,
+serialized as locale-independent fixed-point values with six digits after the decimal point, and
+canonicalize negative zero to `0.000000`.
+
+`SnapshotComparisonEngine` applies the following absolute tolerance after parsing JSON. Relative
+tolerance is deliberately disabled: the comparison must remain sensitive at important gameplay
+boundaries near zero.
+
+| Value type | Fields | Absolute tolerance | Comparison |
+| --- | --- | ---: | --- |
+| Position | `x`, `y` | `0.0001` world units | Numeric delta |
+| Velocity | `velocityX`, `velocityY` | `0.0001` world units per second | Numeric delta |
+| Rotation | `rotation` | `0.0001` degrees | Shortest circular delta across `0`/`360` |
+| Angular velocity | `angularVelocity` | `0.0001` degrees per second | Numeric delta |
+| Speed | `longitudinalSpeed`, `lateralSpeed` | `0.0001` world units per second | Numeric delta |
+| Drift | `driftAmount` | `0.0001` | Numeric delta |
+| Simulation time | `remainingSeconds`, `elapsedSimulationTime`, `bestLapTime` | `0.0001` seconds | Numeric delta |
+
+`NaN`, positive infinity, and negative infinity are always mismatches, including when both files
+contain the same non-finite value. The engine retains the first mismatching tick and participant,
+prints a table of the mismatched fields with expected/actual values and deltas, then lists a small
+number of following differences. This makes the same comparator suitable for checked-in Kotlin
+goldens and a future Dart runtime's output files.
 
 ## Updating Kotlin reference goldens
 
