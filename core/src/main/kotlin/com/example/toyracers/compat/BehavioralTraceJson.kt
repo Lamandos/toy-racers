@@ -5,7 +5,7 @@ import java.util.Locale
 
 internal object BehavioralTraceJson {
     const val SCHEMA_VERSION = 2
-    const val FLOAT_TOLERANCE = 0.0001
+    const val FLOAT_TOLERANCE = SnapshotComparisonEngine.ABSOLUTE_TOLERANCE
 
     fun encode(trace: BehavioralTrace): String =
         buildString {

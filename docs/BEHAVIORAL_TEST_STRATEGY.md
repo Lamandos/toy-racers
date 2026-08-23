@@ -558,10 +558,14 @@ Before encoding or comparing a snapshot:
    names, booleans, IDs, integer counters, ranks, phases, and nullability exactly.
 5. Encode finite floats with `Locale.ROOT` and six decimal places.
 
-Compare discrete values exactly. For normalized floats use absolute tolerance `0.0001`; do not use
-relative tolerance, because many important boundaries are near zero. Compare angles after circular
-normalization, using the shortest signed angular difference. A failing comparator must report the
-first operation/sample and JSON path that differs.
+Compare IDs, ticks, enums, checkpoint/lap counters, finish flags, race positions, and every
+contractually ordered array exactly. For normalized floats use absolute tolerance `0.0001`; do not
+use relative tolerance, because many important boundaries are near zero. The tolerance applies to
+position, velocity, rotation, angular velocity, speed, drift, and simulation-derived time. Compare
+angles after circular normalization, using the shortest signed angular difference. `NaN` and either
+infinity are invalid even if both traces contain the same value. A failing comparator must report
+the first operation/sample tick, participant, field, expected value, actual value, and delta; a
+short list of subsequent mismatches is useful when present.
 
 For same-runtime Kotlin goldens, also run each scenario twice and require byte-identical normalized
 traces. Cross-runtime comparisons may apply the float tolerance after parsing, but must still

@@ -109,9 +109,7 @@ internal class CompatibilityGoldenMaster(
         }
         val expected = Files.newBufferedReader(fixture.golden, UTF_8).use(JsonReader()::parse)
         val actual = JsonReader().parse(generatedGolden(fixture))
-        return BehavioralTraceJson.firstDifference(expected, actual)?.let { difference ->
-            "${fixture.scenario.id}: $difference"
-        }
+        return SnapshotComparisonEngine.compare(expected, actual).failureReport(fixture.scenario.id)
     }
 
     private fun generatedGolden(fixture: GoldenFixture): String =
