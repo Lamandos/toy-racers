@@ -14,7 +14,7 @@
         {"fromTick": 1, "toTick": 120}
       ],
       "initialStates": [
-        {"id": "player", "x": 4, "y": 68}
+        {"id": "player", "x": 47, "y": 51}
       ]
     }
   ]
