@@ -432,6 +432,11 @@ Potential sources of variation that must be controlled are:
 - Participant and geometry lists are ordered today. Replacing them with unordered collections would
   change AI obstacle selection, contact resolution, same-tick finishes, and ties.
 
+Long-running determinism tests use normalized scenarios with at least 1,000 and 5,000 physical
+ticks. They validate every snapshot for finite values, bounded velocity, normalized rotation, legal
+race phase, and stable participant/ranking/finish ordering. The 5,000-tick scenario runs 20 times;
+the SHA-256 hash of its normalized trace must be identical for every run.
+
 ## Wall-clock and frame-delta audit
 
 `System.nanoTime()` appears in optional performance measurement: `RaceSession` can report

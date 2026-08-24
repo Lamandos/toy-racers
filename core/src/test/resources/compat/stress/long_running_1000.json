@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "stress-long-running-1000",
+      "seed": 13001,
+      "trackId": "track-02",
+      "playerCar": "blue-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["stress", "determinism", "long-running", "throttle", "steering"],
+      "ticks": 1000,
+      "snapshotIntervalTicks": 1,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 1000, "throttle": 1, "steering": 0.8}
+      ]
+    }
+  ]
+}
