@@ -4,7 +4,7 @@ import com.badlogic.gdx.utils.JsonValue
 import java.util.Locale
 
 internal object BehavioralTraceJson {
-    const val SCHEMA_VERSION = 2
+    const val SCHEMA_VERSION = 3
     const val FLOAT_TOLERANCE = SnapshotComparisonEngine.ABSOLUTE_TOLERANCE
 
     fun encode(trace: BehavioralTrace): String =

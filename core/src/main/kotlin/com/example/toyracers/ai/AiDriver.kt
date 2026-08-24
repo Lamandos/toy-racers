@@ -7,14 +7,53 @@ import com.example.toyracers.track.TrackPoint
 import kotlin.math.abs
 
 /** Coordinates path, obstacle, recovery and difficulty decisions without mutating car state. */
-class AiDriver(
+class AiDriver private constructor(
     racingLine: List<TrackPoint>,
     initialPosition: TrackPoint,
-    config: AiConfig = AiConfig(),
-    val difficulty: AiDifficulty = AiDifficulty.NORMAL,
-    private val racingLineBias: Float = 0f,
-    private val track: Track? = null,
+    config: AiConfig,
+    val difficulty: AiDifficulty,
+    private val racingLineBias: Float,
+    private val track: Track?,
+    randomSeed: Long?,
+    @Suppress("UNUSED_PARAMETER") initializationMarker: Unit,
 ) {
+    constructor(
+        racingLine: List<TrackPoint>,
+        initialPosition: TrackPoint,
+        config: AiConfig = AiConfig(),
+        difficulty: AiDifficulty = AiDifficulty.NORMAL,
+        racingLineBias: Float = 0f,
+        track: Track? = null,
+    ) : this(
+        racingLine,
+        initialPosition,
+        config,
+        difficulty,
+        racingLineBias,
+        track,
+        null,
+        Unit,
+    )
+
+    constructor(
+        racingLine: List<TrackPoint>,
+        initialPosition: TrackPoint,
+        config: AiConfig,
+        difficulty: AiDifficulty,
+        racingLineBias: Float,
+        track: Track?,
+        randomSeed: Long?,
+    ) : this(
+        racingLine,
+        initialPosition,
+        config,
+        difficulty,
+        racingLineBias,
+        track,
+        randomSeed,
+        Unit,
+    )
+
     private val config = config.forDifficulty(difficulty)
     private val pathFollower =
         AiPathFollower(
@@ -30,7 +69,7 @@ class AiDriver(
     private var mistakeTimeRemaining = 0f
     private var randomState =
         initialPosition.x.toBits() xor initialPosition.y.toBits() xor
-            racingLineBias.toBits()
+            racingLineBias.toBits() xor randomSeedBits(randomSeed)
 
     var behaviorState: AiBehaviorState = AiBehaviorState.FOLLOW_ROUTE
         private set
@@ -205,6 +244,11 @@ class AiDriver(
             val sample = (randomState ushr 8).toFloat() / 0x01000000
             if (sample < config.mistakeProbability) mistakeTimeRemaining = config.mistakeDurationSeconds
         }
+    }
+
+    private fun randomSeedBits(seed: Long?): Int {
+        if (seed == null) return 0
+        return (seed xor (seed ushr 32)).toInt()
     }
 
     private fun safestPassingDirection(

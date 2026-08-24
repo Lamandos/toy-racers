@@ -21,6 +21,10 @@ example, `scenarios/car/straight_acceleration.json` is verified against
 lowercase-hyphen-separated `.json` filename matching `[a-z0-9][a-z0-9-]*\.json`; referenced
 scripts are excluded from scenario discovery and have no golden of their own.
 
+Long scenarios tagged `event-snapshots` preserve an additional post-step snapshot whenever the
+player passes a checkpoint, completes a lap, or finishes. These samples use the `checkpoint`,
+`lap`, and `finish` labels alongside normal periodic `simulation` samples.
+
 The recommended categories are `car`, `collision`, `race`, `track`, `surface`, `ai`, and
 `full_race`. Add a scenario to the narrowest category that owns the behaviour being locked down.
 

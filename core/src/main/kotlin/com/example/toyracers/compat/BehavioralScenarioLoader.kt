@@ -9,6 +9,7 @@ import kotlin.io.path.name
 /** Reads and validates schema-versioned scenario documents for the headless runner. */
 internal object BehavioralScenarioLoader {
     const val SCHEMA_VERSION = 1
+    const val CURRENT_SCENARIO_SCHEMA_VERSION = 2
 
     fun load(path: Path): BehavioralScenario {
         val scenarioPath = path.toAbsolutePath().normalize()
@@ -33,13 +34,14 @@ internal object BehavioralScenarioLoader {
         root: JsonValue,
         inputScriptReader: (String) -> JsonValue,
     ): List<BehavioralScenario> {
-        BehavioralScenarioValidator.validateDocument(root)
-        return root.get("scenarios").children().map { scenario(it, inputScriptReader) }
+        val schemaVersion = BehavioralScenarioValidator.validateDocument(root)
+        return root.get("scenarios").children().map { scenario(it, inputScriptReader, schemaVersion) }
     }
 
     private fun scenario(
         value: JsonValue,
         inputScriptReader: (String) -> JsonValue,
+        schemaVersion: Int,
     ): BehavioralScenario =
         BehavioralScenario(
             id = value.getString("id"),
@@ -56,6 +58,16 @@ internal object BehavioralScenarioLoader {
             ticks = value.getInt("ticks"),
             snapshotIntervalTicks = value.getInt("snapshotIntervalTicks"),
             inputSegments = inputSegments(value, inputScriptReader),
+            inputTweaks =
+                if (schemaVersion >= CURRENT_SCENARIO_SCHEMA_VERSION) {
+                    value
+                        .get("inputTweaks")
+                        ?.children()
+                        ?.map(::inputTweak)
+                        .orEmpty()
+                } else {
+                    emptyList()
+                },
             initialStates =
                 value
                     .get("initialStates")
@@ -75,6 +87,14 @@ internal object BehavioralScenarioLoader {
                     brake = value.getFloat("brake", 0f),
                     steering = value.getFloat("steering", 0f),
                 ),
+        )
+
+    private fun inputTweak(value: JsonValue): BehavioralInputTweak =
+        BehavioralInputTweak(
+            tick = value.getInt("tick"),
+            throttleDelta = value.getFloat("throttleDelta", 0f),
+            brakeDelta = value.getFloat("brakeDelta", 0f),
+            steeringDelta = value.getFloat("steeringDelta", 0f),
         )
 
     private fun inputSegments(

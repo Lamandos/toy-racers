@@ -50,11 +50,10 @@ internal class CompatibilityGoldenMaster(
     private fun fixtures(): List<GoldenFixture> {
         require(Files.isDirectory(scenarios)) { "Scenario directory does not exist: $scenarios" }
         val files = jsonFiles(scenarios)
-        val inputScripts = inputScriptPaths(files)
-        val referencedScripts = files.flatMap(::referencedInputScripts).toSet()
+        val referencedScripts = referencedInputScriptPaths(files)
         val fixtures =
             files
-                .filterNot { path -> path in inputScripts && path in referencedScripts }
+                .filterNot(referencedScripts::contains)
                 .map(::fixture)
         require(fixtures.isNotEmpty()) { "No compatibility scenarios found in $scenarios" }
         val duplicateIds =
@@ -67,33 +66,6 @@ internal class CompatibilityGoldenMaster(
             "Compatibility scenario IDs must be unique: ${duplicateIds.joinToString(", ")}"
         }
         return fixtures
-    }
-
-    private fun inputScriptPaths(files: List<Path>): Set<Path> =
-        files
-            .filter { path ->
-                val root = readJson(path)
-                if (root.has(SCENARIOS_FIELD)) {
-                    false
-                } else {
-                    BehavioralScenarioValidator.validateInputScript(root, path.toString())
-                    true
-                }
-            }.toSet()
-
-    private fun referencedInputScripts(path: Path): List<Path> {
-        val root = Files.newBufferedReader(path, UTF_8).use(JsonReader()::parse)
-        val scenarios = root.get("scenarios")?.takeIf { it.isArray } ?: return emptyList()
-        return scenarios
-            .children()
-            .mapNotNull { scenario ->
-                scenario
-                    .get(INPUT_SCRIPT_FIELD)
-                    ?.takeIf { it.isString }
-                    ?.asString()
-                    ?.let(path.parent::resolve)
-                    ?.normalize()
-            }
     }
 
     private fun fixture(path: Path): GoldenFixture {
@@ -134,10 +106,6 @@ internal class CompatibilityGoldenMaster(
         }
     }
 
-    private fun readJson(path: Path): JsonValue = Files.newBufferedReader(path, UTF_8).use(JsonReader()::parse)
-
-    private fun JsonValue.children(): List<JsonValue> = generateSequence(child) { it.next }.toList()
-
     private data class GoldenFixture(
         val golden: Path,
         val scenario: BehavioralScenario,
@@ -150,7 +118,44 @@ internal class CompatibilityGoldenMaster(
 
     private companion object {
         const val JSON_SUFFIX = ".json"
-        const val SCENARIOS_FIELD = "scenarios"
-        const val INPUT_SCRIPT_FIELD = "inputScript"
     }
 }
+
+/** Finds referenced, valid input-script files without hiding scenario documents. */
+internal fun referencedInputScriptPaths(files: List<Path>): Set<Path> {
+    val inputScripts =
+        files
+            .filter { path ->
+                val root = readCompatibilityJson(path)
+                if (root.has(SCENARIOS_FIELD)) {
+                    false
+                } else {
+                    BehavioralScenarioValidator.validateInputScript(root, path.toString())
+                    true
+                }
+            }.toSet()
+    val referencedScripts = files.flatMap(::referencedInputScripts).toSet()
+    return inputScripts intersect referencedScripts
+}
+
+private fun referencedInputScripts(path: Path): List<Path> {
+    val root = readCompatibilityJson(path)
+    val scenarios = root.get(SCENARIOS_FIELD)?.takeIf { it.isArray } ?: return emptyList()
+    return scenarios
+        .children()
+        .mapNotNull { scenario ->
+            scenario
+                .get(INPUT_SCRIPT_FIELD)
+                ?.takeIf { it.isString }
+                ?.asString()
+                ?.let(path.parent::resolve)
+                ?.normalize()
+        }
+}
+
+private fun readCompatibilityJson(path: Path): JsonValue = Files.newBufferedReader(path, UTF_8).use(JsonReader()::parse)
+
+private fun JsonValue.children(): List<JsonValue> = generateSequence(child) { it.next }.toList()
+
+private const val SCENARIOS_FIELD = "scenarios"
+private const val INPUT_SCRIPT_FIELD = "inputScript"

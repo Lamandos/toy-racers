@@ -26,6 +26,26 @@ class BehavioralScenarioLoaderTest {
         )
     }
 
+    @Test(expected = IllegalArgumentException::class)
+    fun `fixture loader rejects input tweak tick beyond Int range`() {
+        BehavioralFixtureLoader.parseScenarioDocument(
+            JsonReader().parse(
+                """
+                {
+                  "schemaVersion": 2,
+                  "scenarios": [{
+                    "id": "invalid-input-tweak-tick", "seed": 1, "trackId": "track-01",
+                    "playerCar": "red-stripe", "inputOrigin": "keyboard", "tags": [],
+                    "ticks": 1, "snapshotIntervalTicks": 1,
+                    "inputSegments": [{"fromTick": 1, "toTick": 1}],
+                    "inputTweaks": [{"tick": 4294967297, "steeringDelta": 0.1}]
+                  }]
+                }
+                """.trimIndent(),
+            ),
+        )
+    }
+
     @Test
     fun `scenario loader normalizes scenario path before resolving input script`() {
         val temporaryDirectory = Files.createTempDirectory("behavioral-scenario")
@@ -58,6 +78,31 @@ class BehavioralScenarioLoaderTest {
                 .get("finishPosition")
                 .getInt("maximum"),
         )
+    }
+
+    @Test
+    fun `scenario loader applies optional input tweaks`() {
+        val scenario =
+            BehavioralFixtureLoader
+                .parseScenarioDocument(
+                    JsonReader().parse(
+                        """
+                        {
+                          "schemaVersion": 2,
+                          "scenarios": [{
+                            "id": "input-tweak", "seed": 1, "trackId": "track-01",
+                            "playerCar": "red-stripe", "inputOrigin": "keyboard", "tags": [],
+                            "ticks": 2, "snapshotIntervalTicks": 1,
+                            "inputSegments": [{"fromTick": 1, "toTick": 2, "throttle": 1}],
+                            "inputTweaks": [{"tick": 2, "steeringDelta": 0.005}]
+                          }]
+                        }
+                        """.trimIndent(),
+                    ),
+                ).single()
+
+        assertEquals(2, scenario.inputTweaks.single().tick)
+        assertEquals(0.005f, scenario.inputTweaks.single().steeringDelta, 0.000001f)
     }
 
     private fun scenarioJson(): String =

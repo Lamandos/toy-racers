@@ -11,6 +11,7 @@ internal data class BehavioralScenario(
     val ticks: Int,
     val snapshotIntervalTicks: Int,
     val inputSegments: List<BehavioralInputSegment>,
+    val inputTweaks: List<BehavioralInputTweak> = emptyList(),
     val initialStates: List<BehavioralInitialState>,
     val fullRace: Boolean,
 )
@@ -23,3 +24,11 @@ internal data class BehavioralInputSegment(
 ) {
     fun contains(tick: Int): Boolean = tick in fromTick..toTick
 }
+
+/** An explicit additive input adjustment for one simulation tick. */
+internal data class BehavioralInputTweak(
+    val tick: Int,
+    val throttleDelta: Float = 0f,
+    val brakeDelta: Float = 0f,
+    val steeringDelta: Float = 0f,
+)

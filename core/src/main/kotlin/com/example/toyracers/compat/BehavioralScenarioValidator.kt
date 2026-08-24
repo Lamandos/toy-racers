@@ -8,19 +8,21 @@ import com.example.toyracers.track.TrackLoader
 
 /** Validates the portable scenario contract before the simulation begins. */
 internal object BehavioralScenarioValidator {
-    fun validateDocument(root: JsonValue) {
+    fun validateDocument(root: JsonValue): Int {
         require(root.isObject) { "Scenario document must be an object" }
         root.requireProperties(ROOT_PROPERTIES, "$")
         val schemaVersion = root.required(SCHEMA_VERSION_FIELD, "$")
         requireInteger(schemaVersion, "$.schemaVersion")
-        require(schemaVersion.asLong() == BehavioralScenarioLoader.SCHEMA_VERSION.toLong()) {
+        val schemaVersionNumber = schemaVersion.asInt()
+        require(schemaVersionNumber in SUPPORTED_SCENARIO_SCHEMA_VERSIONS) {
             "Unsupported scenario schema version"
         }
         val scenarios = root.required(SCENARIOS_FIELD, "$")
         require(scenarios.isArray && scenarios.size > 0) { "$.scenarios must be a non-empty array" }
         scenarios.children().forEachIndexed { index, scenario ->
-            validateScenarioJson(scenario, "$.scenarios[$index]")
+            validateScenarioJson(scenario, "$.scenarios[$index]", schemaVersionNumber)
         }
+        return schemaVersionNumber
     }
 
     fun validateInputScript(
@@ -49,6 +51,14 @@ internal object BehavioralScenarioValidator {
                 "Scenario ${scenario.id} has an invalid input range ${segment.fromTick}..${segment.toTick}"
             }
         }
+        require(scenario.inputTweaks.zipWithNext().all { (first, second) -> first.tick < second.tick }) {
+            "Scenario ${scenario.id} has unordered or duplicate input tweaks"
+        }
+        scenario.inputTweaks.forEach { tweak ->
+            require(tweak.tick in 1..scenario.ticks) {
+                "Scenario ${scenario.id} has an invalid input tweak tick ${tweak.tick}"
+            }
+        }
         require(scenario.inputSegments.zipWithNext().all { (first, second) -> first.toTick < second.fromTick }) {
             "Scenario ${scenario.id} has overlapping or unordered input ranges"
         }
@@ -57,9 +67,16 @@ internal object BehavioralScenarioValidator {
     private fun validateScenarioJson(
         value: JsonValue,
         path: String,
+        schemaVersion: Int,
     ) {
         require(value.isObject) { "$path must be an object" }
-        value.requireProperties(SCENARIO_PROPERTIES, path)
+        val allowedProperties =
+            if (schemaVersion >= BehavioralScenarioLoader.CURRENT_SCENARIO_SCHEMA_VERSION) {
+                SCENARIO_PROPERTIES
+            } else {
+                LEGACY_SCENARIO_PROPERTIES
+            }
+        value.requireProperties(allowedProperties, path)
         val id = value.required(ID_FIELD, path)
         requireString(id, "$path.$ID_FIELD")
         require(SCENARIO_ID.matches(id.asString())) { "$path.$ID_FIELD has an invalid format" }
@@ -93,6 +110,11 @@ internal object BehavioralScenarioValidator {
                 "$path.$INPUT_SCRIPT_FIELD has an invalid file name"
             }
         }
+        if (schemaVersion >= BehavioralScenarioLoader.CURRENT_SCENARIO_SCHEMA_VERSION) {
+            value.get(INPUT_TWEAKS_FIELD)?.let {
+                validateInputTweaks(it, "$path.$INPUT_TWEAKS_FIELD")
+            }
+        }
 
         value.get(INITIAL_STATES_FIELD)?.let {
             validateInitialStates(it, "$path.$INITIAL_STATES_FIELD", value.getString(TRACK_ID_FIELD))
@@ -106,7 +128,7 @@ internal object BehavioralScenarioValidator {
     ) {
         require(value.isArray && value.size > 0) { "$path must be a non-empty array" }
         value.children().forEachIndexed { index, segment ->
-            val segmentPath = "$path[$index]"
+            val segmentPath = indexedPath(path, index)
             require(segment.isObject) { "$segmentPath must be an object" }
             segment.requireProperties(INPUT_SEGMENT_PROPERTIES, segmentPath)
             requireInteger(
@@ -127,6 +149,27 @@ internal object BehavioralScenarioValidator {
         }
     }
 
+    private fun validateInputTweaks(
+        value: JsonValue,
+        path: String,
+    ) {
+        require(value.isArray) { "$path must be an array" }
+        value.children().forEachIndexed { index, tweak ->
+            val tweakPath = indexedPath(path, index)
+            require(tweak.isObject) { "$tweakPath must be an object" }
+            tweak.requireProperties(INPUT_TWEAK_PROPERTIES, tweakPath)
+            requireInteger(
+                tweak.required(TICK_FIELD, tweakPath),
+                "$tweakPath.$TICK_FIELD",
+                1,
+                MAX_INT_VALUE,
+            )
+            INPUT_TWEAK_FIELDS.forEach { name ->
+                tweak.get(name)?.let { requireFloat(it, "$tweakPath.$name") }
+            }
+        }
+    }
+
     private fun validateInitialStates(
         value: JsonValue,
         path: String,
@@ -135,7 +178,7 @@ internal object BehavioralScenarioValidator {
         require(value.isArray) { "$path must be an array" }
         val maxCheckpointIndex = TRACK_CHECKPOINT_COUNTS.getValue(trackId).toLong()
         value.children().forEachIndexed { index, initialState ->
-            val statePath = "$path[$index]"
+            val statePath = indexedPath(path, index)
             require(initialState.isObject) { "$statePath must be an object" }
             initialState.requireProperties(INITIAL_STATE_PROPERTIES, statePath)
             requireEnum(initialState.required(ID_FIELD, statePath), "$statePath.$ID_FIELD", INITIAL_STATE_IDS)
@@ -176,11 +219,16 @@ internal object BehavioralScenarioValidator {
         require(value.isArray) { "$path must be an array" }
         val tags =
             value.children().mapIndexed { index, tag ->
-                requireString(tag, "$path[$index]")
+                requireString(tag, indexedPath(path, index))
                 tag.asString()
             }
         require(tags.size == tags.toSet().size) { "$path must not contain duplicate tags" }
     }
+
+    private fun indexedPath(
+        path: String,
+        index: Int,
+    ): String = "$path[$index]"
 
     private fun JsonValue.requireProperties(
         allowed: Set<String>,
@@ -292,11 +340,16 @@ internal object BehavioralScenarioValidator {
     private const val TAGS_FIELD = "tags"
     private const val INPUT_SEGMENTS_FIELD = "inputSegments"
     private const val INPUT_SCRIPT_FIELD = "inputScript"
+    private const val INPUT_TWEAKS_FIELD = "inputTweaks"
     private const val INITIAL_STATES_FIELD = "initialStates"
     private const val FULL_RACE_FIELD = "fullRace"
     private const val SEGMENTS_FIELD = "segments"
     private const val FROM_TICK_FIELD = "fromTick"
     private const val TO_TICK_FIELD = "toTick"
+    private const val TICK_FIELD = "tick"
+    private const val THROTTLE_DELTA_FIELD = "throttleDelta"
+    private const val BRAKE_DELTA_FIELD = "brakeDelta"
+    private const val STEERING_DELTA_FIELD = "steeringDelta"
     private const val SURFACE_SPEED_MULTIPLIER_FIELD = "surfaceSpeedMultiplier"
     private const val TOTAL_RACE_TIME_FIELD = "totalRaceTime"
     private const val CURRENT_CHECKPOINT_INDEX_FIELD = "currentCheckpointIndex"
@@ -316,6 +369,9 @@ internal object BehavioralScenarioValidator {
     private val INPUT_SCRIPT_PROPERTIES = setOf(SCHEMA_VERSION_FIELD, SEGMENTS_FIELD)
     private val INPUT_FIELDS = setOf("throttle", "brake", "steering")
     private val INPUT_SEGMENT_PROPERTIES = setOf(FROM_TICK_FIELD, TO_TICK_FIELD) + INPUT_FIELDS
+    private val INPUT_TWEAK_FIELDS =
+        setOf(THROTTLE_DELTA_FIELD, BRAKE_DELTA_FIELD, STEERING_DELTA_FIELD)
+    private val INPUT_TWEAK_PROPERTIES = setOf(TICK_FIELD) + INPUT_TWEAK_FIELDS
     private val FLOAT_INITIAL_STATE_FIELDS =
         setOf(
             "x",
@@ -350,7 +406,14 @@ internal object BehavioralScenarioValidator {
             SNAPSHOT_INTERVAL_TICKS_FIELD,
             INPUT_SEGMENTS_FIELD,
             INPUT_SCRIPT_FIELD,
+            INPUT_TWEAKS_FIELD,
             INITIAL_STATES_FIELD,
             FULL_RACE_FIELD,
+        )
+    private val LEGACY_SCENARIO_PROPERTIES = SCENARIO_PROPERTIES - INPUT_TWEAKS_FIELD
+    private val SUPPORTED_SCENARIO_SCHEMA_VERSIONS =
+        setOf(
+            BehavioralScenarioLoader.SCHEMA_VERSION,
+            BehavioralScenarioLoader.CURRENT_SCENARIO_SCHEMA_VERSION,
         )
 }

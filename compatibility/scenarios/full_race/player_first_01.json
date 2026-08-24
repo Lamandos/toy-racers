@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "full-race-player-first-01",
+      "seed": 12001,
+      "trackId": "track-01",
+      "playerCar": "red-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["full-race", "race", "golden", "periodic-snapshots", "event-snapshots", "checkpoint", "lap", "finish", "results", "state-machine"],
+      "ticks": 12000,
+      "snapshotIntervalTicks": 600,
+      "inputScript": "full-race-input.json",
+      "fullRace": true
+    }
+  ]
+}

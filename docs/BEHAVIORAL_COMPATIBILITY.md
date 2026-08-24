@@ -65,8 +65,9 @@ a non-zero exit code.
 
 Scenario inputs live in `core/src/test/resources/compat/scenarios.json` and have
 `"schemaVersion": 1`. Their formal, machine-readable contract is
-[`scenario.schema.json`](../core/src/main/resources/compat/scenario.schema.json), which uses JSON
-Schema draft 2020-12. A scenario declares a stable ID, seed, built-in `trackId`, player car, input
+[`scenario.schema.json`](../core/src/main/resources/compat/scenario.schema.json); scenarios using
+the v2 extension use [`scenario-v2.schema.json`](../core/src/main/resources/compat/scenario-v2.schema.json).
+Both use JSON Schema draft 2020-12. A scenario declares a stable ID, seed, built-in `trackId`, player car, input
 origin, simulation tick count, sampling interval, and `inputSegments`. Segments are inclusive
 one-based tick ranges. A range omits any control that should be zero and may span an arbitrary
 number of simulation ticks. The optional `initialStates` block is a test-only API boundary for a
@@ -95,6 +96,10 @@ The reference loader additionally requires every segment to satisfy
 `1 <= fromTick <= toTick <= scenario.ticks`, and requires segments to be ordered and non-overlapping.
 `inputOrigin` records whether the same normalized `PlayerInput` came from the keyboard-equivalent
 or touch-equivalent adapter. The simulation itself receives the normalized command, never UI clicks.
+The v2 `inputTweaks` array applies explicit additive control adjustments at listed simulation ticks
+after the referenced script is loaded and before normalizing the command. It is intended for small,
+reproducible scenario variations without duplicating a large input script; it is part of the effective
+input and must be reproduced by another adapter.
 
 `seed` is part of every input and output contract. The current reference has no externally seeded
 random gameplay source: its AI pseudo-random state derives deterministically from its starting
@@ -103,7 +108,7 @@ Kotlin behaviour. A Dart adapter must accept and preserve it in exactly the same
 separately versioned reference change introduces seeded randomness.
 
 Golden traces are deliberately separate from inputs in
-`core/src/test/resources/compat/goldens.json`; their trace envelope has `"schemaVersion": 2`.
+`core/src/test/resources/compat/goldens.json`; their trace envelope has `"schemaVersion": 3`.
 They are checked in and are never updated by an ordinary test run. A trace records the countdown and
 racing transition, its first physical tick, then periodic normalized snapshots; a `state-machine`
 trace also records the loading and ready phases plus countdown progression. A failure reports the
@@ -124,11 +129,15 @@ then ID; and finished IDs/results by finish position then ID. Snapshot output de
 input metadata such as the seed, car selection, AI internals, collision diagnostics, runtime object
 identifiers, memory addresses, FPS, rendering state, and platform metadata.
 
-Snapshot and golden-trace version 2 is intentionally incompatible with the earlier version-1
-snapshot shape: participant fields were renamed or removed, and race-level progress and finish
-fields were added. Version-1 consumers must migrate to version 2 or remain pinned to the earlier
-reference commit; they must not parse version-2 data as version 1. Scenario and input-script
-documents remain at schema version 1 because their input shape is unchanged.
+Snapshot version 2 and golden-trace version 3 are intentionally incompatible with the earlier
+version-1 snapshot shape and version-2 trace envelope: participant fields were renamed or removed,
+race-level progress and finish fields were added, and full-race traces now include checkpoint, lap,
+and finish event labels. Consumers must migrate to snapshot version 2 and trace version 3 or remain
+pinned to the earlier reference commit; they must not parse newer data as version 1 or 2. Scenario
+documents without `inputTweaks` remain at schema version 1, and the strict v1 schema remains
+unchanged. Documents using `inputTweaks` declare schema version 2 and validate against the v2
+scenario schema; input-script documents remain at schema version 1. Consumers must opt in to v2
+when they need the additive tweak contract.
 
 All non-float state is exact: IDs, ticks, state/surface enums, checkpoints, laps, finish flags,
 race positions, and every ordered array value must be identical. Float fields are finite,
@@ -177,7 +186,8 @@ byte-identical normalized traces before comparing the checked-in fixture.
 1. Validate and read schema-1 scenario files as JSON; do not reinterpret `inputOrigin` as screen
    events.
 2. Initialize the requested track, car, seed, and optional initial state.
-3. Reproduce the `countdown` then `racing` transition and apply one normalized input per fixed tick.
+3. Reproduce the `countdown` then `racing` transition, apply any ordered `inputTweaks`, and normalize
+   one input per fixed tick.
 4. Emit the schema-2 snapshot fields in the schema's array order and values, with the same
    six-decimal float normalization.
 5. Compare the adapter's trace with the checked-in golden using exact discrete values and the
