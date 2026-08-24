@@ -31,14 +31,14 @@ class AiBehaviorScenarioTest {
 
     @Test
     fun `AI changes its observed course around a stopped obstacle`() {
-        val pathTrace = run("follows_racing_path.json")
+        val controlTrace = run("obstacle_reaction_control.json")
         val obstacleTrace = run("obstacle_reaction.json")
 
-        val pathCar = pathTrace.aiAt("ai-0", tick = 60)
+        val controlCar = controlTrace.aiAt("ai-0", tick = 60)
         val obstacleCar = obstacleTrace.aiAt("ai-0", tick = 60)
 
-        assertTrue(pathCar.y != obstacleCar.y)
-        assertTrue(pathCar.rotation != obstacleCar.rotation)
+        assertTrue(controlCar.y != obstacleCar.y)
+        assertTrue(controlCar.rotation != obstacleCar.rotation)
     }
 
     @Test
