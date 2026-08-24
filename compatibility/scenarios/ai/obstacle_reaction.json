@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "ai-obstacle-reaction",
+      "seed": 11003,
+      "trackId": "track-01",
+      "playerCar": "red-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["ai", "obstacle", "avoidance"],
+      "ticks": 180,
+      "snapshotIntervalTicks": 15,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 180}
+      ],
+      "initialStates": [
+        {"id": "player", "x": 54, "y": 17.1, "rotationDeg": 0}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "ai-follows-racing-path",
+      "seed": 11001,
+      "trackId": "track-01",
+      "playerCar": "blue-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["ai", "path", "race"],
+      "ticks": 1200,
+      "snapshotIntervalTicks": 60,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 1200}
+      ],
+      "initialStates": [
+        {"id": "player", "x": 2, "y": 2, "rotationDeg": 0}
+      ]
+    }
+  ]
+}
