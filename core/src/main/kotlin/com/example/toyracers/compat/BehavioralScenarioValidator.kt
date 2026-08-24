@@ -71,7 +71,7 @@ internal object BehavioralScenarioValidator {
     ) {
         require(value.isObject) { "$path must be an object" }
         val allowedProperties =
-            if (schemaVersion >= BehavioralScenarioLoader.CURRENT_SCENARIO_SCHEMA_VERSION) {
+            if (schemaVersion >= BehavioralScenarioLoader.INPUT_TWEAKS_SCHEMA_VERSION) {
                 SCENARIO_PROPERTIES
             } else {
                 LEGACY_SCENARIO_PROPERTIES
@@ -110,14 +110,19 @@ internal object BehavioralScenarioValidator {
                 "$path.$INPUT_SCRIPT_FIELD has an invalid file name"
             }
         }
-        if (schemaVersion >= BehavioralScenarioLoader.CURRENT_SCENARIO_SCHEMA_VERSION) {
+        if (schemaVersion >= BehavioralScenarioLoader.INPUT_TWEAKS_SCHEMA_VERSION) {
             value.get(INPUT_TWEAKS_FIELD)?.let {
                 validateInputTweaks(it, "$path.$INPUT_TWEAKS_FIELD")
             }
         }
 
         value.get(INITIAL_STATES_FIELD)?.let {
-            validateInitialStates(it, "$path.$INITIAL_STATES_FIELD", value.getString(TRACK_ID_FIELD))
+            validateInitialStates(
+                it,
+                "$path.$INITIAL_STATES_FIELD",
+                value.getString(TRACK_ID_FIELD),
+                schemaVersion,
+            )
         }
         value.get(FULL_RACE_FIELD)?.let { requireBoolean(it, "$path.$FULL_RACE_FIELD") }
     }
@@ -174,13 +179,20 @@ internal object BehavioralScenarioValidator {
         value: JsonValue,
         path: String,
         trackId: String,
+        schemaVersion: Int,
     ) {
         require(value.isArray) { "$path must be an array" }
         val maxCheckpointIndex = TRACK_CHECKPOINT_COUNTS.getValue(trackId).toLong()
+        val allowedProperties =
+            if (schemaVersion >= BehavioralScenarioLoader.CURRENT_SCENARIO_SCHEMA_VERSION) {
+                TIMER_INITIAL_STATE_PROPERTIES
+            } else {
+                INITIAL_STATE_PROPERTIES
+            }
         value.children().forEachIndexed { index, initialState ->
             val statePath = indexedPath(path, index)
             require(initialState.isObject) { "$statePath must be an object" }
-            initialState.requireProperties(INITIAL_STATE_PROPERTIES, statePath)
+            initialState.requireProperties(allowedProperties, statePath)
             requireEnum(initialState.required(ID_FIELD, statePath), "$statePath.$ID_FIELD", INITIAL_STATE_IDS)
             FLOAT_INITIAL_STATE_FIELDS.forEach { name ->
                 initialState.get(name)?.let { requireFloat(it, "$statePath.$name") }
@@ -188,8 +200,19 @@ internal object BehavioralScenarioValidator {
             initialState.get(SURFACE_SPEED_MULTIPLIER_FIELD)?.let {
                 requireFloat(it, "$statePath.$SURFACE_SPEED_MULTIPLIER_FIELD", 0.0, 1.0)
             }
-            initialState.get(TOTAL_RACE_TIME_FIELD)?.let {
-                requireFloat(it, "$statePath.$TOTAL_RACE_TIME_FIELD", 0.0)
+            val lapStartTime =
+                initialState.get(LAP_START_TIME_FIELD)?.let {
+                    requireFloat(it, "$statePath.$LAP_START_TIME_FIELD", 0.0)
+                }
+            val totalRaceTime =
+                initialState.get(TOTAL_RACE_TIME_FIELD)?.let {
+                    requireFloat(it, "$statePath.$TOTAL_RACE_TIME_FIELD", 0.0)
+                }
+            initialState.get(BEST_LAP_TIME_FIELD)?.let {
+                requireFloat(it, "$statePath.$BEST_LAP_TIME_FIELD", 0.0)
+            }
+            require(lapStartTime == null || lapStartTime <= (totalRaceTime ?: 0f)) {
+                "$statePath.$LAP_START_TIME_FIELD must not exceed $TOTAL_RACE_TIME_FIELD"
             }
             initialState.get(CURRENT_CHECKPOINT_INDEX_FIELD)?.let {
                 requireInteger(it, "$statePath.$CURRENT_CHECKPOINT_INDEX_FIELD", 0, maxCheckpointIndex)
@@ -268,11 +291,12 @@ internal object BehavioralScenarioValidator {
         path: String,
         minimum: Double? = null,
         maximum: Double? = null,
-    ) {
+    ): Float {
         val number = numericValue(value, path)
         require(number in -MAX_FLOAT_VALUE..MAX_FLOAT_VALUE) { "$path must fit in a finite Float" }
         minimum?.let { require(number >= it) { "$path must be at least $it" } }
         maximum?.let { require(number <= it) { "$path must be at most $it" } }
+        return number.toFloat()
     }
 
     private fun numericValue(
@@ -351,7 +375,9 @@ internal object BehavioralScenarioValidator {
     private const val BRAKE_DELTA_FIELD = "brakeDelta"
     private const val STEERING_DELTA_FIELD = "steeringDelta"
     private const val SURFACE_SPEED_MULTIPLIER_FIELD = "surfaceSpeedMultiplier"
+    private const val LAP_START_TIME_FIELD = "lapStartTime"
     private const val TOTAL_RACE_TIME_FIELD = "totalRaceTime"
+    private const val BEST_LAP_TIME_FIELD = "bestLapTime"
     private const val CURRENT_CHECKPOINT_INDEX_FIELD = "currentCheckpointIndex"
     private const val COMPLETED_LAPS_FIELD = "completedLaps"
     private const val FINISH_POSITION_FIELD = "finishPosition"
@@ -394,6 +420,8 @@ internal object BehavioralScenarioValidator {
                 FINISHED_FIELD,
                 FINISH_POSITION_FIELD,
             )
+    private val TIMER_INITIAL_STATE_PROPERTIES =
+        INITIAL_STATE_PROPERTIES + setOf(LAP_START_TIME_FIELD, BEST_LAP_TIME_FIELD)
     private val SCENARIO_PROPERTIES =
         setOf(
             ID_FIELD,
@@ -414,6 +442,7 @@ internal object BehavioralScenarioValidator {
     private val SUPPORTED_SCENARIO_SCHEMA_VERSIONS =
         setOf(
             BehavioralScenarioLoader.SCHEMA_VERSION,
+            BehavioralScenarioLoader.INPUT_TWEAKS_SCHEMA_VERSION,
             BehavioralScenarioLoader.CURRENT_SCENARIO_SCHEMA_VERSION,
         )
 }

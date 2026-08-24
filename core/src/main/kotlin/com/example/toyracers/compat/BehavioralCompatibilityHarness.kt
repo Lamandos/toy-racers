@@ -246,7 +246,9 @@ data class BehavioralInitialState(
     val surfaceSpeedMultiplier: Float? = null,
     val currentCheckpointIndex: Int? = null,
     val completedLaps: Int? = null,
+    val lapStartTime: Float? = null,
     val totalRaceTime: Float? = null,
+    val bestLapTime: Float? = null,
     val finished: Boolean? = null,
     val finishPosition: Int? = null,
 ) {
@@ -268,7 +270,9 @@ data class BehavioralInitialState(
         }
         currentCheckpointIndex?.let { participant.progress.currentCheckpointIndex = it }
         completedLaps?.let { participant.progress.completedLaps = it }
+        lapStartTime?.let { participant.progress.lapStartTime = it }
         totalRaceTime?.let { participant.progress.totalRaceTime = it }
+        bestLapTime?.let { participant.progress.bestLapTime = it }
         finished?.let { participant.progress.finished = it }
         finishPosition?.let { participant.progress.finishPosition = it }
         participant.captureStateForRendering()

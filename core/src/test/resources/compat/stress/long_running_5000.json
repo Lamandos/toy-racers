@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 3,
+  "scenarios": [
+    {
+      "id": "stress-long-running-5000",
+      "seed": 13002,
+      "trackId": "track-02",
+      "playerCar": "blue-stripe",
+      "inputOrigin": "touch",
+      "tags": ["stress", "determinism", "long-running", "throttle", "steering"],
+      "ticks": 5000,
+      "snapshotIntervalTicks": 1,
+      "initialStates": [
+        {
+          "id": "ai-0",
+          "currentCheckpointIndex": 0,
+          "completedLaps": 3,
+          "lapStartTime": 30,
+          "totalRaceTime": 30,
+          "bestLapTime": 10,
+          "finished": true,
+          "finishPosition": 2
+        },
+        {
+          "id": "ai-1",
+          "currentCheckpointIndex": 0,
+          "completedLaps": 3,
+          "lapStartTime": 29,
+          "totalRaceTime": 29,
+          "bestLapTime": 9.5,
+          "finished": true,
+          "finishPosition": 1
+        }
+      ],
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 1500, "throttle": 1, "steering": 0.8},
+        {"fromTick": 1501, "toTick": 3000, "throttle": 1, "steering": -0.8},
+        {"fromTick": 3001, "toTick": 4500, "throttle": 1, "steering": 0.8},
+        {"fromTick": 4501, "toTick": 5000, "throttle": 1, "steering": -0.8}
+      ]
+    }
+  ]
+}

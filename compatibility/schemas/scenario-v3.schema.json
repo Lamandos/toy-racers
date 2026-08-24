@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Lamandos/toy-racers/schemas/behavioral-scenario-v3.json",
+  "title": "Toy Racers behavioral scenario",
+  "description": "Language-neutral, fixed-timestep input for the Toy Racers reference simulation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "scenarios"],
+  "properties": {
+    "schemaVersion": { "const": 3 },
+    "scenarios": {
+      "type": "array",
+      "minItems": 1,
+      "description": "One or more scenarios. The file-per-scenario loader requires exactly one.",
+      "items": { "$ref": "#/$defs/scenario" }
+    }
+  },
+  "$defs": {
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "seed",
+        "trackId",
+        "playerCar",
+        "inputOrigin",
+        "tags",
+        "ticks",
+        "snapshotIntervalTicks"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": -9223372036854775808,
+          "maximum": 9223372036854775807
+        },
+        "trackId": {
+          "type": "string",
+          "enum": ["track-01", "track-02"]
+        },
+        "playerCar": {
+          "type": "string",
+          "enum": [
+            "red-stripe",
+            "blue-stripe",
+            "yellow-sport",
+            "green-racer",
+            "orange-truck"
+          ]
+        },
+        "inputOrigin": {
+          "type": "string",
+          "enum": ["keyboard", "touch"]
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        "ticks": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+        "snapshotIntervalTicks": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "inputSegments": {
+          "type": "array",
+          "description": "Each segment must also satisfy 1 <= fromTick <= toTick <= scenario.ticks, and segments must be ordered and non-overlapping. These cross-field constraints are enforced by the reference loader.",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/inputSegment" }
+        },
+        "inputScript": {
+          "type": "string",
+          "description": "The referenced document must validate against input-script.schema.json.",
+          "pattern": "^[a-z0-9][a-z0-9-]*\\.json$"
+        },
+        "inputTweaks": {
+          "type": "array",
+          "description": "Optional additive control adjustments applied at explicit simulation ticks after loading the input script.",
+          "items": { "$ref": "#/$defs/inputTweak" }
+        },
+        "initialStates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/initialState" }
+        },
+        "fullRace": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "trackId": { "const": "track-01" } } },
+          "then": {
+            "properties": {
+              "initialStates": {
+                "items": {
+                  "properties": {
+                    "currentCheckpointIndex": { "maximum": 3 }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "trackId": { "const": "track-02" } } },
+          "then": {
+            "properties": {
+              "initialStates": {
+                "items": {
+                  "properties": {
+                    "currentCheckpointIndex": { "maximum": 5 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "oneOf": [
+        { "required": ["inputSegments"], "not": { "required": ["inputScript"] } },
+        { "required": ["inputScript"], "not": { "required": ["inputSegments"] } }
+      ]
+    },
+    "inputSegment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fromTick", "toTick"],
+      "properties": {
+        "fromTick": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+        "toTick": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+        "throttle": { "type": "number" },
+        "brake": { "type": "number" },
+        "steering": { "type": "number" }
+      }
+    },
+    "inputTweak": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tick"],
+      "properties": {
+        "tick": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+        "throttleDelta": {
+          "type": "number",
+          "minimum": -3.4028234663852886e+38,
+          "maximum": 3.4028234663852886e+38
+        },
+        "brakeDelta": {
+          "type": "number",
+          "minimum": -3.4028234663852886e+38,
+          "maximum": 3.4028234663852886e+38
+        },
+        "steeringDelta": {
+          "type": "number",
+          "minimum": -3.4028234663852886e+38,
+          "maximum": 3.4028234663852886e+38
+        }
+      }
+    },
+    "initialState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["player", "ai-0", "ai-1", "ai-2", "ai-3", "ai-4"]
+        },
+        "x": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
+        "y": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
+        "rotationDeg": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
+        "speed": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
+        "velocityX": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
+        "velocityY": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
+        "angularVelocity": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
+        "lateralSpeed": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
+        "driftAmount": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
+        "surfaceSpeedMultiplier": { "type": "number", "minimum": 0, "maximum": 1 },
+        "currentCheckpointIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5,
+          "description": "The reference loader narrows this to the selected track's checkpoint count: 3 for track-01 or 5 for track-02."
+        },
+        "completedLaps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3,
+          "description": "The reference race uses three required laps."
+        },
+        "lapStartTime": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3.4028234663852886e+38
+        },
+        "totalRaceTime": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3.4028234663852886e+38
+        },
+        "bestLapTime": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3.4028234663852886e+38
+        },
+        "finished": { "type": "boolean" },
+        "finishPosition": { "type": "integer", "minimum": 1, "maximum": 6 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["finished"],
+            "properties": { "finished": { "const": true } }
+          },
+          "then": { "required": ["finishPosition"] }
+        },
+        {
+          "if": { "required": ["finishPosition"] },
+          "then": {
+            "required": ["finished"],
+            "properties": { "finished": { "const": true } }
+          }
+        }
+      ]
+    }
+  }
+}
