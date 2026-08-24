@@ -35,9 +35,27 @@ class BehavioralCompatibilityHarness(
         return snapshot()
     }
 
+    /** Exposes the loading-to-ready transition for focused lifecycle scenarios. */
+    internal fun markReadyForLifecycle(): BehavioralSnapshot {
+        session.raceState.markReady()
+        return snapshot()
+    }
+
+    /** Exposes the ready-to-countdown transition for focused lifecycle scenarios. */
+    internal fun startCountdownForLifecycle(): BehavioralSnapshot {
+        session.raceState.startCountdown()
+        return snapshot()
+    }
+
     /** Advances the countdown without running a physical timestep. */
-    fun finishCountdown(): BehavioralSnapshot {
-        session.advance(session.raceState.countdownDurationSeconds, PlayerInput.NONE)
+    fun finishCountdown(): BehavioralSnapshot = advanceCountdown(session.raceState.countdownRemainingSeconds)
+
+    /** Advances the countdown without running a physical timestep. */
+    internal fun advanceCountdown(deltaSeconds: Float): BehavioralSnapshot {
+        require(session.raceState.phase == RacePhase.COUNTDOWN) {
+            "Countdown can only advance while the race is in COUNTDOWN"
+        }
+        session.advance(deltaSeconds, PlayerInput.NONE)
         return snapshot()
     }
 
