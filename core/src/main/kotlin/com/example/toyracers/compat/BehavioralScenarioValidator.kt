@@ -147,7 +147,12 @@ internal object BehavioralScenarioValidator {
             val tweakPath = indexedPath(path, index)
             require(tweak.isObject) { "$tweakPath must be an object" }
             tweak.requireProperties(INPUT_TWEAK_PROPERTIES, tweakPath)
-            requireInteger(tweak.required(TICK_FIELD, tweakPath), "$tweakPath.$TICK_FIELD", 1)
+            requireInteger(
+                tweak.required(TICK_FIELD, tweakPath),
+                "$tweakPath.$TICK_FIELD",
+                1,
+                MAX_INT_VALUE,
+            )
             INPUT_TWEAK_FIELDS.forEach { name ->
                 tweak.get(name)?.let { requireFloat(it, "$tweakPath.$name") }
             }

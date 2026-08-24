@@ -26,6 +26,26 @@ class BehavioralScenarioLoaderTest {
         )
     }
 
+    @Test(expected = IllegalArgumentException::class)
+    fun `fixture loader rejects input tweak tick beyond Int range`() {
+        BehavioralFixtureLoader.parseScenarioDocument(
+            JsonReader().parse(
+                """
+                {
+                  "schemaVersion": 1,
+                  "scenarios": [{
+                    "id": "invalid-input-tweak-tick", "seed": 1, "trackId": "track-01",
+                    "playerCar": "red-stripe", "inputOrigin": "keyboard", "tags": [],
+                    "ticks": 1, "snapshotIntervalTicks": 1,
+                    "inputSegments": [{"fromTick": 1, "toTick": 1}],
+                    "inputTweaks": [{"tick": 4294967297, "steeringDelta": 0.1}]
+                  }]
+                }
+                """.trimIndent(),
+            ),
+        )
+    }
+
     @Test
     fun `scenario loader normalizes scenario path before resolving input script`() {
         val temporaryDirectory = Files.createTempDirectory("behavioral-scenario")

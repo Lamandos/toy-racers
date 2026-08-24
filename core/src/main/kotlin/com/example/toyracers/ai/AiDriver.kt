@@ -7,15 +7,53 @@ import com.example.toyracers.track.TrackPoint
 import kotlin.math.abs
 
 /** Coordinates path, obstacle, recovery and difficulty decisions without mutating car state. */
-class AiDriver(
+class AiDriver private constructor(
     racingLine: List<TrackPoint>,
     initialPosition: TrackPoint,
-    config: AiConfig = AiConfig(),
-    val difficulty: AiDifficulty = AiDifficulty.NORMAL,
-    private val racingLineBias: Float = 0f,
-    private val track: Track? = null,
-    randomSeed: Long? = null,
+    config: AiConfig,
+    val difficulty: AiDifficulty,
+    private val racingLineBias: Float,
+    private val track: Track?,
+    randomSeed: Long?,
+    @Suppress("UNUSED_PARAMETER") initializationMarker: Unit,
 ) {
+    constructor(
+        racingLine: List<TrackPoint>,
+        initialPosition: TrackPoint,
+        config: AiConfig = AiConfig(),
+        difficulty: AiDifficulty = AiDifficulty.NORMAL,
+        racingLineBias: Float = 0f,
+        track: Track? = null,
+    ) : this(
+        racingLine,
+        initialPosition,
+        config,
+        difficulty,
+        racingLineBias,
+        track,
+        null,
+        Unit,
+    )
+
+    constructor(
+        racingLine: List<TrackPoint>,
+        initialPosition: TrackPoint,
+        config: AiConfig,
+        difficulty: AiDifficulty,
+        racingLineBias: Float,
+        track: Track?,
+        randomSeed: Long?,
+    ) : this(
+        racingLine,
+        initialPosition,
+        config,
+        difficulty,
+        racingLineBias,
+        track,
+        randomSeed,
+        Unit,
+    )
+
     private val config = config.forDifficulty(difficulty)
     private val pathFollower =
         AiPathFollower(
