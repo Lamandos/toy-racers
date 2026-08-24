@@ -14,8 +14,8 @@
       "initialStates": [
         {
           "id": "player",
-          "x": 12,
-          "y": 15,
+          "x": 30,
+          "y": 38,
           "speed": 34,
           "velocityX": 34,
           "surfaceSpeedMultiplier": 0.3

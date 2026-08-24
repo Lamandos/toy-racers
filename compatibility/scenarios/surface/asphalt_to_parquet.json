@@ -8,17 +8,17 @@
       "playerCar": "green-racer",
       "inputOrigin": "touch",
       "tags": ["surface", "transition", "asphalt", "parquet", "off-road"],
-      "ticks": 30,
-      "snapshotIntervalTicks": 10,
-      "inputSegments": [{"fromTick": 1, "toTick": 30}],
+      "ticks": 22,
+      "snapshotIntervalTicks": 4,
+      "inputSegments": [{"fromTick": 1, "toTick": 22, "throttle": 1}],
       "initialStates": [
         {
           "id": "player",
           "x": 54,
-          "y": 15.6,
+          "y": 17,
           "rotationDeg": 270,
-          "speed": 34,
-          "velocityY": -34
+          "speed": 37.4,
+          "velocityY": -37.4
         }
       ]
     }

@@ -8,17 +8,17 @@
       "playerCar": "orange-truck",
       "inputOrigin": "keyboard",
       "tags": ["surface", "transition", "parquet", "asphalt", "recovery"],
-      "ticks": 60,
-      "snapshotIntervalTicks": 20,
-      "inputSegments": [{"fromTick": 1, "toTick": 60}],
+      "ticks": 30,
+      "snapshotIntervalTicks": 5,
+      "inputSegments": [{"fromTick": 1, "toTick": 30, "throttle": 1}],
       "initialStates": [
         {
           "id": "player",
           "x": 54,
-          "y": 6,
+          "y": 11,
           "rotationDeg": 90,
-          "speed": 10.2,
-          "velocityY": 10.2,
+          "speed": 9.69,
+          "velocityY": 9.69,
           "surfaceSpeedMultiplier": 0.3
         }
       ]
