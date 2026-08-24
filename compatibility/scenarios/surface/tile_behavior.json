@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "tile-behavior",
+      "seed": 9012,
+      "trackId": "track-02",
+      "playerCar": "yellow-sport",
+      "inputOrigin": "keyboard",
+      "tags": ["surface", "tile", "off-road", "speed-limit"],
+      "ticks": 1,
+      "snapshotIntervalTicks": 1,
+      "inputSegments": [{"fromTick": 1, "toTick": 1}],
+      "initialStates": [
+        {
+          "id": "player",
+          "x": 35,
+          "y": 33,
+          "speed": 34,
+          "velocityX": 34,
+          "surfaceSpeedMultiplier": 0.3
+        }
+      ]
+    }
+  ]
+}

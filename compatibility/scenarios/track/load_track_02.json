@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "load-track-02",
+      "seed": 9002,
+      "trackId": "track-02",
+      "playerCar": "blue-stripe",
+      "inputOrigin": "touch",
+      "tags": ["track", "load", "start-grid", "asphalt"],
+      "ticks": 1,
+      "snapshotIntervalTicks": 1,
+      "inputSegments": [{"fromTick": 1, "toTick": 1}]
+    }
+  ]
+}
