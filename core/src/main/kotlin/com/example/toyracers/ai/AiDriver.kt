@@ -14,6 +14,7 @@ class AiDriver(
     val difficulty: AiDifficulty = AiDifficulty.NORMAL,
     private val racingLineBias: Float = 0f,
     private val track: Track? = null,
+    randomSeed: Long? = null,
 ) {
     private val config = config.forDifficulty(difficulty)
     private val pathFollower =
@@ -30,7 +31,7 @@ class AiDriver(
     private var mistakeTimeRemaining = 0f
     private var randomState =
         initialPosition.x.toBits() xor initialPosition.y.toBits() xor
-            racingLineBias.toBits()
+            racingLineBias.toBits() xor randomSeedBits(randomSeed)
 
     var behaviorState: AiBehaviorState = AiBehaviorState.FOLLOW_ROUTE
         private set
@@ -205,6 +206,11 @@ class AiDriver(
             val sample = (randomState ushr 8).toFloat() / 0x01000000
             if (sample < config.mistakeProbability) mistakeTimeRemaining = config.mistakeDurationSeconds
         }
+    }
+
+    private fun randomSeedBits(seed: Long?): Int {
+        if (seed == null) return 0
+        return (seed xor (seed ushr 32)).toInt()
     }
 
     private fun safestPassingDirection(

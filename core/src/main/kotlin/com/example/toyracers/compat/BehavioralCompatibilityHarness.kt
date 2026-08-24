@@ -26,6 +26,7 @@ class BehavioralCompatibilityHarness(
             track = track,
             playerCarModel = CarModel.fromScenarioId(configuration.playerCar),
             opponentDifficulty = difficultyFromId(configuration.opponentDifficulty),
+            randomSeed = configuration.seed,
         )
     private var simulationTicks = 0
 

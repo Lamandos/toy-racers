@@ -28,7 +28,10 @@ class FullRaceGoldenScenarioTest {
         assertTrue(fixtures.any { STATE_MACHINE_TAG in it.scenario.tags })
 
         val traces = fixtures.map { fixture -> fixture to runner.run(fixture.scenario) }
-        assertEquals(fixtures.size, traces.map { (_, trace) -> trace.samples }.toSet().size)
+        assertEquals(
+            fixtures.size,
+            traces.map { (_, trace) -> trace.behaviorSamples() }.toSet().size,
+        )
 
         traces.forEach { (fixture, trace) ->
             val track = validateScenario(fixture.scenario)
@@ -184,6 +187,9 @@ class FullRaceGoldenScenarioTest {
         samples
             .filter { it.label == label }
             .map { it.snapshot.player() }
+
+    private fun BehavioralTrace.behaviorSamples(): List<BehavioralTraceSample> =
+        samples.filterNot { it.label == SIMULATION_LABEL }
 
     private fun BehavioralSnapshot.player(): BehavioralParticipantSnapshot = participants.single { it.id == PLAYER_ID }
 

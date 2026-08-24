@@ -38,6 +38,7 @@ internal class RaceSession(
     private val collisionSystem: CollisionSystem = CollisionSystem(),
     private val surfaceSpeedSystem: SurfaceSpeedSystem = SurfaceSpeedSystem(),
     private val playerControlConfig: PlayerControlConfig = PlayerControlConfig(),
+    private val randomSeed: Long? = null,
 ) {
     private val carController = CarController(carPhysics)
 
@@ -69,6 +70,7 @@ internal class RaceSession(
                         difficulty = opponentDifficulty,
                         racingLineBias = opponentRacingLineBias(index),
                         track = track,
+                        randomSeed = randomSeed?.plus(index.toLong()),
                     ),
             )
         }
