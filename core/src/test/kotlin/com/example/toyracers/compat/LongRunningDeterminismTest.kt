@@ -61,6 +61,7 @@ class LongRunningDeterminismTest {
             assertEquals(index + 1, sample.tick)
             assertSnapshotIsValid(sample.snapshot, sample.tick, checkpointCount)
         }
+        assertProgressIsMonotonic(simulationSamples)
     }
 
     private fun assertInitialRaceStates(
@@ -121,7 +122,28 @@ class LongRunningDeterminismTest {
         }
         snapshot.finishResults.forEach { result ->
             assertTrue(result.elapsedSimulationTime.isFinite())
-            assertTrue(result.bestLapTime?.isFinite() ?: true)
+            assertTrue("Missing best lap time for ${result.participantId}", result.bestLapTime != null)
+            assertTrue(result.bestLapTime!!.isFinite())
+        }
+    }
+
+    private fun assertProgressIsMonotonic(samples: List<BehavioralTraceSample>) {
+        samples.zipWithNext().forEach { (previous, current) ->
+            previous.snapshot.participants.zip(current.snapshot.participants).forEach { pair ->
+                val (previousParticipant, currentParticipant) = pair
+                assertEquals(previousParticipant.id, currentParticipant.id)
+                val didNotRegress =
+                    currentParticipant.lap > previousParticipant.lap ||
+                        (
+                            currentParticipant.lap == previousParticipant.lap &&
+                                currentParticipant.checkpoint >= previousParticipant.checkpoint
+                        )
+                assertTrue(
+                    "Progress regressed for ${currentParticipant.id} between ticks " +
+                        "${previous.tick} and ${current.tick}",
+                    didNotRegress,
+                )
+            }
         }
     }
 
@@ -148,6 +170,7 @@ class LongRunningDeterminismTest {
             )
         assertTrue("Non-finite state for ${participant.id}", numericValues.all(Float::isFinite))
         assertTrue("Invalid rotation for ${participant.id}", participant.rotation in 0f..<FULL_TURN_DEGREES)
+        assertTrue("Invalid drift amount for ${participant.id}", participant.driftAmount in 0f..1f)
         assertTrue(
             "Exploding velocity for ${participant.id}",
             hypot(participant.velocityX, participant.velocityY) <= maximumAllowedVelocity,

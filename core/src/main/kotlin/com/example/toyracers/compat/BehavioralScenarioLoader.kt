@@ -135,7 +135,9 @@ internal object BehavioralScenarioLoader {
             surfaceSpeedMultiplier = value.floatOrNull("surfaceSpeedMultiplier"),
             currentCheckpointIndex = value.intOrNull("currentCheckpointIndex"),
             completedLaps = value.intOrNull("completedLaps"),
+            lapStartTime = value.floatOrNull("lapStartTime"),
             totalRaceTime = value.floatOrNull("totalRaceTime"),
+            bestLapTime = value.floatOrNull("bestLapTime"),
             finished = value.booleanOrNull("finished"),
             finishPosition = value.intOrNull("finishPosition"),
         )

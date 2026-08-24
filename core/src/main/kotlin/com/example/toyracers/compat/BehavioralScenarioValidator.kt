@@ -188,8 +188,14 @@ internal object BehavioralScenarioValidator {
             initialState.get(SURFACE_SPEED_MULTIPLIER_FIELD)?.let {
                 requireFloat(it, "$statePath.$SURFACE_SPEED_MULTIPLIER_FIELD", 0.0, 1.0)
             }
+            initialState.get(LAP_START_TIME_FIELD)?.let {
+                requireFloat(it, "$statePath.$LAP_START_TIME_FIELD", 0.0)
+            }
             initialState.get(TOTAL_RACE_TIME_FIELD)?.let {
                 requireFloat(it, "$statePath.$TOTAL_RACE_TIME_FIELD", 0.0)
+            }
+            initialState.get(BEST_LAP_TIME_FIELD)?.let {
+                requireFloat(it, "$statePath.$BEST_LAP_TIME_FIELD", 0.0)
             }
             initialState.get(CURRENT_CHECKPOINT_INDEX_FIELD)?.let {
                 requireInteger(it, "$statePath.$CURRENT_CHECKPOINT_INDEX_FIELD", 0, maxCheckpointIndex)
@@ -351,7 +357,9 @@ internal object BehavioralScenarioValidator {
     private const val BRAKE_DELTA_FIELD = "brakeDelta"
     private const val STEERING_DELTA_FIELD = "steeringDelta"
     private const val SURFACE_SPEED_MULTIPLIER_FIELD = "surfaceSpeedMultiplier"
+    private const val LAP_START_TIME_FIELD = "lapStartTime"
     private const val TOTAL_RACE_TIME_FIELD = "totalRaceTime"
+    private const val BEST_LAP_TIME_FIELD = "bestLapTime"
     private const val CURRENT_CHECKPOINT_INDEX_FIELD = "currentCheckpointIndex"
     private const val COMPLETED_LAPS_FIELD = "completedLaps"
     private const val FINISH_POSITION_FIELD = "finishPosition"
@@ -390,7 +398,9 @@ internal object BehavioralScenarioValidator {
                 SURFACE_SPEED_MULTIPLIER_FIELD,
                 CURRENT_CHECKPOINT_INDEX_FIELD,
                 COMPLETED_LAPS_FIELD,
+                LAP_START_TIME_FIELD,
                 TOTAL_RACE_TIME_FIELD,
+                BEST_LAP_TIME_FIELD,
                 FINISHED_FIELD,
                 FINISH_POSITION_FIELD,
             )

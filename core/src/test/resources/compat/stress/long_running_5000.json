@@ -15,7 +15,19 @@
           "id": "ai-0",
           "currentCheckpointIndex": 0,
           "completedLaps": 3,
+          "lapStartTime": 30,
           "totalRaceTime": 30,
+          "bestLapTime": 10,
+          "finished": true,
+          "finishPosition": 2
+        },
+        {
+          "id": "ai-1",
+          "currentCheckpointIndex": 0,
+          "completedLaps": 3,
+          "lapStartTime": 29,
+          "totalRaceTime": 29,
+          "bestLapTime": 9.5,
           "finished": true,
           "finishPosition": 1
         }

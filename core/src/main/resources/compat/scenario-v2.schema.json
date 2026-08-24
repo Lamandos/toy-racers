@@ -191,7 +191,17 @@
           "maximum": 3,
           "description": "The reference race uses three required laps."
         },
+        "lapStartTime": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3.4028234663852886e+38
+        },
         "totalRaceTime": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3.4028234663852886e+38
+        },
+        "bestLapTime": {
           "type": "number",
           "minimum": 0,
           "maximum": 3.4028234663852886e+38
