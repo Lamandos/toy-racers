@@ -1,5 +1,6 @@
 package com.example.toyracers.compat
 
+import com.badlogic.gdx.utils.JsonReader
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -30,7 +31,12 @@ class DifferentialFuzzScenarioGeneratorTest {
         val output = Files.createTempFile("differential-fuzz-", ".json")
 
         try {
-            Files.writeString(output, DifferentialFuzzScenarioJson.encode(generated), UTF_8)
+            val encoded = DifferentialFuzzScenarioJson.encode(generated)
+            assertEquals(
+                BehavioralScenarioLoader.SCHEMA_VERSION,
+                JsonReader().parse(encoded).getInt("schemaVersion"),
+            )
+            Files.writeString(output, encoded, UTF_8)
             val replay = BehavioralScenarioLoader.load(output)
 
             assertEquals(generated, replay)

@@ -12,7 +12,7 @@ internal object DifferentialFuzzScenarioJson {
 
         return buildString {
             append('{')
-            field("schemaVersion", BehavioralScenarioLoader.CURRENT_SCENARIO_SCHEMA_VERSION)
+            field("schemaVersion", BehavioralScenarioLoader.SCHEMA_VERSION)
             append(",\"scenarios\":[{")
             field("id", scenario.id)
             append(',')
