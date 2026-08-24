@@ -78,7 +78,7 @@ write the JSON file; without it, the generated document is printed to standard o
   -Poutput=build/differential-fuzz/seed-104729-kotlin-trace.json
 ```
 
-The generated document uses scenario schema v3, `track-01`, `red-stripe`, and the normal default
+The generated document uses scenario schema v1, `track-01`, `red-stripe`, and the normal default
 grid. It materializes one `inputSegments` entry per tick, so the JSON contains the complete control
 stream and reproduces a failure even if the generator later changes. It deliberately does not rely
 on the simulation's `seed` field to alter game behavior.
