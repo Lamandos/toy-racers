@@ -8,19 +8,21 @@ import com.example.toyracers.track.TrackLoader
 
 /** Validates the portable scenario contract before the simulation begins. */
 internal object BehavioralScenarioValidator {
-    fun validateDocument(root: JsonValue) {
+    fun validateDocument(root: JsonValue): Int {
         require(root.isObject) { "Scenario document must be an object" }
         root.requireProperties(ROOT_PROPERTIES, "$")
         val schemaVersion = root.required(SCHEMA_VERSION_FIELD, "$")
         requireInteger(schemaVersion, "$.schemaVersion")
-        require(schemaVersion.asLong() == BehavioralScenarioLoader.SCHEMA_VERSION.toLong()) {
+        val schemaVersionNumber = schemaVersion.asInt()
+        require(schemaVersionNumber in SUPPORTED_SCENARIO_SCHEMA_VERSIONS) {
             "Unsupported scenario schema version"
         }
         val scenarios = root.required(SCENARIOS_FIELD, "$")
         require(scenarios.isArray && scenarios.size > 0) { "$.scenarios must be a non-empty array" }
         scenarios.children().forEachIndexed { index, scenario ->
-            validateScenarioJson(scenario, "$.scenarios[$index]")
+            validateScenarioJson(scenario, "$.scenarios[$index]", schemaVersionNumber)
         }
+        return schemaVersionNumber
     }
 
     fun validateInputScript(
@@ -65,9 +67,16 @@ internal object BehavioralScenarioValidator {
     private fun validateScenarioJson(
         value: JsonValue,
         path: String,
+        schemaVersion: Int,
     ) {
         require(value.isObject) { "$path must be an object" }
-        value.requireProperties(SCENARIO_PROPERTIES, path)
+        val allowedProperties =
+            if (schemaVersion >= BehavioralScenarioLoader.CURRENT_SCENARIO_SCHEMA_VERSION) {
+                SCENARIO_PROPERTIES
+            } else {
+                LEGACY_SCENARIO_PROPERTIES
+            }
+        value.requireProperties(allowedProperties, path)
         val id = value.required(ID_FIELD, path)
         requireString(id, "$path.$ID_FIELD")
         require(SCENARIO_ID.matches(id.asString())) { "$path.$ID_FIELD has an invalid format" }
@@ -101,8 +110,10 @@ internal object BehavioralScenarioValidator {
                 "$path.$INPUT_SCRIPT_FIELD has an invalid file name"
             }
         }
-        value.get(INPUT_TWEAKS_FIELD)?.let {
-            validateInputTweaks(it, "$path.$INPUT_TWEAKS_FIELD")
+        if (schemaVersion >= BehavioralScenarioLoader.CURRENT_SCENARIO_SCHEMA_VERSION) {
+            value.get(INPUT_TWEAKS_FIELD)?.let {
+                validateInputTweaks(it, "$path.$INPUT_TWEAKS_FIELD")
+            }
         }
 
         value.get(INITIAL_STATES_FIELD)?.let {
@@ -398,5 +409,11 @@ internal object BehavioralScenarioValidator {
             INPUT_TWEAKS_FIELD,
             INITIAL_STATES_FIELD,
             FULL_RACE_FIELD,
+        )
+    private val LEGACY_SCENARIO_PROPERTIES = SCENARIO_PROPERTIES - INPUT_TWEAKS_FIELD
+    private val SUPPORTED_SCENARIO_SCHEMA_VERSIONS =
+        setOf(
+            BehavioralScenarioLoader.SCHEMA_VERSION,
+            BehavioralScenarioLoader.CURRENT_SCENARIO_SCHEMA_VERSION,
         )
 }

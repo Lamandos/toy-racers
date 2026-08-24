@@ -65,8 +65,9 @@ a non-zero exit code.
 
 Scenario inputs live in `core/src/test/resources/compat/scenarios.json` and have
 `"schemaVersion": 1`. Their formal, machine-readable contract is
-[`scenario.schema.json`](../core/src/main/resources/compat/scenario.schema.json), which uses JSON
-Schema draft 2020-12. A scenario declares a stable ID, seed, built-in `trackId`, player car, input
+[`scenario.schema.json`](../core/src/main/resources/compat/scenario.schema.json); scenarios using
+the v2 extension use [`scenario-v2.schema.json`](../core/src/main/resources/compat/scenario-v2.schema.json).
+Both use JSON Schema draft 2020-12. A scenario declares a stable ID, seed, built-in `trackId`, player car, input
 origin, simulation tick count, sampling interval, and `inputSegments`. Segments are inclusive
 one-based tick ranges. A range omits any control that should be zero and may span an arbitrary
 number of simulation ticks. The optional `initialStates` block is a test-only API boundary for a
@@ -95,10 +96,10 @@ The reference loader additionally requires every segment to satisfy
 `1 <= fromTick <= toTick <= scenario.ticks`, and requires segments to be ordered and non-overlapping.
 `inputOrigin` records whether the same normalized `PlayerInput` came from the keyboard-equivalent
 or touch-equivalent adapter. The simulation itself receives the normalized command, never UI clicks.
-An optional `inputTweaks` array applies explicit additive control adjustments at listed simulation
-ticks after the referenced script is loaded and before normalizing the command. It is intended for
-small, reproducible scenario variations without duplicating a large input script; it is part of the
-effective input and must be reproduced by another adapter.
+The v2 `inputTweaks` array applies explicit additive control adjustments at listed simulation ticks
+after the referenced script is loaded and before normalizing the command. It is intended for small,
+reproducible scenario variations without duplicating a large input script; it is part of the effective
+input and must be reproduced by another adapter.
 
 `seed` is part of every input and output contract. The current reference has no externally seeded
 random gameplay source: its AI pseudo-random state derives deterministically from its starting
@@ -133,8 +134,10 @@ version-1 snapshot shape and version-2 trace envelope: participant fields were r
 race-level progress and finish fields were added, and full-race traces now include checkpoint, lap,
 and finish event labels. Consumers must migrate to snapshot version 2 and trace version 3 or remain
 pinned to the earlier reference commit; they must not parse newer data as version 1 or 2. Scenario
-and input-script documents remain at schema version 1 because `inputTweaks` is an optional,
-backward-compatible extension to the existing scenario input shape.
+documents without `inputTweaks` remain at schema version 1, and the strict v1 schema remains
+unchanged. Documents using `inputTweaks` declare schema version 2 and validate against the v2
+scenario schema; input-script documents remain at schema version 1. Consumers must opt in to v2
+when they need the additive tweak contract.
 
 All non-float state is exact: IDs, ticks, state/surface enums, checkpoints, laps, finish flags,
 race positions, and every ordered array value must be identical. Float fields are finite,

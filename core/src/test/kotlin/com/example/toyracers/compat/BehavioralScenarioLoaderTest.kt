@@ -32,7 +32,7 @@ class BehavioralScenarioLoaderTest {
             JsonReader().parse(
                 """
                 {
-                  "schemaVersion": 1,
+                  "schemaVersion": 2,
                   "scenarios": [{
                     "id": "invalid-input-tweak-tick", "seed": 1, "trackId": "track-01",
                     "playerCar": "red-stripe", "inputOrigin": "keyboard", "tags": [],
@@ -88,7 +88,7 @@ class BehavioralScenarioLoaderTest {
                     JsonReader().parse(
                         """
                         {
-                          "schemaVersion": 1,
+                          "schemaVersion": 2,
                           "scenarios": [{
                             "id": "input-tweak", "seed": 1, "trackId": "track-01",
                             "playerCar": "red-stripe", "inputOrigin": "keyboard", "tags": [],

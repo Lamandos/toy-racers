@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/Lamandos/toy-racers/schemas/behavioral-scenario-v1.json",
+  "$id": "https://github.com/Lamandos/toy-racers/schemas/behavioral-scenario-v2.json",
   "title": "Toy Racers behavioral scenario",
   "description": "Language-neutral, fixed-timestep input for the Toy Racers reference simulation.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "scenarios"],
   "properties": {
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": { "const": 2 },
     "scenarios": {
       "type": "array",
       "minItems": 1,
@@ -79,6 +79,11 @@
           "description": "The referenced document must validate against input-script.schema.json.",
           "pattern": "^[a-z0-9][a-z0-9-]*\\.json$"
         },
+        "inputTweaks": {
+          "type": "array",
+          "description": "Optional additive control adjustments applied at explicit simulation ticks after loading the input script.",
+          "items": { "$ref": "#/$defs/inputTweak" }
+        },
         "initialStates": {
           "type": "array",
           "items": { "$ref": "#/$defs/initialState" }
@@ -130,6 +135,29 @@
         "throttle": { "type": "number" },
         "brake": { "type": "number" },
         "steering": { "type": "number" }
+      }
+    },
+    "inputTweak": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tick"],
+      "properties": {
+        "tick": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+        "throttleDelta": {
+          "type": "number",
+          "minimum": -3.4028234663852886e+38,
+          "maximum": 3.4028234663852886e+38
+        },
+        "brakeDelta": {
+          "type": "number",
+          "minimum": -3.4028234663852886e+38,
+          "maximum": 3.4028234663852886e+38
+        },
+        "steeringDelta": {
+          "type": "number",
+          "minimum": -3.4028234663852886e+38,
+          "maximum": 3.4028234663852886e+38
+        }
       }
     },
     "initialState": {
