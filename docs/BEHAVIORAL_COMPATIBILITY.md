@@ -61,6 +61,42 @@ when the race has already finished; the game then performs no more physical step
 existing rules. Invalid options, files, schemas, tracks, or output writes cause the task to fail with
 a non-zero exit code.
 
+## Differential fuzz scenarios
+
+`generateDifferentialFuzzScenario` creates a self-contained scenario for future Kotlin-versus-Dart
+comparison. It accepts a signed 64-bit seed and a positive physical tick count. Supply `output` to
+write the JSON file; without it, the generated document is printed to standard output.
+
+```sh
+./gradlew :core:generateDifferentialFuzzScenario \
+  -Pseed=104729 \
+  -Pticks=600 \
+  -Poutput=build/differential-fuzz/seed-104729.json
+
+./gradlew :core:runBehaviorScenario \
+  -Pscenario=build/differential-fuzz/seed-104729.json \
+  -Poutput=build/differential-fuzz/seed-104729-kotlin-trace.json
+```
+
+The generated document uses scenario schema v1, `track-01`, `red-stripe`, and the normal default
+grid. It materializes one `inputSegments` entry per tick, so the JSON contains the complete control
+stream and reproduces a failure even if the generator later changes. It deliberately does not rely
+on the simulation's `seed` field to alter game behavior.
+
+Generation is a language-neutral 32-bit LCG contract. Initialize `state` to the low 32 bits of the
+signed seed XOR its high 32 bits. Before each command, replace it with
+`(state * 1664525 + 1013904223) mod 2^32` and treat the result as an unsigned 32-bit value `u`.
+For each tick, generate commands in the order throttle, brake, steering. Throttle and brake are
+`(u mod 1000001) / 1000000`; steering is `(u mod 2000001 - 1000000) / 1000000`. JSON writes these
+values with six decimal places, so all controls remain in the normalized ranges `[0, 1]`, `[0, 1]`,
+and `[-1, 1]` respectively.
+
+The separate fixed-seed CI smoke task runs 100 generated 120-tick scenarios:
+
+```sh
+./gradlew :core:differentialFuzzSmokeTest --no-daemon
+```
+
 ## Fixture contract
 
 Scenario inputs live in `core/src/test/resources/compat/scenarios.json` and have

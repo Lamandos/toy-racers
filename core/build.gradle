@@ -62,6 +62,40 @@ tasks.register('runBehaviorScenario', JavaExec) {
   }
 }
 
+tasks.register('generateDifferentialFuzzScenario', JavaExec) {
+  group = 'application'
+  description = 'Generates one self-contained deterministic differential fuzz scenario.'
+  dependsOn classes
+  classpath = sourceSets.main.runtimeClasspath
+  mainClass.set('com.example.toyracers.compat.DifferentialFuzzScenarioCliKt')
+  workingDir = rootProject.projectDir
+  def seedProperty = providers.gradleProperty('seed')
+  def ticksProperty = providers.gradleProperty('ticks')
+  def outputProperty = providers.gradleProperty('output')
+  doFirst {
+    def seed = seedProperty.orNull
+    def ticks = ticksProperty.orNull
+    if (seed == null || ticks == null) {
+      throw new GradleException(
+        'generateDifferentialFuzzScenario requires -Pseed=<signed-64-bit-integer> and -Pticks=<positive-integer>',
+      )
+    }
+    args '--seed', seed, '--ticks', ticks
+    if (outputProperty.isPresent()) {
+      args '--output', outputProperty.get()
+    }
+  }
+}
+
+tasks.register('differentialFuzzSmokeTest', Test) {
+  group = 'verification'
+  description = 'Runs 100 fixed-seed generated scenarios through the headless simulation.'
+  dependsOn testClasses
+  testClassesDirs = sourceSets.test.output.classesDirs
+  classpath = sourceSets.test.runtimeClasspath
+  filter.includeTestsMatching 'com.example.toyracers.compat.DifferentialFuzzSmokeTest'
+}
+
 tasks.register('compatibilityGoldenTest', Test) {
   group = 'verification'
   description = 'Verifies checked-in file-per-scenario compatibility golden masters.'
