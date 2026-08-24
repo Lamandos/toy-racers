@@ -95,6 +95,10 @@ The reference loader additionally requires every segment to satisfy
 `1 <= fromTick <= toTick <= scenario.ticks`, and requires segments to be ordered and non-overlapping.
 `inputOrigin` records whether the same normalized `PlayerInput` came from the keyboard-equivalent
 or touch-equivalent adapter. The simulation itself receives the normalized command, never UI clicks.
+An optional `inputTweaks` array applies explicit additive control adjustments at listed simulation
+ticks after the referenced script is loaded and before normalizing the command. It is intended for
+small, reproducible scenario variations without duplicating a large input script; it is part of the
+effective input and must be reproduced by another adapter.
 
 `seed` is part of every input and output contract. The current reference has no externally seeded
 random gameplay source: its AI pseudo-random state derives deterministically from its starting
@@ -129,7 +133,8 @@ version-1 snapshot shape and version-2 trace envelope: participant fields were r
 race-level progress and finish fields were added, and full-race traces now include checkpoint, lap,
 and finish event labels. Consumers must migrate to snapshot version 2 and trace version 3 or remain
 pinned to the earlier reference commit; they must not parse newer data as version 1 or 2. Scenario
-and input-script documents remain at schema version 1 because their input shape is unchanged.
+and input-script documents remain at schema version 1 because `inputTweaks` is an optional,
+backward-compatible extension to the existing scenario input shape.
 
 All non-float state is exact: IDs, ticks, state/surface enums, checkpoints, laps, finish flags,
 race positions, and every ordered array value must be identical. Float fields are finite,
@@ -178,7 +183,8 @@ byte-identical normalized traces before comparing the checked-in fixture.
 1. Validate and read schema-1 scenario files as JSON; do not reinterpret `inputOrigin` as screen
    events.
 2. Initialize the requested track, car, seed, and optional initial state.
-3. Reproduce the `countdown` then `racing` transition and apply one normalized input per fixed tick.
+3. Reproduce the `countdown` then `racing` transition, apply any ordered `inputTweaks`, and normalize
+   one input per fixed tick.
 4. Emit the schema-2 snapshot fields in the schema's array order and values, with the same
    six-decimal float normalization.
 5. Compare the adapter's trace with the checked-in golden using exact discrete values and the

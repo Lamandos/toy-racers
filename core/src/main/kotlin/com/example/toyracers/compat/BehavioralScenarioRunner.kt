@@ -69,7 +69,10 @@ internal class BehavioralScenarioRunner(
         var previousPlayer = harness.snapshot().player()
         for (tick in 1..scenario.ticks) {
             inputSegmentIndex = scenario.nextInputSegmentIndex(inputSegmentIndex, tick)
-            val snapshot = harness.advance(scenario.inputAt(tick, inputSegmentIndex))
+            val snapshot =
+                harness.advance(
+                    scenario.inputAt(tick, inputSegmentIndex).withTweak(scenario.tweakAt(tick)),
+                )
             val finishedThisTick = snapshot.raceState == "finished" && !raceFinished
             val player = snapshot.player()
             val shouldSample =
@@ -118,6 +121,18 @@ internal class BehavioralScenarioRunner(
         tick: Int,
         segmentIndex: Int,
     ): BehavioralInput = inputSegments[segmentIndex].takeIf { it.contains(tick) }?.input ?: BehavioralInput()
+
+    private fun BehavioralScenario.tweakAt(tick: Int): BehavioralInputTweak? =
+        inputTweaks.firstOrNull { it.tick == tick }
+
+    private fun BehavioralInput.withTweak(tweak: BehavioralInputTweak?): BehavioralInput =
+        tweak?.let {
+            copy(
+                throttle = throttle + it.throttleDelta,
+                brake = brake + it.brakeDelta,
+                steering = steering + it.steeringDelta,
+            )
+        } ?: this
 
     private companion object {
         const val COUNTDOWN_SAMPLE_SECONDS = 1f

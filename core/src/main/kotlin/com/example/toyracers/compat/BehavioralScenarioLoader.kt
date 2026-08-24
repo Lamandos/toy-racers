@@ -56,6 +56,12 @@ internal object BehavioralScenarioLoader {
             ticks = value.getInt("ticks"),
             snapshotIntervalTicks = value.getInt("snapshotIntervalTicks"),
             inputSegments = inputSegments(value, inputScriptReader),
+            inputTweaks =
+                value
+                    .get("inputTweaks")
+                    ?.children()
+                    ?.map(::inputTweak)
+                    .orEmpty(),
             initialStates =
                 value
                     .get("initialStates")
@@ -75,6 +81,14 @@ internal object BehavioralScenarioLoader {
                     brake = value.getFloat("brake", 0f),
                     steering = value.getFloat("steering", 0f),
                 ),
+        )
+
+    private fun inputTweak(value: JsonValue): BehavioralInputTweak =
+        BehavioralInputTweak(
+            tick = value.getInt("tick"),
+            throttleDelta = value.getFloat("throttleDelta", 0f),
+            brakeDelta = value.getFloat("brakeDelta", 0f),
+            steeringDelta = value.getFloat("steeringDelta", 0f),
         )
 
     private fun inputSegments(

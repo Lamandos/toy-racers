@@ -11,6 +11,7 @@
       "ticks": 12000,
       "snapshotIntervalTicks": 900,
       "inputScript": "full-race-input.json",
+      "inputTweaks": [{"tick": 1, "steeringDelta": 0.006}],
       "fullRace": true
     }
   ]

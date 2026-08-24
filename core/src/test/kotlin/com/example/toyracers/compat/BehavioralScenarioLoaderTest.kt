@@ -60,6 +60,31 @@ class BehavioralScenarioLoaderTest {
         )
     }
 
+    @Test
+    fun `scenario loader applies optional input tweaks`() {
+        val scenario =
+            BehavioralFixtureLoader
+                .parseScenarioDocument(
+                    JsonReader().parse(
+                        """
+                        {
+                          "schemaVersion": 1,
+                          "scenarios": [{
+                            "id": "input-tweak", "seed": 1, "trackId": "track-01",
+                            "playerCar": "red-stripe", "inputOrigin": "keyboard", "tags": [],
+                            "ticks": 2, "snapshotIntervalTicks": 1,
+                            "inputSegments": [{"fromTick": 1, "toTick": 2, "throttle": 1}],
+                            "inputTweaks": [{"tick": 2, "steeringDelta": 0.005}]
+                          }]
+                        }
+                        """.trimIndent(),
+                    ),
+                ).single()
+
+        assertEquals(2, scenario.inputTweaks.single().tick)
+        assertEquals(0.005f, scenario.inputTweaks.single().steeringDelta, 0.000001f)
+    }
+
     private fun scenarioJson(): String =
         """
         {
