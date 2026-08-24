@@ -23,9 +23,14 @@ class LongRunningDeterminismTest {
 
         assertTrue(scenarios.first().ticks >= MINIMUM_SHORT_STRESS_TICKS)
         assertTrue(scenarios.last().ticks >= MINIMUM_LONG_STRESS_TICKS)
-        scenarios.forEach { scenario ->
-            assertTraceIsValid(runner.run(scenario), scenario)
-        }
+        val traces =
+            scenarios.map { scenario ->
+                runner.run(scenario).also { trace -> assertTraceIsValid(trace, scenario) }
+            }
+        assertTrue(
+            "Long-running fixtures must exercise non-empty finish ordering",
+            traces.any { trace -> trace.samples.any { it.snapshot.finishResults.isNotEmpty() } },
+        )
     }
 
     @Test
@@ -100,22 +105,35 @@ class LongRunningDeterminismTest {
         assertTrue(snapshot.currentProgress.checkpoint in 0..checkpointCount)
         assertTrue(snapshot.currentProgress.completedLaps in 0 until RaceRules.DEFAULT_LAP_COUNT)
 
-        assertFiniteValues(snapshot)
+        assertFiniteValues(snapshot, checkpointCount)
         assertParticipantOrdering(snapshot)
         assertFinishOrdering(snapshot)
     }
 
-    private fun assertFiniteValues(snapshot: BehavioralSnapshot) {
+    private fun assertFiniteValues(
+        snapshot: BehavioralSnapshot,
+        checkpointCount: Int,
+    ) {
         assertTrue(snapshot.elapsedSimulationTime.isFinite())
         assertTrue(snapshot.countdown.remainingSeconds.isFinite())
-        snapshot.participants.forEach(::assertParticipantIsValid)
+        snapshot.participants.forEach { participant ->
+            assertParticipantIsValid(participant, checkpointCount)
+        }
         snapshot.finishResults.forEach { result ->
             assertTrue(result.elapsedSimulationTime.isFinite())
             assertTrue(result.bestLapTime?.isFinite() ?: true)
         }
     }
 
-    private fun assertParticipantIsValid(participant: BehavioralParticipantSnapshot) {
+    private fun assertParticipantIsValid(
+        participant: BehavioralParticipantSnapshot,
+        checkpointCount: Int,
+    ) {
+        assertTrue("Invalid checkpoint for ${participant.id}", participant.checkpoint in 0..checkpointCount)
+        assertTrue(
+            "Invalid completed laps for ${participant.id}",
+            participant.lap in 0..RaceRules.DEFAULT_LAP_COUNT,
+        )
         val numericValues =
             listOf(
                 participant.x,

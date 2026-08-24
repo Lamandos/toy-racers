@@ -10,6 +10,16 @@
       "tags": ["stress", "determinism", "long-running", "throttle", "steering"],
       "ticks": 5000,
       "snapshotIntervalTicks": 1,
+      "initialStates": [
+        {
+          "id": "ai-0",
+          "currentCheckpointIndex": 5,
+          "completedLaps": 3,
+          "totalRaceTime": 30,
+          "finished": true,
+          "finishPosition": 1
+        }
+      ],
       "inputSegments": [
         {"fromTick": 1, "toTick": 1500, "throttle": 1, "steering": 0.8},
         {"fromTick": 1501, "toTick": 3000, "throttle": 1, "steering": -0.8},
