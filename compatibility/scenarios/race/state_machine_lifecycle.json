@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "race-state-machine-lifecycle",
+      "seed": 10001,
+      "trackId": "track-01",
+      "playerCar": "red-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["race", "state-machine", "pre-race", "countdown", "go", "racing", "multiple-ai"],
+      "ticks": 30,
+      "snapshotIntervalTicks": 10,
+      "inputSegments": [{"fromTick": 1, "toTick": 30, "throttle": 1}]
+    }
+  ]
+}

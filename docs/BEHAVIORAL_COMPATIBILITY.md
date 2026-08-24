@@ -55,9 +55,10 @@ random source, so the seed does not alter existing gameplay behaviour. Inputs ar
 inclusive, one-based simulation tick, and every physical step uses
 `CarPhysics.FIXED_DELTA_SECONDS` (`1/60` second). Countdown and racing transition snapshots, the
 first physical tick, each configured interval, the final tick, and a finish tick are saved in the
-output trace. It applies every requested tick even when the race has already finished; the game
-then performs no more physical steps under its existing rules. Invalid options, files, schemas,
-tracks, or output writes cause the task to fail with
+output trace. Scenarios tagged `state-machine` additionally sample `LOADING`, `READY`, and
+intermediate countdown states before the `GO` transition. It applies every requested tick even
+when the race has already finished; the game then performs no more physical steps under its
+existing rules. Invalid options, files, schemas, tracks, or output writes cause the task to fail with
 a non-zero exit code.
 
 ## Fixture contract
@@ -104,7 +105,8 @@ separately versioned reference change introduces seeded randomness.
 Golden traces are deliberately separate from inputs in
 `core/src/test/resources/compat/goldens.json`; their trace envelope has `"schemaVersion": 2`.
 They are checked in and are never updated by an ordinary test run. A trace records the countdown and
-racing transition, its first physical tick, then periodic normalized snapshots. A failure reports the
+racing transition, its first physical tick, then periodic normalized snapshots; a `state-machine`
+trace also records the loading and ready phases plus countdown progression. A failure reports the
 first sampled tick and JSON field that differs.
 
 ## Normalized snapshot contract

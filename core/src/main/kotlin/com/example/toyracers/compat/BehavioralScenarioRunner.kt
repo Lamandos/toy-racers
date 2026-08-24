@@ -1,5 +1,7 @@
 package com.example.toyracers.compat
 
+import com.example.toyracers.car.CarPhysics
+
 internal data class BehavioralTrace(
     val scenarioId: String,
     val seed: Long,
@@ -26,10 +28,35 @@ internal class BehavioralScenarioRunner(
             )
         val samples = mutableListOf<BehavioralTraceSample>()
         harness.setInitialStates(scenario.initialStates)
-        samples += BehavioralTraceSample("countdown", 0, harness.start())
-        samples += BehavioralTraceSample("racing", 0, harness.finishCountdown())
+        addStartSamples(harness, scenario, samples)
         addSimulationSamples(harness, scenario, samples)
         return BehavioralTrace(scenario.id, scenario.seed, samples)
+    }
+
+    private fun addStartSamples(
+        harness: BehavioralCompatibilityHarness,
+        scenario: BehavioralScenario,
+        samples: MutableList<BehavioralTraceSample>,
+    ) {
+        if (LIFECYCLE_TAG in scenario.tags) {
+            addLifecycleSamples(harness, samples)
+        } else {
+            samples += BehavioralTraceSample(COUNTDOWN_LABEL, 0, harness.start())
+            samples += BehavioralTraceSample(RACING_LABEL, 0, harness.finishCountdown())
+        }
+    }
+
+    private fun addLifecycleSamples(
+        harness: BehavioralCompatibilityHarness,
+        samples: MutableList<BehavioralTraceSample>,
+    ) {
+        samples += BehavioralTraceSample("loading", 0, harness.snapshot())
+        samples += BehavioralTraceSample("ready", 0, harness.markReadyForLifecycle())
+        samples += BehavioralTraceSample(COUNTDOWN_LABEL, 0, harness.startCountdownForLifecycle())
+        samples += BehavioralTraceSample(COUNTDOWN_LABEL, 0, harness.advanceCountdown(COUNTDOWN_SAMPLE_SECONDS))
+        samples += BehavioralTraceSample(COUNTDOWN_LABEL, 0, harness.advanceCountdown(COUNTDOWN_SAMPLE_SECONDS))
+        samples += BehavioralTraceSample(COUNTDOWN_LABEL, 0, harness.advanceCountdown(CarPhysics.FIXED_DELTA_SECONDS))
+        samples += BehavioralTraceSample(RACING_LABEL, 0, harness.finishCountdown())
     }
 
     private fun addSimulationSamples(
@@ -71,4 +98,11 @@ internal class BehavioralScenarioRunner(
         tick: Int,
         segmentIndex: Int,
     ): BehavioralInput = inputSegments[segmentIndex].takeIf { it.contains(tick) }?.input ?: BehavioralInput()
+
+    private companion object {
+        const val COUNTDOWN_SAMPLE_SECONDS = 1f
+        const val COUNTDOWN_LABEL = "countdown"
+        const val LIFECYCLE_TAG = "state-machine"
+        const val RACING_LABEL = "racing"
+    }
 }

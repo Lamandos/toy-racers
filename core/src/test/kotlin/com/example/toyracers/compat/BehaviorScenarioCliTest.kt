@@ -58,6 +58,48 @@ class BehaviorScenarioCliTest {
         assertEquals(scenario.ticks, trace.samples.last().tick)
     }
 
+    @Test
+    fun `state machine scenario samples lifecycle before physical ticks`() {
+        val scenario =
+            BehavioralScenario(
+                id = "race-state-machine-lifecycle",
+                seed = 10001L,
+                trackId = "track-01",
+                playerCar = "red-stripe",
+                inputOrigin = "keyboard",
+                tags = setOf("state-machine"),
+                ticks = 30,
+                snapshotIntervalTicks = 10,
+                inputSegments =
+                    listOf(
+                        BehavioralInputSegment(
+                            fromTick = 1,
+                            toTick = 30,
+                            input = BehavioralInput(throttle = 1f),
+                        ),
+                    ),
+                initialStates = emptyList(),
+                fullRace = false,
+            )
+
+        val preRaceSamples =
+            BehavioralScenarioRunner()
+                .run(scenario)
+                .samples
+                .takeWhile { it.snapshot.simulationTick == 0 }
+
+        assertEquals(
+            listOf("loading", "ready", "countdown", "countdown", "countdown", "countdown", "racing"),
+            preRaceSamples.map { it.snapshot.raceState },
+        )
+        assertEquals(3f, preRaceSamples[2].snapshot.countdown.remainingSeconds, 0.000001f)
+        assertEquals(2f, preRaceSamples[3].snapshot.countdown.remainingSeconds, 0.000001f)
+        assertEquals(1f, preRaceSamples[4].snapshot.countdown.remainingSeconds, 0.000001f)
+        assertTrue(preRaceSamples[5].snapshot.countdown.remainingSeconds < 1f)
+        val goSnapshot = preRaceSamples.last().snapshot
+        assertEquals(0f, goSnapshot.countdown.remainingSeconds, 0.000001f)
+    }
+
     private fun resourcePath(resource: String): Path =
         Path.of(requireNotNull(javaClass.classLoader.getResource(resource)).toURI())
 }

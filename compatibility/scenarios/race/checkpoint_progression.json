@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "race-checkpoint-progression",
+      "seed": 10002,
+      "trackId": "track-01",
+      "playerCar": "blue-stripe",
+      "inputOrigin": "touch",
+      "tags": ["race", "checkpoint", "progression"],
+      "ticks": 1,
+      "snapshotIntervalTicks": 1,
+      "inputSegments": [{"fromTick": 1, "toTick": 1}],
+      "initialStates": [
+        {
+          "id": "player",
+          "x": 90,
+          "y": 35.9,
+          "rotationDeg": 90,
+          "speed": 24,
+          "velocityY": 24
+        }
+      ]
+    }
+  ]
+}

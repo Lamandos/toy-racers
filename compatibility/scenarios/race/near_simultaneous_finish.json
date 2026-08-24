@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "race-near-simultaneous-finish",
+      "seed": 10004,
+      "trackId": "track-01",
+      "playerCar": "green-racer",
+      "inputOrigin": "touch",
+      "tags": ["race", "finish", "results", "ranking", "near-simultaneous", "multiple-ai"],
+      "ticks": 1,
+      "snapshotIntervalTicks": 1,
+      "inputSegments": [{"fromTick": 1, "toTick": 1}],
+      "initialStates": [
+        {
+          "id": "player",
+          "x": 55.1,
+          "y": 16,
+          "speed": 24,
+          "velocityX": 24,
+          "currentCheckpointIndex": 3,
+          "completedLaps": 2
+        },
+        {
+          "id": "ai-0",
+          "x": 55.1,
+          "y": 13,
+          "speed": 24,
+          "velocityX": 24,
+          "currentCheckpointIndex": 3,
+          "completedLaps": 2
+        },
+        {
+          "id": "ai-1",
+          "x": 55.1,
+          "y": 19,
+          "speed": 24,
+          "velocityX": 24,
+          "currentCheckpointIndex": 3,
+          "completedLaps": 2
+        }
+      ]
+    }
+  ]
+}
