@@ -5,4 +5,4 @@ repository_root=$(git rev-parse --show-toplevel)
 cd "$repository_root"
 
 echo "Running full quality gates before push..."
-./gradlew qualityCheck --daemon
+./gradlew qualityCheck --no-daemon

@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.nio.file.Path
+import kotlin.math.hypot
 
 class AiBehaviorScenarioTest {
     private val runner = BehavioralScenarioRunner(continueAfterFinish = true)
@@ -34,11 +35,13 @@ class AiBehaviorScenarioTest {
         val controlTrace = run("obstacle_reaction_control.json")
         val obstacleTrace = run("obstacle_reaction.json")
 
-        val controlCar = controlTrace.aiAt("ai-0", tick = 60)
-        val obstacleCar = obstacleTrace.aiAt("ai-0", tick = 60)
+        val controlCar = controlTrace.aiAt("ai-0", tick = PRE_CONTACT_TICK)
+        val obstacleCar = obstacleTrace.aiAt("ai-0", tick = PRE_CONTACT_TICK)
+        val stoppedPlayer = obstacleTrace.participantAt("player", PRE_CONTACT_TICK)
 
         assertTrue(controlCar.y != obstacleCar.y)
         assertTrue(controlCar.rotation != obstacleCar.rotation)
+        assertTrue(distanceBetween(obstacleCar, stoppedPlayer) > CAR_CONTACT_DISTANCE)
     }
 
     @Test
@@ -87,12 +90,22 @@ class AiBehaviorScenarioTest {
     private fun BehavioralTrace.aiAt(
         id: String,
         tick: Int,
+    ): BehavioralParticipantSnapshot = participantAt(id, tick)
+
+    private fun BehavioralTrace.participantAt(
+        id: String,
+        tick: Int,
     ): BehavioralParticipantSnapshot =
         samples
             .first { it.label == "simulation" && it.tick == tick }
             .snapshot
             .participants
             .first { it.id == id }
+
+    private fun distanceBetween(
+        first: BehavioralParticipantSnapshot,
+        second: BehavioralParticipantSnapshot,
+    ): Float = hypot(first.x - second.x, first.y - second.y)
 
     private fun BehavioralTrace.aiObservations(id: String): List<BehavioralParticipantSnapshot> =
         samples
@@ -123,6 +136,8 @@ class AiBehaviorScenarioTest {
             }
 
     private companion object {
+        const val PRE_CONTACT_TICK = 45
+        const val CAR_CONTACT_DISTANCE = 3.24f
         const val COMPATIBILITY_DIRECTORY_PROPERTY = "compatibilityDirectory"
     }
 }

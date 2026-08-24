@@ -9,7 +9,7 @@
       "inputOrigin": "keyboard",
       "tags": ["ai", "obstacle", "avoidance"],
       "ticks": 180,
-      "snapshotIntervalTicks": 30,
+      "snapshotIntervalTicks": 15,
       "inputSegments": [
         {"fromTick": 1, "toTick": 180}
       ],
