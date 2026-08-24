@@ -12,14 +12,15 @@ Run this once after cloning:
 ```
 
 The script is idempotent and sets `core.hooksPath` to `.githooks`. The pre-commit hook runs Kotlin style checks,
-detekt, the 500-line source-file gate, and JVM unit tests. The pre-push hook runs the complete `qualityCheck`,
-including Android debug unit tests and the existing core coverage gate.
+detekt, the 500-line source-file gate, and JVM unit tests through a Gradle daemon. The pre-push hook runs the
+complete `qualityCheck`, including Android debug unit tests and the existing core coverage gate, through the same
+mode. CI uses the same commands.
 
 ## Run checks
 
 ```sh
-./gradlew quickQualityCheck
-./gradlew qualityCheck
+./gradlew quickQualityCheck --daemon
+./gradlew qualityCheck --daemon
 ./gradlew ktlintCheck
 ./gradlew detekt
 ./gradlew test

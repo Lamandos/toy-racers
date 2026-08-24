@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "ai-recovery-checkpoint-progress",
+      "seed": 11005,
+      "trackId": "track-01",
+      "playerCar": "orange-truck",
+      "inputOrigin": "keyboard",
+      "tags": ["ai", "recovery", "checkpoint"],
+      "ticks": 300,
+      "snapshotIntervalTicks": 30,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 300}
+      ],
+      "initialStates": [
+        {"id": "ai-0", "x": 2, "y": 2, "rotationDeg": 180}
+      ]
+    }
+  ]
+}

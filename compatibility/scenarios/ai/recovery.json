@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "ai-recovery",
+      "seed": 11004,
+      "trackId": "track-02",
+      "playerCar": "yellow-sport",
+      "inputOrigin": "touch",
+      "tags": ["ai", "recovery", "off-track"],
+      "ticks": 360,
+      "snapshotIntervalTicks": 30,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 360}
+      ],
+      "initialStates": [
+        {"id": "ai-0", "x": 2, "y": 2, "rotationDeg": 180}
+      ]
+    }
+  ]
+}

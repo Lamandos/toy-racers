@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "ai-deterministic-steering",
+      "seed": 11002,
+      "trackId": "track-02",
+      "playerCar": "green-racer",
+      "inputOrigin": "touch",
+      "tags": ["ai", "determinism", "steering"],
+      "ticks": 600,
+      "snapshotIntervalTicks": 60,
+      "inputSegments": [
+        {"fromTick": 1, "toTick": 600}
+      ]
+    }
+  ]
+}
