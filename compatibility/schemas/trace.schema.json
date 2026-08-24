@@ -28,7 +28,7 @@
       "properties": {
         "label": {
           "type": "string",
-          "enum": ["loading", "ready", "countdown", "racing", "simulation"]
+          "enum": ["loading", "ready", "countdown", "racing", "simulation", "checkpoint", "lap", "finish"]
         },
         "tick": { "type": "integer", "minimum": 0 },
         "snapshot": {

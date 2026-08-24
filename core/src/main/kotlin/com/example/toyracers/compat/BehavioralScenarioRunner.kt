@@ -66,10 +66,12 @@ internal class BehavioralScenarioRunner(
     ) {
         var inputSegmentIndex = 0
         var raceFinished = false
+        var previousPlayer = harness.snapshot().player()
         for (tick in 1..scenario.ticks) {
             inputSegmentIndex = scenario.nextInputSegmentIndex(inputSegmentIndex, tick)
             val snapshot = harness.advance(scenario.inputAt(tick, inputSegmentIndex))
             val finishedThisTick = snapshot.raceState == "finished" && !raceFinished
+            val player = snapshot.player()
             val shouldSample =
                 tick == 1 ||
                     tick % scenario.snapshotIntervalTicks == 0 ||
@@ -78,10 +80,28 @@ internal class BehavioralScenarioRunner(
             if (shouldSample) {
                 samples += BehavioralTraceSample("simulation", tick, snapshot)
             }
+            if (EVENT_SNAPSHOTS_TAG in scenario.tags) {
+                eventLabels(previousPlayer, player).forEach { label ->
+                    samples += BehavioralTraceSample(label, tick, snapshot)
+                }
+            }
+            previousPlayer = player
             raceFinished = raceFinished || finishedThisTick
             if (raceFinished && !continueAfterFinish) break
         }
     }
+
+    private fun eventLabels(
+        previous: BehavioralParticipantSnapshot,
+        current: BehavioralParticipantSnapshot,
+    ): List<String> =
+        buildList {
+            if (current.checkpoint > previous.checkpoint) add(CHECKPOINT_LABEL)
+            if (current.lap > previous.lap) add(LAP_LABEL)
+            if (current.finished && !previous.finished) add(FINISH_LABEL)
+        }
+
+    private fun BehavioralSnapshot.player(): BehavioralParticipantSnapshot = participants.first { it.id == PLAYER_ID }
 
     private fun BehavioralScenario.nextInputSegmentIndex(
         currentIndex: Int,
@@ -102,7 +122,12 @@ internal class BehavioralScenarioRunner(
     private companion object {
         const val COUNTDOWN_SAMPLE_SECONDS = 1f
         const val COUNTDOWN_LABEL = "countdown"
+        const val CHECKPOINT_LABEL = "checkpoint"
+        const val EVENT_SNAPSHOTS_TAG = "event-snapshots"
+        const val FINISH_LABEL = "finish"
+        const val LAP_LABEL = "lap"
         const val LIFECYCLE_TAG = "state-machine"
+        const val PLAYER_ID = "player"
         const val RACING_LABEL = "racing"
     }
 }
