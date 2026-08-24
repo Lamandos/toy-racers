@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "race-final-lap-progression",
+      "seed": 10003,
+      "trackId": "track-01",
+      "playerCar": "yellow-sport",
+      "inputOrigin": "keyboard",
+      "tags": ["race", "lap", "final-lap", "progression"],
+      "ticks": 1,
+      "snapshotIntervalTicks": 1,
+      "inputSegments": [{"fromTick": 1, "toTick": 1}],
+      "initialStates": [
+        {
+          "id": "player",
+          "x": 55.1,
+          "y": 16,
+          "speed": 24,
+          "velocityX": 24,
+          "currentCheckpointIndex": 3,
+          "completedLaps": 1
+        }
+      ]
+    }
+  ]
+}
