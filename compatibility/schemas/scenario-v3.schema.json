@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/Lamandos/toy-racers/schemas/behavioral-scenario-v2.json",
+  "$id": "https://github.com/Lamandos/toy-racers/schemas/behavioral-scenario-v3.json",
   "title": "Toy Racers behavioral scenario",
   "description": "Language-neutral, fixed-timestep input for the Toy Racers reference simulation.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "scenarios"],
   "properties": {
-    "schemaVersion": { "const": 2 },
+    "schemaVersion": { "const": 3 },
     "scenarios": {
       "type": "array",
       "minItems": 1,
@@ -191,7 +191,17 @@
           "maximum": 3,
           "description": "The reference race uses three required laps."
         },
+        "lapStartTime": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3.4028234663852886e+38
+        },
         "totalRaceTime": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3.4028234663852886e+38
+        },
+        "bestLapTime": {
           "type": "number",
           "minimum": 0,
           "maximum": 3.4028234663852886e+38

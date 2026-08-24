@@ -9,7 +9,8 @@ import kotlin.io.path.name
 /** Reads and validates schema-versioned scenario documents for the headless runner. */
 internal object BehavioralScenarioLoader {
     const val SCHEMA_VERSION = 1
-    const val CURRENT_SCENARIO_SCHEMA_VERSION = 2
+    const val INPUT_TWEAKS_SCHEMA_VERSION = 2
+    const val CURRENT_SCENARIO_SCHEMA_VERSION = 3
 
     fun load(path: Path): BehavioralScenario {
         val scenarioPath = path.toAbsolutePath().normalize()
@@ -59,7 +60,7 @@ internal object BehavioralScenarioLoader {
             snapshotIntervalTicks = value.getInt("snapshotIntervalTicks"),
             inputSegments = inputSegments(value, inputScriptReader),
             inputTweaks =
-                if (schemaVersion >= CURRENT_SCENARIO_SCHEMA_VERSION) {
+                if (schemaVersion >= INPUT_TWEAKS_SCHEMA_VERSION) {
                     value
                         .get("inputTweaks")
                         ?.children()

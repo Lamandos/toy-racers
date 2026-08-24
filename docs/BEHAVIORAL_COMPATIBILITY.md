@@ -66,8 +66,9 @@ a non-zero exit code.
 Scenario inputs live in `core/src/test/resources/compat/scenarios.json` and have
 `"schemaVersion": 1`. Their formal, machine-readable contract is
 [`scenario.schema.json`](../core/src/main/resources/compat/scenario.schema.json); scenarios using
-the v2 extension use [`scenario-v2.schema.json`](../core/src/main/resources/compat/scenario-v2.schema.json).
-Both use JSON Schema draft 2020-12. A scenario declares a stable ID, seed, built-in `trackId`, player car, input
+the v2 extension use [`scenario-v2.schema.json`](../core/src/main/resources/compat/scenario-v2.schema.json), and
+scenarios seeding lap timers use [`scenario-v3.schema.json`](../core/src/main/resources/compat/scenario-v3.schema.json).
+All use JSON Schema draft 2020-12. A scenario declares a stable ID, seed, built-in `trackId`, player car, input
 origin, simulation tick count, sampling interval, and `inputSegments`. Segments are inclusive
 one-based tick ranges. A range omits any control that should be zero and may span an arbitrary
 number of simulation ticks. The optional `initialStates` block is a test-only API boundary for a
@@ -75,9 +76,9 @@ fully specified starting state; it adds no gameplay rules. Initial numeric value
 representable as Kotlin `Float`; `currentCheckpointIndex` is bounded by the selected track's
 checkpoint count (3 for `track-01`, 5 for `track-02`), and `completedLaps` is bounded by the
 reference race's three required laps. A finished initial state must provide `finishPosition` in the
-range `1..6`, and `finishPosition` is only valid when `finished` is true. Optional `lapStartTime`,
-`totalRaceTime`, and `bestLapTime` fields seed the corresponding race timers when a fixture needs
-to represent a finished state.
+range `1..6`, and `finishPosition` is only valid when `finished` is true. `totalRaceTime` may seed
+the total race timer; v3 additionally permits `lapStartTime` and `bestLapTime`. When supplied,
+`lapStartTime` must not exceed the effective `totalRaceTime` (zero when omitted).
 
 The schema's identifiers are deliberately language-neutral: tracks are `track-01` and `track-02`,
 while selectable cars are `red-stripe`, `blue-stripe`, `yellow-sport`, `green-racer`, and
@@ -136,10 +137,12 @@ version-1 snapshot shape and version-2 trace envelope: participant fields were r
 race-level progress and finish fields were added, and full-race traces now include checkpoint, lap,
 and finish event labels. Consumers must migrate to snapshot version 2 and trace version 3 or remain
 pinned to the earlier reference commit; they must not parse newer data as version 1 or 2. Scenario
-documents without `inputTweaks` remain at schema version 1, and the strict v1 schema remains
-unchanged. Documents using `inputTweaks` declare schema version 2 and validate against the v2
-scenario schema; input-script documents remain at schema version 1. Consumers must opt in to v2
-when they need the additive tweak contract.
+documents without `inputTweaks` or lap timer seeds remain at schema version 1, and the strict v1
+schema remains unchanged. Documents using `inputTweaks` declare schema version 2 and validate
+against the v2 scenario schema. Documents that seed `lapStartTime` or `bestLapTime` declare schema
+version 3 and validate against the v3 scenario schema; v3 also retains the v2 input-tweak contract.
+Input-script documents remain at schema version 1. Consumers must opt in to the schema version
+whose extensions they use.
 
 All non-float state is exact: IDs, ticks, state/surface enums, checkpoints, laps, finish flags,
 race positions, and every ordered array value must be identical. Float fields are finite,
