@@ -12,7 +12,7 @@
       "snapshotIntervalTicks": 1,
       "inputSegments": [{"fromTick": 1, "toTick": 8, "throttle": 1}],
       "initialStates": [
-        {"id": "player", "x": 0.1, "y": 12, "rotationDeg": 180},
+        {"id": "player", "x": 107.9, "y": 67.25, "rotationDeg": 30},
         {"id": "ai-0", "x": 75, "y": 18},
         {"id": "ai-1", "x": 90, "y": 36},
         {"id": "ai-2", "x": 72, "y": 54},
