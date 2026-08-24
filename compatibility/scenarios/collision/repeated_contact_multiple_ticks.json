@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "repeated-contact-multiple-ticks",
+      "seed": 8008,
+      "trackId": "track-01",
+      "playerCar": "yellow-sport",
+      "inputOrigin": "touch",
+      "tags": ["collision", "car-track", "repeated-contact"],
+      "ticks": 8,
+      "snapshotIntervalTicks": 1,
+      "inputSegments": [{"fromTick": 1, "toTick": 8, "throttle": 1}],
+      "initialStates": [
+        {"id": "player", "x": 107.9, "y": 67.25, "rotationDeg": 30},
+        {"id": "ai-0", "x": 75, "y": 18},
+        {"id": "ai-1", "x": 90, "y": 36},
+        {"id": "ai-2", "x": 72, "y": 54},
+        {"id": "ai-3", "x": 21, "y": 36},
+        {"id": "ai-4", "x": 21, "y": 54}
+      ]
+    }
+  ]
+}

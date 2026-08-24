@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "glancing-collision",
+      "seed": 8004,
+      "trackId": "track-01",
+      "playerCar": "green-racer",
+      "inputOrigin": "touch",
+      "tags": ["collision", "car-car", "glancing"],
+      "ticks": 4,
+      "snapshotIntervalTicks": 1,
+      "inputSegments": [{"fromTick": 1, "toTick": 4, "throttle": 1, "steering": 0.25}],
+      "initialStates": [
+        {"id": "player", "x": 46.5, "y": 15, "rotationDeg": 0, "speed": 16, "velocityX": 16},
+        {"id": "ai-0", "x": 49.2, "y": 16, "rotationDeg": 180, "speed": 8, "velocityX": -8},
+        {"id": "ai-1", "x": 75, "y": 18},
+        {"id": "ai-2", "x": 90, "y": 36},
+        {"id": "ai-3", "x": 72, "y": 54},
+        {"id": "ai-4", "x": 21, "y": 36}
+      ]
+    }
+  ]
+}

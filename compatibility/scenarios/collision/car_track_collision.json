@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "car-track-collision",
+      "seed": 8007,
+      "trackId": "track-02",
+      "playerCar": "blue-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["collision", "car-track", "boundary"],
+      "ticks": 4,
+      "snapshotIntervalTicks": 1,
+      "inputSegments": [{"fromTick": 1, "toTick": 4, "throttle": 1}],
+      "initialStates": [
+        {"id": "player", "x": 107.9, "y": 100, "rotationDeg": 0, "speed": 18, "velocityX": 18},
+        {"id": "ai-0", "x": 25, "y": 6},
+        {"id": "ai-1", "x": 30, "y": 12},
+        {"id": "ai-2", "x": 24, "y": 18},
+        {"id": "ai-3", "x": 7, "y": 12},
+        {"id": "ai-4", "x": 12, "y": 18}
+      ]
+    }
+  ]
+}

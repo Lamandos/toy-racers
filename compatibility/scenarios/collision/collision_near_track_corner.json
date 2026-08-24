@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "collision-near-track-corner",
+      "seed": 8009,
+      "trackId": "track-01",
+      "playerCar": "green-racer",
+      "inputOrigin": "keyboard",
+      "tags": ["collision", "car-track", "corner"],
+      "ticks": 4,
+      "snapshotIntervalTicks": 1,
+      "inputSegments": [{"fromTick": 1, "toTick": 4, "throttle": 1}],
+      "initialStates": [
+        {"id": "player", "x": 0.1, "y": 12, "rotationDeg": 225, "speed": 18, "velocityX": -13, "velocityY": -13},
+        {"id": "ai-0", "x": 25, "y": 6},
+        {"id": "ai-1", "x": 30, "y": 12},
+        {"id": "ai-2", "x": 24, "y": 18},
+        {"id": "ai-3", "x": 7, "y": 12},
+        {"id": "ai-4", "x": 12, "y": 18}
+      ]
+    }
+  ]
+}
