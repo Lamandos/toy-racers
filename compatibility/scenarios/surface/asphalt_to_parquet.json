@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "asphalt-to-parquet",
+      "seed": 9013,
+      "trackId": "track-01",
+      "playerCar": "green-racer",
+      "inputOrigin": "touch",
+      "tags": ["surface", "transition", "asphalt", "parquet", "off-road"],
+      "ticks": 30,
+      "snapshotIntervalTicks": 10,
+      "inputSegments": [{"fromTick": 1, "toTick": 30}],
+      "initialStates": [
+        {
+          "id": "player",
+          "x": 54,
+          "y": 15.6,
+          "rotationDeg": 270,
+          "speed": 34,
+          "velocityY": -34
+        }
+      ]
+    }
+  ]
+}

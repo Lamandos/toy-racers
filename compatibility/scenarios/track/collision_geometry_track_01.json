@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "collision-geometry-track-01",
+      "seed": 9003,
+      "trackId": "track-01",
+      "playerCar": "yellow-sport",
+      "inputOrigin": "keyboard",
+      "tags": ["track", "collision-geometry", "track-01"],
+      "ticks": 1,
+      "snapshotIntervalTicks": 1,
+      "inputSegments": [{"fromTick": 1, "toTick": 1}],
+      "initialStates": [
+        {"id": "player", "x": 100.85, "y": 30.87}
+      ]
+    }
+  ]
+}

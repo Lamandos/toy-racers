@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "checkpoint-ordering-track-01",
+      "seed": 9005,
+      "trackId": "track-01",
+      "playerCar": "orange-truck",
+      "inputOrigin": "keyboard",
+      "tags": ["track", "checkpoint", "ordering", "track-01"],
+      "ticks": 1,
+      "snapshotIntervalTicks": 1,
+      "inputSegments": [{"fromTick": 1, "toTick": 1}],
+      "initialStates": [
+        {
+          "id": "player",
+          "x": 90,
+          "y": 35.9,
+          "rotationDeg": 90,
+          "speed": 24,
+          "velocityY": 24
+        }
+      ]
+    }
+  ]
+}

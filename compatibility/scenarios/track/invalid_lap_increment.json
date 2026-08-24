@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "invalid-lap-increment",
+      "seed": 9009,
+      "trackId": "track-01",
+      "playerCar": "green-racer",
+      "inputOrigin": "keyboard",
+      "tags": ["track", "lap", "invalid", "checkpoint-required"],
+      "ticks": 1,
+      "snapshotIntervalTicks": 1,
+      "inputSegments": [{"fromTick": 1, "toTick": 1}],
+      "initialStates": [
+        {
+          "id": "player",
+          "x": 55.1,
+          "y": 16,
+          "speed": 24,
+          "velocityX": 24
+        }
+      ]
+    }
+  ]
+}

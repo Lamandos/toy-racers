@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "valid-lap-track-01",
+      "seed": 9007,
+      "trackId": "track-01",
+      "playerCar": "blue-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["track", "lap", "valid", "track-01"],
+      "ticks": 1,
+      "snapshotIntervalTicks": 1,
+      "inputSegments": [{"fromTick": 1, "toTick": 1}],
+      "initialStates": [
+        {
+          "id": "player",
+          "x": 55.1,
+          "y": 16,
+          "speed": 24,
+          "velocityX": 24,
+          "currentCheckpointIndex": 3
+        }
+      ]
+    }
+  ]
+}

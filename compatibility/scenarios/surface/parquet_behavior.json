@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "parquet-behavior",
+      "seed": 9011,
+      "trackId": "track-01",
+      "playerCar": "blue-stripe",
+      "inputOrigin": "touch",
+      "tags": ["surface", "parquet", "off-road", "speed-limit"],
+      "ticks": 1,
+      "snapshotIntervalTicks": 1,
+      "inputSegments": [{"fromTick": 1, "toTick": 1}],
+      "initialStates": [
+        {
+          "id": "player",
+          "x": 12,
+          "y": 15,
+          "speed": 34,
+          "velocityX": 34,
+          "surfaceSpeedMultiplier": 0.3
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "parquet-to-asphalt",
+      "seed": 9014,
+      "trackId": "track-01",
+      "playerCar": "orange-truck",
+      "inputOrigin": "keyboard",
+      "tags": ["surface", "transition", "parquet", "asphalt", "recovery"],
+      "ticks": 60,
+      "snapshotIntervalTicks": 20,
+      "inputSegments": [{"fromTick": 1, "toTick": 60}],
+      "initialStates": [
+        {
+          "id": "player",
+          "x": 54,
+          "y": 6,
+          "rotationDeg": 90,
+          "speed": 10.2,
+          "velocityY": 10.2,
+          "surfaceSpeedMultiplier": 0.3
+        }
+      ]
+    }
+  ]
+}

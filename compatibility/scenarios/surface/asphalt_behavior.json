@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "asphalt-behavior",
+      "seed": 9010,
+      "trackId": "track-01",
+      "playerCar": "red-stripe",
+      "inputOrigin": "keyboard",
+      "tags": ["surface", "asphalt", "speed-allowance"],
+      "ticks": 30,
+      "snapshotIntervalTicks": 10,
+      "inputSegments": [{"fromTick": 1, "toTick": 30}],
+      "initialStates": [
+        {"id": "player", "x": 49.5, "y": 15.6, "speed": 34, "velocityX": 34}
+      ]
+    }
+  ]
+}
