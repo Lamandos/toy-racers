@@ -13,7 +13,7 @@
       "initialStates": [
         {
           "id": "ai-0",
-          "currentCheckpointIndex": 5,
+          "currentCheckpointIndex": 0,
           "completedLaps": 3,
           "totalRaceTime": 30,
           "finished": true,
