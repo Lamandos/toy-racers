@@ -9,7 +9,7 @@
       "inputOrigin": "keyboard",
       "tags": ["full-race", "race", "golden", "periodic-snapshots", "event-snapshots", "checkpoint", "lap", "finish", "results"],
       "ticks": 12000,
-      "snapshotIntervalTicks": 600,
+      "snapshotIntervalTicks": 1000,
       "inputScript": "full-race-input.json",
       "fullRace": true
     }

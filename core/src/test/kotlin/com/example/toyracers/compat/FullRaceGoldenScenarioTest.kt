@@ -27,9 +27,11 @@ class FullRaceGoldenScenarioTest {
         assertEquals(fixtures.size, fixtures.map { it.scenario.seed }.toSet().size)
         assertTrue(fixtures.any { STATE_MACHINE_TAG in it.scenario.tags })
 
-        fixtures.forEach { fixture ->
+        val traces = fixtures.map { fixture -> fixture to runner.run(fixture.scenario) }
+        assertEquals(fixtures.size, traces.map { (_, trace) -> trace.samples }.toSet().size)
+
+        traces.forEach { (fixture, trace) ->
             val track = validateScenario(fixture.scenario)
-            val trace = runner.run(fixture.scenario)
 
             assertEquals(fixture.scenario.seed, trace.seed)
             assertPlayerAndAiParticipants(trace)
@@ -149,11 +151,15 @@ class FullRaceGoldenScenarioTest {
     private fun fixtures(): List<FullRaceFixture> {
         val scenarios = scenarioDirectory()
         return Files.walk(scenarios).use { paths ->
-            paths
-                .filter(Files::isRegularFile)
-                .filter { path -> path.fileName.toString().endsWith(JSON_SUFFIX) }
-                .filter { path -> path.fileName.toString() != INPUT_SCRIPT_FILE }
-                .sorted()
+            val files =
+                paths
+                    .filter(Files::isRegularFile)
+                    .filter { path -> path.fileName.toString().endsWith(JSON_SUFFIX) }
+                    .sorted()
+                    .toList()
+            val referencedScripts = referencedInputScriptPaths(files)
+            files
+                .filterNot(referencedScripts::contains)
                 .map { path ->
                     FullRaceFixture(
                         scenario = BehavioralScenarioLoader.load(path),
@@ -207,7 +213,6 @@ class FullRaceGoldenScenarioTest {
         const val EVENT_SNAPSHOTS_TAG = "event-snapshots"
         const val EXPECTED_PLAYER_FINISH_POSITION = 1
         const val FINISH_LABEL = "finish"
-        const val INPUT_SCRIPT_FILE = "full-race-input.json"
         const val JSON_SUFFIX = ".json"
         const val LAP_LABEL = "lap"
         const val LIFECYCLE_SAMPLE_COUNT = 7
