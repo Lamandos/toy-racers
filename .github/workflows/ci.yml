@@ -8,13 +8,20 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      run_fuzz_smoke:
+        description: Run the optional fixed-seed differential fuzz smoke suite.
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
 jobs:
-  verify:
-    name: Quality gates and Android debug build
+  quality:
+    name: Formatting, static analysis, UI smoke, and Android checks
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -39,20 +46,23 @@ jobs:
           cache-provider: basic
           validate-wrappers: true
 
-      - name: Run repository quality gates
-        run: xvfb-run --auto-servernum ./gradlew qualityCheck --no-daemon
+      - name: Run quality checks and Android debug checks
+        run: >-
+          xvfb-run --auto-servernum ./gradlew
+          ktlintCheck detekt verifySourceFileLengths lwjgl3:uiSmokeTest android:testDebugUnitTest android:assembleDebug
+          --no-daemon
 
-      - name: Build Android debug APK
-        run: ./gradlew android:assembleDebug --no-daemon
-
-      - name: Upload test reports
+      - name: Upload quality reports
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports
+          name: quality-reports
           path: |
-            **/build/reports/**
-            **/build/test-results/**
+            **/build/reports/ktlint/**
+            **/build/reports/detekt/**
+            lwjgl3/build/reports/**
+            android/build/reports/tests/**
+            android/build/test-results/**
           if-no-files-found: warn
           retention-days: 7
 
@@ -63,4 +73,184 @@ jobs:
           name: android-debug-apk
           path: android/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 7
+
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle cache and validate wrapper
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+          validate-wrappers: true
+
+      - name: Run JVM unit tests
+        run: ./gradlew unitTest --no-daemon
+
+      - name: Upload unit-test reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: |
+            core/build/reports/tests/test/**
+            core/build/test-results/test/**
+            lwjgl3/build/reports/tests/test/**
+            lwjgl3/build/test-results/test/**
+          if-no-files-found: warn
+          retention-days: 7
+
+  behavioral-compatibility:
+    name: Behavioral compatibility tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle cache and validate wrapper
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+          validate-wrappers: true
+
+      - name: Verify behavioral compatibility goldens
+        run: ./gradlew behavioralCompatibilityTest --no-daemon
+
+      - name: Upload behavioral test reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: behavioral-compatibility-reports
+          path: |
+            core/build/reports/tests/behavioralCompatibilityTest/**
+            core/build/reports/tests/compatibilityGoldenTest/**
+            core/build/test-results/behavioralCompatibilityTest/**
+            core/build/test-results/compatibilityGoldenTest/**
+          if-no-files-found: warn
+          retention-days: 7
+
+  deterministic-repeat:
+    name: Deterministic repeat test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle cache and validate wrapper
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+          validate-wrappers: true
+
+      - name: Run deterministic repeat suite
+        run: ./gradlew deterministicRepeatTest --no-daemon
+
+      - name: Upload deterministic repeat reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: deterministic-repeat-reports
+          path: |
+            core/build/reports/tests/deterministicRepeatTest/**
+            core/build/test-results/deterministicRepeatTest/**
+          if-no-files-found: warn
+          retention-days: 7
+
+  coverage:
+    name: Coverage report
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle cache and validate wrapper
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+          validate-wrappers: true
+
+      - name: Generate and verify core coverage report
+        run: ./gradlew coverageReport --no-daemon
+
+      - name: Upload coverage report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-coverage-report
+          path: |
+            core/build/reports/jacoco/test/**
+            core/build/test-results/test/**
+          if-no-files-found: warn
+          retention-days: 7
+
+  fuzz-smoke:
+    name: Optional fuzz smoke
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_fuzz_smoke }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle cache and validate wrapper
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+          validate-wrappers: true
+
+      - name: Run fixed-seed differential fuzz smoke suite
+        run: ./gradlew fuzzSmokeTest --no-daemon
+
+      - name: Upload fuzz smoke report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-smoke-report
+          path: |
+            core/build/reports/tests/differentialFuzzSmokeTest/**
+            core/build/test-results/differentialFuzzSmokeTest/**
+          if-no-files-found: warn
           retention-days: 7

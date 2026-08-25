@@ -13,7 +13,8 @@ Run this once after cloning:
 
 The script is idempotent and sets `core.hooksPath` to `.githooks`. The pre-commit hook runs Kotlin style checks,
 detekt, the 500-line source-file gate, JVM unit tests, and the desktop UI smoke flow. The pre-push hook runs the
-complete `qualityCheck`, including Android debug unit tests and the existing core coverage gate.
+complete `qualityCheck`, including behavioral compatibility fixtures, deterministic repeat tests, Android debug unit
+tests, and the core coverage gate. The fixed-seed fuzz smoke test is intentionally opt-in.
 
 On headless Linux, both hooks automatically use `xvfb-run --auto-servernum` for the desktop UI smoke flow. Install
 Xvfb before committing or pushing from that environment.
@@ -23,11 +24,28 @@ Xvfb before committing or pushing from that environment.
 ```sh
 ./gradlew quickQualityCheck
 ./gradlew qualityCheck
+./gradlew unitTest
+./gradlew behavioralTest
+./gradlew fuzzSmokeTest
+./gradlew coverageReport
 ./gradlew ktlintCheck
 ./gradlew detekt
 ./gradlew test
 ./gradlew lwjgl3:uiSmokeTest
 ```
+
+`behavioralTest` is the primary local behavioral suite. It verifies the versioned behavioral fixtures and both
+golden-master formats, then runs the long-running deterministic repeat test. `coverageReport` generates the JaCoCo
+report and verifies the configured coverage threshold. `fuzzSmokeTest` runs only when invoked explicitly; the GitHub
+Actions fuzz job is available through **Run workflow** with `run_fuzz_smoke` enabled.
+
+Ordinary test tasks are read-only with respect to checked-in fixtures. Regenerate behavioral goldens only with:
+
+```sh
+./gradlew regenerateBehaviorGolden
+```
+
+Review every resulting golden diff before committing it.
 
 `uiSmokeTest` launches the real desktop libGDX application in a fixed 1280×720 window with disabled audio. It
 needs a working OpenGL display server; on a headless Linux machine, use `xvfb-run --auto-servernum` as CI does.

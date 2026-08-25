@@ -29,16 +29,50 @@ tasks.withType(Test).configureEach {
   inputs.dir(rootProject.file('compatibility/scenarios'))
   inputs.dir(rootProject.file('compatibility/golden'))
   systemProperty 'compatibilityDirectory', rootProject.file('compatibility').absolutePath
-  systemProperty 'updateBehavioralGoldens', System.getProperty('updateBehavioralGoldens', 'false')
+  systemProperty 'updateBehavioralGoldens', 'false'
+}
+
+tasks.named('test', Test).configure {
+  filter {
+    excludeTestsMatching 'com.example.toyracers.compat.AiBehaviorScenarioTest'
+    excludeTestsMatching 'com.example.toyracers.compat.BehavioralCompatibilityTest'
+    excludeTestsMatching 'com.example.toyracers.compat.CompatibilityGoldenMasterTest'
+    excludeTestsMatching 'com.example.toyracers.compat.DifferentialFuzzSmokeTest'
+    excludeTestsMatching 'com.example.toyracers.compat.FullRaceGoldenScenarioTest'
+    excludeTestsMatching 'com.example.toyracers.compat.LongRunningDeterminismTest'
+  }
 }
 
 tasks.register('behavioralCompatibilityTest', Test) {
   group = 'verification'
-  description = 'Runs the versioned, headless behavioral compatibility suite.'
+  description = 'Runs versioned behavioral scenarios against the legacy golden master.'
   dependsOn testClasses
   testClassesDirs = sourceSets.test.output.classesDirs
   classpath = sourceSets.test.runtimeClasspath
+  filter {
+    includeTestsMatching 'com.example.toyracers.compat.AiBehaviorScenarioTest'
+    includeTestsMatching 'com.example.toyracers.compat.BehavioralCompatibilityTest'
+  }
+}
+
+tasks.register('deterministicRepeatTest', Test) {
+  group = 'verification'
+  description = 'Runs the long-running deterministic repeat suite.'
+  dependsOn testClasses
+  testClassesDirs = sourceSets.test.output.classesDirs
+  classpath = sourceSets.test.runtimeClasspath
+  filter.includeTestsMatching 'com.example.toyracers.compat.LongRunningDeterminismTest'
+}
+
+tasks.register('regenerateBehaviorGolden', Test) {
+  group = 'maintenance'
+  description = 'Explicitly regenerates the legacy behavioral golden master.'
+  dependsOn testClasses
+  testClassesDirs = sourceSets.test.output.classesDirs
+  classpath = sourceSets.test.runtimeClasspath
+  systemProperty 'updateBehavioralGoldens', 'true'
   filter.includeTestsMatching 'com.example.toyracers.compat.BehavioralCompatibilityTest'
+  outputs.upToDateWhen { false }
 }
 
 tasks.register('runBehaviorScenario', JavaExec) {
@@ -98,11 +132,14 @@ tasks.register('differentialFuzzSmokeTest', Test) {
 
 tasks.register('compatibilityGoldenTest', Test) {
   group = 'verification'
-  description = 'Verifies checked-in file-per-scenario compatibility golden masters.'
+  description = 'Verifies checked-in file-per-scenario compatibility golden masters and full-race scenarios.'
   dependsOn testClasses
   testClassesDirs = sourceSets.test.output.classesDirs
   classpath = sourceSets.test.runtimeClasspath
-  filter.includeTestsMatching 'com.example.toyracers.compat.CompatibilityGoldenMasterTest'
+  filter {
+    includeTestsMatching 'com.example.toyracers.compat.CompatibilityGoldenMasterTest'
+    includeTestsMatching 'com.example.toyracers.compat.FullRaceGoldenScenarioTest'
+  }
 }
 
 tasks.register('regenerateCompatibilityGoldens', JavaExec) {

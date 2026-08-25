@@ -32,25 +32,27 @@ configure(subprojects - project(':android')) {
   apply plugin: 'kotlin'
   java.sourceCompatibility = 21
 
-  // From https://lyze.dev/2021/04/29/libGDX-Internal-Assets-List/
-  // The article can be helpful when using assets.txt in your project.
-  tasks.register('generateAssetList') {
-    inputs.dir("${project.rootDir}/assets/")
-    // projectFolder/assets
-    File assetsFolder = new File("${project.rootDir}/assets/")
-    // projectFolder/assets/assets.txt
-    File assetsFile = new File(assetsFolder, "assets.txt")
-    // delete that file in case we've already created it
-    assetsFile.delete()
+  def assetsFolder = rootProject.file('assets')
+  def generatedAssetsFile = layout.buildDirectory.file('generated/assets/assets.txt')
 
-    // iterate through all files inside that folder
-    // convert it to a relative path
-    // and append it to the file assets.txt
-    fileTree(assetsFolder).collect { assetsFolder.relativePath(it) }.sort().each {
-      assetsFile.append(it + "\n")
+  tasks.register('generateAssetList') {
+    inputs.dir(assetsFolder)
+    outputs.file(generatedAssetsFile)
+    doLast {
+      def assetsFile = generatedAssetsFile.get().asFile
+      assetsFile.parentFile.mkdirs()
+      def assetPaths =
+        fileTree(assetsFolder) {
+          exclude 'assets.txt'
+        }.files.collect { assetsFolder.toPath().relativize(it.toPath()).toString() }.sort()
+      assetsFile.text = assetPaths.join("\n") + "\n"
     }
   }
-  processResources.dependsOn 'generateAssetList'
+  sourceSets.main.resources.exclude 'assets.txt'
+  processResources {
+    dependsOn tasks.named('generateAssetList')
+    from(generatedAssetsFile)
+  }
 
   compileJava {
     options.incremental = true
@@ -105,6 +107,42 @@ subprojects {
 
 eclipse.project.name = 'ToyRacers' + '-parent'
 
+tasks.register('unitTest') {
+  group = 'verification'
+  description = 'Runs the regular JVM unit-test suite.'
+  dependsOn ':core:test', ':lwjgl3:test'
+}
+
+tasks.register('behavioralCompatibilityTest') {
+  group = 'verification'
+  description = 'Runs checked-in behavioral compatibility fixtures and golden masters.'
+  dependsOn ':core:behavioralCompatibilityTest', ':core:compatibilityGoldenTest'
+}
+
+tasks.register('deterministicRepeatTest') {
+  group = 'verification'
+  description = 'Runs the long-running deterministic repeat suite.'
+  dependsOn ':core:deterministicRepeatTest'
+}
+
+tasks.register('behavioralTest') {
+  group = 'verification'
+  description = 'Runs the primary behavioral compatibility and deterministic repeat suite.'
+  dependsOn tasks.named('behavioralCompatibilityTest'), tasks.named('deterministicRepeatTest')
+}
+
+tasks.register('fuzzSmokeTest') {
+  group = 'verification'
+  description = 'Runs the optional fixed-seed differential fuzz smoke suite.'
+  dependsOn ':core:differentialFuzzSmokeTest'
+}
+
+tasks.register('coverageReport') {
+  group = 'verification'
+  description = 'Generates and verifies the core JVM unit-test coverage report.'
+  dependsOn ':core:jacocoTestReport', ':core:jacocoTestCoverageVerification'
+}
+
 tasks.register('verifySourceFileLengths') {
   group = 'verification'
   description = 'Fails when a Kotlin or Java source file exceeds 500 lines.'
@@ -126,11 +164,11 @@ tasks.register('verifySourceFileLengths') {
 
 tasks.register('quickQualityCheck') {
   group = 'verification'
-  description = 'Runs formatting checks, static analysis, and JVM unit tests.'
+  description = 'Runs formatting checks, static analysis, JVM unit tests, and the desktop UI smoke flow.'
   dependsOn subprojects.collect { project ->
     [project.tasks.named('ktlintCheck'), project.tasks.named('detekt')]
   }.flatten()
-  dependsOn ':core:test', ':lwjgl3:test'
+  dependsOn tasks.named('unitTest')
   dependsOn ':lwjgl3:uiSmokeTest'
   dependsOn tasks.named('verifySourceFileLengths')
 }
@@ -139,7 +177,7 @@ tasks.register('qualityCheck') {
   group = 'verification'
   description = 'Runs every repository quality gate used by pre-push and CI.'
   dependsOn tasks.named('quickQualityCheck')
-  dependsOn ':core:jacocoTestCoverageVerification', ':android:testDebugUnitTest'
+  dependsOn tasks.named('behavioralTest'), tasks.named('coverageReport'), ':android:testDebugUnitTest'
 }
 
 tasks.register('verifyCompatibilityGoldens') {
@@ -152,4 +190,10 @@ tasks.register('regenerateCompatibilityGoldens') {
   group = 'maintenance'
   description = 'Explicitly regenerates compatibility goldens and lists changed files.'
   dependsOn ':core:regenerateCompatibilityGoldens'
+}
+
+tasks.register('regenerateBehaviorGolden') {
+  group = 'maintenance'
+  description = 'Explicitly regenerates every checked-in behavioral golden master.'
+  dependsOn ':core:regenerateBehaviorGolden', ':core:regenerateCompatibilityGoldens'
 }

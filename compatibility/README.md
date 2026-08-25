@@ -46,6 +46,13 @@ It runs the headless Kotlin reference simulation, rewrites only out-of-date gold
 every changed path. It fails if a golden has no matching scenario. Golden JSON files are versioned
 repository inputs and must be committed with their scenario changes.
 
+To regenerate this set together with the legacy behavioral golden master in
+`core/src/test/resources/compat/goldens.json`, run the repository-level command instead:
+
+```sh
+./gradlew regenerateBehaviorGolden
+```
+
 ## When updating a golden is acceptable
 
 Update a golden only after an intentional and reviewed change to the simulation contract, a
