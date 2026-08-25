@@ -40,7 +40,7 @@ jobs:
           validate-wrappers: true
 
       - name: Run repository quality gates
-        run: ./gradlew qualityCheck --no-daemon
+        run: xvfb-run --auto-servernum ./gradlew qualityCheck --no-daemon
 
       - name: Build Android debug APK
         run: ./gradlew android:assembleDebug --no-daemon

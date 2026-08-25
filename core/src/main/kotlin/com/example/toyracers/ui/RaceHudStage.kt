@@ -71,6 +71,7 @@ class RaceHudStage private constructor(
         }
     private val pauseButton =
         button("", SECONDARY_BUTTON_STYLE, onPause).apply {
+            name = PAUSE_BUTTON_NAME
             clearChildren()
             add(Image(cyanDrawable)).width(13f).height(39f).padRight(10f)
             add(Image(cyanDrawable)).width(13f).height(39f)
@@ -272,6 +273,7 @@ class RaceHudStage private constructor(
     private companion object {
         const val LAP_SEGMENT_COUNT = 6
         const val MAX_VISIBLE_COMPETITORS = 6
+        const val PAUSE_BUTTON_NAME = "PAUSE"
         val HUD_CYAN = Color(0.02f, 0.72f, 1f, 0.96f)
         val MUTED_TEXT = Color(0.78f, 0.84f, 0.9f, 1f)
         val PANEL_COLOR = Color(0.01f, 0.025f, 0.055f, 0.9f)

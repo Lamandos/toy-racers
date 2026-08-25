@@ -47,6 +47,7 @@ class TrackSelectionStage(
 
     private fun trackCard(option: TrackSelectionOption): TextButton =
         TextButton("", skin).apply {
+            name = option.trackId.value
             clearChildren()
             add(
                 Image(option.preview).apply {

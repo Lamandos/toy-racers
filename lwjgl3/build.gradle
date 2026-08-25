@@ -50,6 +50,32 @@ dependencies {
   }
 }
 
+sourceSets {
+  uiSmoke
+}
+
+configurations.named('uiSmokeImplementation') {
+  extendsFrom configurations.implementation
+}
+
+configurations.named('uiSmokeRuntimeOnly') {
+  extendsFrom configurations.runtimeOnly
+}
+
+tasks.register('uiSmokeTest', JavaExec) {
+  group = 'verification'
+  description = 'Runs the desktop UI smoke flow through real Scene2D input events.'
+  dependsOn tasks.named('uiSmokeClasses')
+  classpath = sourceSets.uiSmoke.runtimeClasspath
+  mainClass.set('com.example.toyracers.lwjgl3.UiSmokeTestRunnerKt')
+  workingDir = rootProject.file('assets')
+  jvmArgs '--enable-native-access=ALL-UNNAMED'
+  if (System.properties['os.name'].toLowerCase(Locale.ROOT).contains('mac')) {
+    jvmArgs '-XstartOnFirstThread'
+  }
+  inputs.dir(rootProject.file('assets'))
+}
+
 def os = System.properties['os.name'].toLowerCase(Locale.ROOT)
 
 run {

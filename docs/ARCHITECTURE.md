@@ -153,10 +153,15 @@ Gameplay simulation uses a fixed timestep of `1 / 60` second. Screens cap accumu
 
 Unit tests in `core` cover deterministic behavior such as acceleration, steering, lateral grip, collision response, checkpoint order, laps, rankings, and AI decisions. Rendering and platform launchers are verified through desktop execution, Android debug builds, and manual testing on a real Android phone.
 
+The desktop `uiSmokeTest` runs the visible menu, selection, race-start, pause, and results interactions through
+Scene2D input events. It is a presentation/navigation check; deterministic gameplay behavior remains covered by the
+core compatibility and unit suites.
+
 Standard checks:
 
 ```sh
 ./gradlew test
 ./gradlew lwjgl3:run
+./gradlew lwjgl3:uiSmokeTest
 ./gradlew android:assembleDebug
 ```

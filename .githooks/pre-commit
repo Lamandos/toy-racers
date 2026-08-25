@@ -4,5 +4,13 @@ set -eu
 repository_root=$(git rev-parse --show-toplevel)
 cd "$repository_root"
 
-echo "Running fast quality gates before commit..."
-./gradlew quickQualityCheck --no-daemon
+echo "Running fast quality gates, including desktop UI smoke..."
+if [ "$(uname -s)" = "Linux" ] && [ -z "${DISPLAY:-}" ]; then
+  if ! command -v xvfb-run >/dev/null 2>&1; then
+    echo "Headless Linux requires xvfb-run to execute desktop UI smoke tests."
+    exit 1
+  fi
+  xvfb-run --auto-servernum ./gradlew quickQualityCheck --no-daemon
+else
+  ./gradlew quickQualityCheck --no-daemon
+fi
