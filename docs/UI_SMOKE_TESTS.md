@@ -17,8 +17,9 @@ pointer down/up events at its centre; it does not invoke screen callbacks direct
 opens the results screen after the pause flow. This deliberately avoids treating a UI smoke check as a way to create
 or validate a gameplay finish.
 
-The task is part of `quickQualityCheck` and `qualityCheck`. It requires an OpenGL display server. GitHub Actions
-runs the quality gate under `xvfb-run --auto-servernum`; use the same wrapper for headless Linux development.
+The task is part of `quickQualityCheck` and `qualityCheck`. It requires an OpenGL display server. Git hooks and
+GitHub Actions automatically run the quality gates under `xvfb-run --auto-servernum` on headless Linux; install Xvfb
+before committing or pushing from that environment.
 
 ## Screenshot goldens
 

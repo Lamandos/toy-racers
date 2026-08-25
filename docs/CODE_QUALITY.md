@@ -15,6 +15,9 @@ The script is idempotent and sets `core.hooksPath` to `.githooks`. The pre-commi
 detekt, the 500-line source-file gate, JVM unit tests, and the desktop UI smoke flow. The pre-push hook runs the
 complete `qualityCheck`, including Android debug unit tests and the existing core coverage gate.
 
+On headless Linux, both hooks automatically use `xvfb-run --auto-servernum` for the desktop UI smoke flow. Install
+Xvfb before committing or pushing from that environment.
+
 ## Run checks
 
 ```sh
