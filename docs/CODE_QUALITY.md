@@ -14,7 +14,8 @@ Run this once after cloning:
 The script is idempotent and sets `core.hooksPath` to `.githooks`. The pre-commit hook runs Kotlin style checks,
 detekt, the 500-line source-file gate, JVM unit tests, and the desktop UI smoke flow. The pre-push hook runs the
 complete `qualityCheck`, including behavioral compatibility fixtures, deterministic repeat tests, Android debug unit
-tests, and the core coverage gate. The fixed-seed fuzz smoke test is intentionally opt-in.
+tests, the core coverage gate, and mutation testing. The fixed-seed fuzz smoke and the 20-run full behavioral
+stability suite are intentionally opt-in.
 
 On headless Linux, both hooks automatically use `xvfb-run --auto-servernum` for the desktop UI smoke flow. Install
 Xvfb before committing or pushing from that environment.
@@ -28,6 +29,8 @@ Xvfb before committing or pushing from that environment.
 ./gradlew behavioralTest
 ./gradlew fuzzSmokeTest
 ./gradlew coverageReport
+./gradlew mutationTest
+./gradlew behavioralStabilityTest
 ./gradlew ktlintCheck
 ./gradlew detekt
 ./gradlew test
@@ -36,8 +39,17 @@ Xvfb before committing or pushing from that environment.
 
 `behavioralTest` is the primary local behavioral suite. It verifies the versioned behavioral fixtures and both
 golden-master formats, then runs the long-running deterministic repeat test. `coverageReport` generates the JaCoCo
-report and verifies the configured coverage threshold. `fuzzSmokeTest` runs only when invoked explicitly; the GitHub
-Actions fuzz job is available through **Run workflow** with `run_fuzz_smoke` enabled.
+report and verifies overall Line and Branch coverage of at least 85%, plus at least 90% Line coverage in the AI, car,
+collision, race, surface, and track packages. `mutationTest` runs PIT against the four critical deterministic rule
+systems: car physics, collision response, race rules, and surface speed. It requires at least 70% killed mutations.
+`fuzzSmokeTest` runs only when invoked explicitly; the GitHub Actions fuzz job is available through **Run workflow**
+with `run_fuzz_smoke` enabled.
+
+`behavioralStabilityTest` intentionally takes much longer than pull-request checks: it runs the complete inventory of
+legacy, file-per-scenario, full-race, and long-running fixtures twenty times sequentially and compares canonical JSON
+from every replay. Reserve up to six hours for the manual GitHub Actions job (or use a sufficiently provisioned local
+machine) before a release. Run it through **Run workflow** with `run_behavioral_stability` enabled; a successful
+invocation is the evidence for a 0% flaky result across 20 full suite runs.
 
 Ordinary test tasks are read-only with respect to checked-in fixtures. Regenerate behavioral goldens only with:
 

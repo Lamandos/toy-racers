@@ -2,9 +2,34 @@
 eclipse.project.name = appName + '-core'
 
 apply plugin: 'jacoco'
+apply plugin: 'info.solidsoft.pitest'
 
 jacoco {
   toolVersion = '0.8.13'
+}
+
+pitest {
+  pitestVersion = '1.22.1'
+  targetClasses = [
+    'com.example.toyracers.car.CarPhysics',
+    'com.example.toyracers.collision.CollisionSystem',
+    'com.example.toyracers.race.RaceRules',
+    'com.example.toyracers.surface.SurfaceSpeedSystem',
+  ]
+  targetTests = [
+    'com.example.toyracers.car.CarPhysicsTest',
+    'com.example.toyracers.collision.CarCollisionShapeTest',
+    'com.example.toyracers.collision.CollisionEdgeCaseTest',
+    'com.example.toyracers.collision.CollisionScenarioTest',
+    'com.example.toyracers.collision.CollisionSystemTest',
+    'com.example.toyracers.race.RaceRulesTest',
+    'com.example.toyracers.surface.SurfaceScenarioTest',
+    'com.example.toyracers.surface.SurfaceSpeedSystemTest',
+  ]
+  threads = 2
+  outputFormats = ['HTML', 'XML']
+  timestampedReports = false
+  mutationThreshold = 70
 }
 
 def unitTestCoverageClasses = sourceSets.main.output.classesDirs.asFileTree.matching {
@@ -36,6 +61,7 @@ tasks.named('test', Test).configure {
   filter {
     excludeTestsMatching 'com.example.toyracers.compat.AiBehaviorScenarioTest'
     excludeTestsMatching 'com.example.toyracers.compat.BehavioralCompatibilityTest'
+    excludeTestsMatching 'com.example.toyracers.compat.BehavioralSuiteStabilityTest'
     excludeTestsMatching 'com.example.toyracers.compat.CompatibilityGoldenMasterTest'
     excludeTestsMatching 'com.example.toyracers.compat.DifferentialFuzzSmokeTest'
     excludeTestsMatching 'com.example.toyracers.compat.FullRaceGoldenScenarioTest'
@@ -62,6 +88,15 @@ tasks.register('deterministicRepeatTest', Test) {
   testClassesDirs = sourceSets.test.output.classesDirs
   classpath = sourceSets.test.runtimeClasspath
   filter.includeTestsMatching 'com.example.toyracers.compat.LongRunningDeterminismTest'
+}
+
+tasks.register('behavioralStabilityTest', Test) {
+  group = 'verification'
+  description = 'Runs the complete behavioral fixture inventory twenty times in sequence.'
+  dependsOn testClasses
+  testClassesDirs = sourceSets.test.output.classesDirs
+  classpath = sourceSets.test.runtimeClasspath
+  filter.includeTestsMatching 'com.example.toyracers.compat.BehavioralSuiteStabilityTest'
 }
 
 tasks.register('regenerateBehaviorGolden', Test) {
@@ -171,8 +206,11 @@ jar {
 }
 
 jacocoTestReport {
-  dependsOn test
+  dependsOn test, behavioralCompatibilityTest, deterministicRepeatTest, compatibilityGoldenTest, differentialFuzzSmokeTest
   classDirectories.setFrom(unitTestCoverageClasses)
+  executionData.setFrom(fileTree(layout.buildDirectory) {
+    include 'jacoco/*.exec'
+  })
   reports {
     html.required = true
     xml.required = true
@@ -182,11 +220,33 @@ jacocoTestReport {
 jacocoTestCoverageVerification {
   dependsOn jacocoTestReport
   classDirectories.setFrom(unitTestCoverageClasses)
+  executionData.setFrom(fileTree(layout.buildDirectory) {
+    include 'jacoco/*.exec'
+  })
   violationRules {
     rule {
       limit {
         counter = 'LINE'
-        minimum = 0.75
+        minimum = 0.85
+      }
+      limit {
+        counter = 'BRANCH'
+        minimum = 0.85
+      }
+    }
+    rule {
+      element = 'PACKAGE'
+      includes = [
+        'com.example.toyracers.ai',
+        'com.example.toyracers.car',
+        'com.example.toyracers.collision',
+        'com.example.toyracers.race',
+        'com.example.toyracers.surface',
+        'com.example.toyracers.track',
+      ]
+      limit {
+        counter = 'LINE'
+        minimum = 0.90
       }
     }
   }

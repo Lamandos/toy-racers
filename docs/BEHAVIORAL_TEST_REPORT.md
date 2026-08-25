@@ -2,36 +2,40 @@
 
 ## Summary
 
-Total scenarios: 63 (the referenced `full-race-input.json` is an input script, not a scenario)
-Passing: 63
+Total scenarios: 113 versioned scenarios (50 legacy plus 63 file-per-scenario; the referenced `full-race-input.json` is an input script, not a scenario)
+Passing: 113
 Failing: 0
 Long-running stress fixtures: 2 additional fixtures (1,000 and 5,000 physical ticks; excluded from the 63-scenario count)
-Full-race scenarios: 10 (three-lap races)
+Full-race scenarios: 11 (one legacy plus ten file-per-scenario three-lap races)
 Fuzz scenarios: 100 generated scenarios, 120 ticks each, fixed seeds
-Determinism runs: 20 repeated normalized-trace runs of the 5,000-tick scenario; the 50 legacy scenarios also require a byte-identical second run
+Determinism runs: 20 repeated normalized-trace runs of the 5,000-tick scenario; the complete 115-fixture inventory has a dedicated 20-run sequential release gate
 Flaky tests: 0 observed; no retries or quarantines were used
-Line coverage: 93.70% (1,949 / 2,080)
-Branch coverage: 67.13% (676 / 1,007)
-Mutation score: Not measured; no mutation-testing tool or repository task is configured
+Line coverage: 97.50% (2,028 / 2,080)
+Branch coverage: 85.70% (863 / 1,007)
+Mutation score: 73% (395 / 542 killed) for car physics, collision response, race rules, and surface speed
 
 The scenario and golden-master results were collected with:
 
 ```sh
-./gradlew behavioralTest fuzzSmokeTest coverageReport --no-daemon
+./gradlew behavioralTest fuzzSmokeTest coverageReport mutationTest --no-daemon
 ```
 
-Coverage is JaCoCo coverage for the configured portable `core` gameplay packages and the regular JVM unit-test task. Scenario counts are taken from `compatibility/scenarios`, excluding the referenced input script. That inventory contains 13 scenarios with at least 1,000 ticks; the exact-duration 1,000- and 5,000-tick stress fixtures are additional resources under `core/src/test/resources/compat/stress`.
+Coverage is merged JaCoCo coverage for the configured portable `core` gameplay packages, unit tests, and behavioral
+traces. The gate requires at least 85% overall Line and Branch coverage plus 90% Line coverage for each gameplay
+package shown below. Scenario counts include both independently versioned fixture collections. The file-per-scenario
+inventory contains 13 scenarios with at least 1,000 ticks; the exact-duration 1,000- and 5,000-tick stress fixtures
+are additional resources under `core/src/test/resources/compat/stress`.
 
 ## Coverage by subsystem
 
 | Subsystem | Scenarios | Line coverage | Notes |
 |---|---:|---:|---|
-| Car physics | 17 | 98.78% | Branch coverage: 59.86%; `car` package |
-| Collision | 11 | 82.04% | Branch coverage: 64.29%; `collision` package |
-| Race | 4 | 95.44% | Branch coverage: 78.52%; `race` package |
-| Track | 9 | 93.47% | Branch coverage: 61.32%; `track` package |
-| Surface | 5 | 100.00% | Branch coverage: 60.00%; `surface` package |
-| AI | 7 | 98.74% | Branch coverage: 72.12%; `ai` package |
+| Car physics | 17 | 99.59% | Branch coverage: 90.14%; `car` package |
+| Collision | 11 | 99.69% | Branch coverage: 83.04%; `collision` package |
+| Race | 4 | 96.36% | Branch coverage: 82.22%; `race` package |
+| Track | 9 | 96.97% | Branch coverage: 82.55%; `track` package |
+| Surface | 5 | 100.00% | Branch coverage: 83.33%; `surface` package |
+| AI | 7 | 98.95% | Branch coverage: 92.12%; `ai` package |
 | Camera | — | 82.02% | Branch coverage: 55.00%; `camera` package; unit tests only |
 | Input | — | 100.00% | Branch coverage: 83.33%; `PlayerControlConfig*` and `PlayerInput*`; unit tests only |
 
@@ -67,7 +71,9 @@ The following cannot currently be checked reliably by the automated headless beh
 - Non-default countdown durations and lap counts are not supported by the current `RaceSession` fixture boundary.
 - A public immutable `RaceSession` snapshot is not available; accumulator remainder, next finish position, AI continuation state, and other mid-race continuation details cannot be restored and compared externally.
 - `RaceStepResult` aggregates events and impact over an `advance` operation; ordered per-physical-step contact traces, especially AI track contacts, are not fully exposed by the current adapter.
-- Mutation score is unavailable because mutation testing is not configured.
+- The 20-run full-inventory stability gate is intentionally a manual release check because it replays 4.3 million
+  physical ticks. Reserve up to six hours for GitHub Actions, which exposes it through **Run workflow** with
+  `run_behavioral_stability` enabled.
 
 ## Existing behavior anomalies
 

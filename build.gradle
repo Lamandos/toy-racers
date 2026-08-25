@@ -11,6 +11,7 @@ buildscript {
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
     classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:$detektVersion"
     classpath "org.jlleitschuh.gradle:ktlint-gradle:$ktlintGradleVersion"
+    classpath 'info.solidsoft.gradle.pitest:gradle-pitest-plugin:1.19.0'
   }
 }
 
@@ -153,6 +154,12 @@ tasks.register('deterministicRepeatTest') {
   dependsOn ':core:deterministicRepeatTest'
 }
 
+tasks.register('behavioralStabilityTest') {
+  group = 'verification'
+  description = 'Runs the complete behavioral fixture inventory twenty times in sequence.'
+  dependsOn ':core:behavioralStabilityTest'
+}
+
 tasks.register('behavioralTest') {
   group = 'verification'
   description = 'Runs the primary behavioral compatibility and deterministic repeat suite.'
@@ -169,6 +176,12 @@ tasks.register('coverageReport') {
   group = 'verification'
   description = 'Generates and verifies the core JVM unit-test coverage report.'
   dependsOn ':core:jacocoTestReport', ':core:jacocoTestCoverageVerification'
+}
+
+tasks.register('mutationTest') {
+  group = 'verification'
+  description = 'Verifies mutation strength for the critical deterministic gameplay rule systems.'
+  dependsOn ':core:pitest'
 }
 
 tasks.register('verifySourceFileLengths') {
@@ -205,7 +218,7 @@ tasks.register('qualityCheck') {
   group = 'verification'
   description = 'Runs every repository quality gate used by pre-push and CI.'
   dependsOn tasks.named('quickQualityCheck')
-  dependsOn tasks.named('behavioralTest'), tasks.named('coverageReport'), ':android:testDebugUnitTest'
+  dependsOn tasks.named('behavioralTest'), tasks.named('coverageReport'), tasks.named('mutationTest'), ':android:testDebugUnitTest'
 }
 
 tasks.register('verifyCompatibilityGoldens') {
