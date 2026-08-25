@@ -5,13 +5,15 @@ versioned, normalized player input without libGDX rendering, a GPU, a window, or
 It advances only the game's `CarPhysics.FIXED_DELTA_SECONDS` (`1/60` second); it never sleeps or
 waits for wall-clock time.
 
-Run the suite locally or in CI with one command:
+Run the primary behavioral suite locally with one command:
 
 ```sh
-./gradlew :core:behavioralCompatibilityTest --no-daemon
+./gradlew behavioralTest --no-daemon
 ```
 
-`qualityCheck`, used by the repository's CI workflow, also executes this test through `:core:test`.
+It verifies the versioned legacy fixture set, the file-per-scenario compatibility goldens, and the long-running
+deterministic repeat test. GitHub Actions runs these mandatory checks in separate jobs; `qualityCheck`, used by the
+pre-push hook, runs them together.
 
 ## Repository golden masters
 
@@ -24,16 +26,16 @@ read-only:
 ./gradlew verifyCompatibilityGoldens
 ```
 
-The only command that can rewrite these goldens is the explicit maintenance script:
+Regenerate every checked-in behavioral golden master with the explicit maintenance task:
 
 ```sh
-./compatibility/tools/regenerate-goldens.sh
+./gradlew regenerateBehaviorGolden --no-daemon
 ```
 
-It lists every changed golden path for review. The rules for when an update is acceptable are in
-the [compatibility README](../compatibility/README.md). This command covers the new
-file-per-scenario fixtures only; the legacy Kotlin reference set remains in
-`core/src/test/resources/compat/` and has its own explicit regeneration command below.
+The file-per-scenario-only script remains available as
+[`compatibility/tools/regenerate-goldens.sh`](../compatibility/tools/regenerate-goldens.sh). Both regeneration
+commands are explicit maintenance operations; ordinary test runs do not modify checked-in fixtures. The rules for
+when an update is acceptable are in the [compatibility README](../compatibility/README.md).
 
 ## Headless scenario runner
 
@@ -91,11 +93,13 @@ For each tick, generate commands in the order throttle, brake, steering. Throttl
 values with six decimal places, so all controls remain in the normalized ranges `[0, 1]`, `[0, 1]`,
 and `[-1, 1]` respectively.
 
-The separate fixed-seed CI smoke task runs 100 generated 120-tick scenarios:
+The optional fixed-seed fuzz smoke task runs 100 generated 120-tick scenarios:
 
 ```sh
-./gradlew :core:differentialFuzzSmokeTest --no-daemon
+./gradlew fuzzSmokeTest --no-daemon
 ```
+
+GitHub Actions runs it only when a workflow is manually dispatched with `run_fuzz_smoke` enabled.
 
 ## Fixture contract
 
@@ -207,20 +211,19 @@ goldens and a future Dart runtime's output files. It also rejects rotations outs
 `[0, 360)` range and duplicate JSON object keys rather than normalizing ambiguous or invalid trace
 output into a passing comparison.
 
-## Updating Kotlin reference goldens
+## Updating behavioral goldens
 
-Do not regenerate a golden to hide a gameplay change. First document the intended change or an
-observed gameplay bug in a separate issue, then regenerate the legacy Kotlin reference goldens with:
+Do not regenerate a golden to hide a gameplay change. First document the intended change or an observed gameplay bug
+in a separate issue, then regenerate the checked-in behavioral goldens with:
 
 ```sh
-./gradlew :core:behavioralCompatibilityTest -DupdateBehavioralGoldens=true --rerun-tasks --no-daemon
+./gradlew regenerateBehaviorGolden --no-daemon
 ```
 
-This updates `core/src/test/resources/compat/goldens.json`, which is used by the 50 scenarios in
-`core/src/test/resources/compat/scenarios.json`. Review the complete trace diff before committing
-it. For the file-per-scenario repository fixtures, use the explicit maintenance script described
-above. The normal behavioral test suite is read-only: it runs each scenario twice and requires
-byte-identical normalized traces before comparing the checked-in fixture.
+This updates `core/src/test/resources/compat/goldens.json`, used by the 50 scenarios in
+`core/src/test/resources/compat/scenarios.json`, and any out-of-date file-per-scenario fixtures. Review the complete
+trace diff before committing it. The normal behavioral test suite is read-only: it runs each scenario twice and
+requires byte-identical normalized traces before comparing checked-in fixtures.
 
 ## Dart/Flame adapter checklist
 

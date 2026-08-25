@@ -30,7 +30,9 @@ The Android task requires an Android SDK and a connected device or running emula
 ## Test and verify
 
 ```sh
-./gradlew test
+./gradlew unitTest
+./gradlew behavioralTest
+./gradlew qualityCheck
 ./gradlew lwjgl3:test
 ./gradlew android:assembleDebug
 ```
