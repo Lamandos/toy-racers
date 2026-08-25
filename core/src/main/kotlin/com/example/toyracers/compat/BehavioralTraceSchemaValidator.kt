@@ -5,11 +5,14 @@ import com.badlogic.gdx.utils.JsonValue
 /** Validates complete trace documents before the structural comparison begins. */
 internal object BehavioralTraceSchemaValidator {
     fun validateIfTrace(value: JsonValue): List<TraceSchemaViolation> {
-        if (!value.isObject || !value.has(SCHEMA_VERSION_FIELD)) return emptyList()
+        if (!value.isObject || !looksLikeTraceEnvelope(value)) return emptyList()
         val violations = mutableListOf<TraceSchemaViolation>()
         validateTrace(value, ROOT_PATH, violations)
         return violations
     }
+
+    private fun looksLikeTraceEnvelope(value: JsonValue): Boolean =
+        value.has(SCHEMA_VERSION_FIELD) || value.has(SCENARIO_ID_FIELD) || value.has(SEED_FIELD)
 
     private fun validateTrace(
         value: JsonValue,

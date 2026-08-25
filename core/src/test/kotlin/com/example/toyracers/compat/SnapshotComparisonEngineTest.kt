@@ -274,6 +274,17 @@ class SnapshotComparisonEngineTest {
         assertEquals("schema validation", mismatch?.delta)
     }
 
+    @Test
+    fun `complete traces without root schema version are schema-validated`() {
+        val expected = completeTrace().also { it.remove("schemaVersion") }
+        val actual = completeTrace().also { it.remove("schemaVersion") }
+
+        val mismatch = SnapshotComparisonEngine.compare(expected, actual).firstMismatch
+
+        assertEquals("schemaVersion", mismatch?.field)
+        assertEquals("schema validation", mismatch?.delta)
+    }
+
     private fun traceWithParticipant(fields: String) =
         trace(
             """

@@ -27,6 +27,29 @@ class BehavioralScenarioLoaderTest {
     }
 
     @Test(expected = IllegalArgumentException::class)
+    fun `fixture loader rejects duplicate seeded finish positions`() {
+        BehavioralFixtureLoader.parseScenarioDocument(
+            JsonReader().parse(
+                """
+                {
+                  "schemaVersion": 1,
+                  "scenarios": [{
+                    "id": "duplicate-finish-position", "seed": 1, "trackId": "track-01",
+                    "playerCar": "red-stripe", "inputOrigin": "keyboard", "tags": [],
+                    "ticks": 1, "snapshotIntervalTicks": 1,
+                    "inputSegments": [{"fromTick": 1, "toTick": 1}],
+                    "initialStates": [
+                      {"id": "player", "finished": true, "finishPosition": 1},
+                      {"id": "ai-0", "finished": true, "finishPosition": 1}
+                    ]
+                  }]
+                }
+                """.trimIndent(),
+            ),
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
     fun `fixture loader rejects input tweak tick beyond Int range`() {
         BehavioralFixtureLoader.parseScenarioDocument(
             JsonReader().parse(

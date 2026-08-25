@@ -31,8 +31,6 @@ internal object SnapshotComparisonEngine {
         actual: JsonValue,
         rootPath: String,
     ): SnapshotComparison? {
-        val shouldValidate = hasTraceSchemaVersion(expected) || hasTraceSchemaVersion(actual)
-        if (!shouldValidate) return null
         val violations =
             listOf("expected" to expected, "actual" to actual)
                 .flatMap { (source, value) ->
@@ -59,8 +57,6 @@ internal object SnapshotComparisonEngine {
             hasOmittedMismatches = violations.size > MAX_REPORTED_SCHEMA_VIOLATIONS,
         )
     }
-
-    private fun hasTraceSchemaVersion(value: JsonValue): Boolean = value.isObject && value.has("schemaVersion")
 
     private fun compareValue(
         expected: JsonValue,

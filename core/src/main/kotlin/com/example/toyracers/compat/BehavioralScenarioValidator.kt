@@ -183,6 +183,7 @@ internal object BehavioralScenarioValidator {
     ) {
         require(value.isArray) { "$path must be an array" }
         val maxCheckpointIndex = TRACK_CHECKPOINT_COUNTS.getValue(trackId).toLong()
+        val finishPositions = mutableSetOf<Long>()
         val allowedProperties =
             if (schemaVersion >= BehavioralScenarioLoader.CURRENT_SCENARIO_SCHEMA_VERSION) {
                 TIMER_INITIAL_STATE_PROPERTIES
@@ -223,17 +224,22 @@ internal object BehavioralScenarioValidator {
             initialState.get(COMPLETED_LAPS_FIELD)?.let {
                 requireInteger(it, "$statePath.$COMPLETED_LAPS_FIELD", 0, RaceRules.DEFAULT_LAP_COUNT.toLong())
             }
-            initialState.get(FINISH_POSITION_FIELD)?.let {
+            val finishPositionValue = initialState.get(FINISH_POSITION_FIELD)
+            finishPositionValue?.let {
                 requireInteger(it, "$statePath.$FINISH_POSITION_FIELD", 1, MAX_FINISH_POSITION)
             }
             initialState.get(FINISHED_FIELD)?.let { requireBoolean(it, "$statePath.$FINISHED_FIELD") }
             val finished = initialState.get(FINISHED_FIELD)?.asBoolean() ?: false
-            val hasFinishPosition = initialState.get(FINISH_POSITION_FIELD) != null
+            val hasFinishPosition = finishPositionValue != null
             require(!finished || hasFinishPosition) {
                 "$statePath.$FINISH_POSITION_FIELD is required when $FINISHED_FIELD is true"
             }
             require(!hasFinishPosition || finished) {
                 "$statePath.$FINISHED_FIELD must be true when $FINISH_POSITION_FIELD is provided"
+            }
+            val finishPosition = finishPositionValue?.asLong()
+            require(finishPosition == null || finishPositions.add(finishPosition)) {
+                "$statePath.$FINISH_POSITION_FIELD must be unique across $path"
             }
         }
     }
