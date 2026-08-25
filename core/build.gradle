@@ -180,7 +180,7 @@ jacocoTestReport {
 }
 
 jacocoTestCoverageVerification {
-  dependsOn test
+  dependsOn jacocoTestReport
   classDirectories.setFrom(unitTestCoverageClasses)
   violationRules {
     rule {
