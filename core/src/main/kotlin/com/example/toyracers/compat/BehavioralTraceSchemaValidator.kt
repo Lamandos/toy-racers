@@ -8,17 +8,10 @@ internal object BehavioralTraceSchemaValidator {
         if (!value.isObject) {
             return listOf(TraceSchemaViolation(ROOT_PATH, "must be an object"))
         }
-        if (!looksLikeTraceEnvelope(value)) return emptyList()
         val violations = mutableListOf<TraceSchemaViolation>()
         validateTrace(value, ROOT_PATH, violations)
         return violations
     }
-
-    private fun looksLikeTraceEnvelope(value: JsonValue): Boolean =
-        value.has(SCHEMA_VERSION_FIELD) ||
-            value.has(SCENARIO_ID_FIELD) ||
-            value.has(SEED_FIELD) ||
-            value.has(SAMPLES_FIELD)
 
     private fun validateTrace(
         value: JsonValue,
@@ -273,8 +266,7 @@ internal object BehavioralTraceSchemaValidator {
                 violations += TraceSchemaViolation(path, "must be finite")
             }
 
-            java.lang.Double.doubleToRawLongBits(number) ==
-                java.lang.Double.doubleToRawLongBits(-0.0) -> {
+            value.isNegativeZeroNumber() -> {
                 violations += TraceSchemaViolation(path, "must not be negative zero")
             }
 

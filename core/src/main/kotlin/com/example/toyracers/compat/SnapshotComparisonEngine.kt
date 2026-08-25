@@ -213,7 +213,7 @@ internal object SnapshotComparisonEngine {
             collector.nonFiniteNumber(context, path, expectedValue, actualValue)
             return
         }
-        if (expectedValue.isNegativeZero() || actualValue.isNegativeZero()) {
+        if (expected.isNegativeZeroNumber() || actual.isNegativeZeroNumber()) {
             collector.negativeZero(context, path, expected, actual)
             return
         }

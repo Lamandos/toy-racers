@@ -84,6 +84,17 @@ class SnapshotComparisonEngineTest {
     }
 
     @Test
+    fun `integer-form negative zero in approximate fields is rejected`() {
+        val expected = traceWithParticipant("\"x\":0.0")
+        val actual = traceWithParticipant("\"x\":-0")
+
+        val mismatch = compareFragments(expected, actual).firstMismatch
+
+        assertEquals("x", mismatch?.field)
+        assertEquals("negative zero", mismatch?.delta)
+    }
+
+    @Test
     fun `sample object type mismatches preserve the sample tick`() {
         val expected =
             trace(
@@ -307,6 +318,16 @@ class SnapshotComparisonEngineTest {
     }
 
     @Test
+    fun `marker-free object roots are schema-validated`() {
+        listOf("{}", "{\"other\":1}").forEach { document ->
+            val comparison = SnapshotComparisonEngine.compare(trace(document), trace(document))
+
+            assertTrue(comparison.mismatches.isNotEmpty())
+            assertTrue(comparison.mismatches.all { it.delta == "schema validation" })
+        }
+    }
+
+    @Test
     fun `schema violations retain sample and participant context`() {
         val expected = completeTrace()
         val actual = completeTrace(participantX = "\"invalid\"")
@@ -322,6 +343,17 @@ class SnapshotComparisonEngineTest {
         assertEquals("player", mismatch?.participant)
         assertEquals(0, mismatch?.sampleIndex)
         assertEquals("simulation", mismatch?.sampleLabel)
+        assertEquals("x", mismatch?.field)
+        assertEquals("schema validation", mismatch?.delta)
+    }
+
+    @Test
+    fun `schema validation rejects integer-form negative zero`() {
+        val expected = completeTrace()
+        val actual = completeTrace(participantX = "-0")
+
+        val mismatch = SnapshotComparisonEngine.compare(expected, actual).firstMismatch
+
         assertEquals("x", mismatch?.field)
         assertEquals("schema validation", mismatch?.delta)
     }

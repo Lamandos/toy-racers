@@ -113,6 +113,11 @@ Scenario v2 and v3 may include sorted `inputTweaks`:
 
 Each tweak has a unique, strictly ascending `tick` in `1..ticks`. At that tick its supplied deltas
 are added to the selected command before input normalization. Omitted delta fields are zero.
+Every scenario float is parsed as an IEEE-754 binary32 value using the reference's `Float`
+narrowing (round-to-nearest-even). When a tweak is applied, each base control and delta is already
+binary32 and their addition is performed in binary32 before the single normalization step. This
+applies to segment controls, tweak deltas, and all optional initial-state float fields; adapters
+must not retain binary64 values for these operations.
 
 ### Input ranges and segment rules
 
@@ -211,6 +216,14 @@ or `oil`.
 Each `finishResults` entry contains `participantId`, one-based `finishPosition`,
 `elapsedSimulationTime`, and `bestLapTime`. `bestLapTime` is either a non-negative number of
 seconds or `null` when the participant has not completed a lap time.
+
+Result timers use the stored race-progress clock, not snapshot `elapsedSimulationTime`. On every
+active physics tick while a participant is unfinished, the reference updates
+`totalRaceTime = float32(totalRaceTime + float32(1 / 60))`. On a lap crossing it computes
+`lapTime = float32(totalRaceTime - lapStartTime)` and updates `bestLapTime` with binary32
+arithmetic; the finish result copies the accumulated `totalRaceTime`. Seeded timer fields are
+binary32 before this accumulation begins, so a double-precision accumulator or snapshot tick
+division is not equivalent.
 
 ### Ordering and canonical JSON
 
