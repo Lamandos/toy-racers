@@ -195,7 +195,10 @@ internal object BehavioralScenarioValidator {
             initialState.requireProperties(allowedProperties, statePath)
             requireEnum(initialState.required(ID_FIELD, statePath), "$statePath.$ID_FIELD", INITIAL_STATE_IDS)
             FLOAT_INITIAL_STATE_FIELDS.forEach { name ->
-                initialState.get(name)?.let { requireFloat(it, "$statePath.$name") }
+                initialState.get(name)?.let {
+                    val bounds = INITIAL_STATE_FLOAT_BOUNDS[name]
+                    requireFloat(it, "$statePath.$name", bounds?.first, bounds?.second)
+                }
             }
             initialState.get(SURFACE_SPEED_MULTIPLIER_FIELD)?.let {
                 requireFloat(it, "$statePath.$SURFACE_SPEED_MULTIPLIER_FIELD", 0.0, 1.0)
@@ -375,6 +378,7 @@ internal object BehavioralScenarioValidator {
     private const val BRAKE_DELTA_FIELD = "brakeDelta"
     private const val STEERING_DELTA_FIELD = "steeringDelta"
     private const val SURFACE_SPEED_MULTIPLIER_FIELD = "surfaceSpeedMultiplier"
+    private const val DRIFT_AMOUNT_FIELD = "driftAmount"
     private const val LAP_START_TIME_FIELD = "lapStartTime"
     private const val TOTAL_RACE_TIME_FIELD = "totalRaceTime"
     private const val BEST_LAP_TIME_FIELD = "bestLapTime"
@@ -410,6 +414,7 @@ internal object BehavioralScenarioValidator {
             "lateralSpeed",
             "driftAmount",
         )
+    private val INITIAL_STATE_FLOAT_BOUNDS = mapOf(DRIFT_AMOUNT_FIELD to (0.0 to 1.0))
     private val INITIAL_STATE_PROPERTIES =
         setOf(ID_FIELD) + FLOAT_INITIAL_STATE_FIELDS +
             setOf(

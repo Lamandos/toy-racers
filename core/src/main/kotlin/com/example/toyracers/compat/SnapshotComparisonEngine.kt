@@ -12,16 +12,55 @@ import kotlin.math.abs
 internal object SnapshotComparisonEngine {
     const val ABSOLUTE_TOLERANCE = 0.0001
     private const val ROOT_PATH = "$"
+    private const val MAX_REPORTED_SCHEMA_VIOLATIONS = 8
+    private const val SCHEMA_VALIDATION_FAILURE = "schema validation"
 
     fun compare(
         expected: JsonValue,
         actual: JsonValue,
         rootPath: String = ROOT_PATH,
     ): SnapshotComparison {
+        schemaComparison(expected, actual, rootPath)?.let { return it }
         val collector = MismatchCollector()
         compareValue(expected, actual, rootPath, ComparisonContext(), collector)
         return collector.result()
     }
+
+    private fun schemaComparison(
+        expected: JsonValue,
+        actual: JsonValue,
+        rootPath: String,
+    ): SnapshotComparison? {
+        val shouldValidate = hasTraceSchemaVersion(expected) || hasTraceSchemaVersion(actual)
+        if (!shouldValidate) return null
+        val violations =
+            listOf("expected" to expected, "actual" to actual)
+                .flatMap { (source, value) ->
+                    BehavioralTraceSchemaValidator
+                        .validateIfTrace(value)
+                        .map { violation -> source to violation }
+                }
+        if (violations.isEmpty()) return null
+        val reported = violations.take(MAX_REPORTED_SCHEMA_VIOLATIONS)
+        return SnapshotComparison(
+            mismatches =
+                reported.map { (source, violation) ->
+                    SnapshotMismatch(
+                        tick = null,
+                        participant = null,
+                        sampleIndex = null,
+                        sampleLabel = null,
+                        field = "$rootPath.${violation.path}".displayField(),
+                        expected = "schema-valid",
+                        actual = "$source: ${violation.message}",
+                        delta = SCHEMA_VALIDATION_FAILURE,
+                    )
+                },
+            hasOmittedMismatches = violations.size > MAX_REPORTED_SCHEMA_VIOLATIONS,
+        )
+    }
+
+    private fun hasTraceSchemaVersion(value: JsonValue): Boolean = value.isObject && value.has("schemaVersion")
 
     private fun compareValue(
         expected: JsonValue,

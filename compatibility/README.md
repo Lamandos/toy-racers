@@ -38,11 +38,12 @@ versions are errors; do not infer a newer layout from missing fields.
 | Snapshot | 2 | [snapshot.schema.json](schemas/snapshot.schema.json) | One normalized race observation |
 | Trace | 3 | [trace.schema.json](schemas/trace.schema.json) | Ordered samples for one scenario |
 
-Scenario v1 is the base format. Version 2 adds `inputTweaks`; version 3 retains those tweaks and
-adds `lapStartTime` and `bestLapTime` to optional initial states. A document must use the first
-scenario version that supports the fields it contains. Input scripts remain at version 1. Snapshot
-v2 and trace v3 replace earlier shapes; an adapter must not treat them as backward-compatible with
-snapshot v1 or trace v2.
+Scenario v1 is the base format. Version 2 adds optional `inputTweaks`; version 3 retains that
+field and adds optional `lapStartTime` and `bestLapTime` to initial states. A v3 document may
+therefore contain only the base fields; producers and consumers must honor the explicit version
+instead of inferring it from which optional fields happen to be present. Input scripts remain at
+version 1. Snapshot v2 and trace v3 replace earlier shapes; an adapter must not treat them as
+backward-compatible with snapshot v1 or trace v2.
 
 ## Input
 
@@ -139,16 +140,23 @@ referencing scenario, and use a lowercase-hyphen filename matching
 The simulation is headless and fixed-step. It never waits for wall-clock time or depends on display
 frames. Tick 0 is the pre-physics state; physical ticks are one-based and each uses exactly
 `1 / 60` second. A tick's command is held for that one physics update only. The snapshot's
-`simulationTick` counts completed physical updates, and its `elapsedSimulationTime` is
-`simulationTick / 60` seconds.
+`simulationTick` counts completed physical updates. The Kotlin reference encodes
+`elapsedSimulationTime` as the binary32 operation `simulationTick.toFloat() * (1f / 60f)`;
+adapters must reproduce that arithmetic before canonicalizing the number.
 
 The normal runner emits countdown and racing transition samples at trace tick 0, then applies input
-for ticks `1..ticks`. It samples tick 1, every positive multiple of `snapshotIntervalTicks`, the
-final requested tick, and the tick on which the race first finishes. Scenarios tagged
-`state-machine` additionally emit loading, ready, and intermediate countdown samples at tick 0.
-Scenarios tagged `event-snapshots` append `checkpoint`, `lap`, or `finish` samples after that
-tick's normal `simulation` sample when the player's corresponding state changes. Sample order is
-part of the trace contract.
+for requested ticks `1..ticks`. It samples tick 1, every positive multiple of
+`snapshotIntervalTicks`, the final requested tick, and the tick on which the race first finishes.
+After a participant finishes, the compatibility CLI continues the requested trace loop, but
+`RaceSession.advance` performs no further physical steps: later interval/final samples retain the
+finished state and frozen `simulationTick`.
+
+Scenarios tagged `state-machine` additionally emit loading, ready, and intermediate countdown
+samples at tick 0. Scenarios tagged `event-snapshots` append `checkpoint`, `lap`, or `finish`
+samples when the player's corresponding state changes. If that tick is independently sampled,
+the event sample follows its `simulation` sample; otherwise the event sample is emitted alone.
+Sample order is part of the trace contract. For example, a checkpoint at tick 258 between periodic
+samples is a `checkpoint` sample at tick 258, not an additional `simulation` sample.
 
 ## Output
 
@@ -161,17 +169,17 @@ A runner writes one trace object, not a rendered result:
   "schemaVersion": 3,
   "scenarioId": "straight-acceleration",
   "seed": 42,
-  "samples": [
-    {
-      "label": "simulation",
-      "tick": 1,
-      "snapshot": {
-        "schemaVersion": 2
-      }
-    }
-  ]
+  "samples": [{
+    "label": "simulation",
+    "tick": 1,
+    "snapshot": { "schemaVersion": 2 }
+  }]
 }
 ```
+
+The trace above is an abbreviated fragment showing the envelope and sample labels only; the
+snapshot omits required fields and is not a schema-valid trace. A real runner must emit the
+complete snapshot shape below.
 
 `scenarioId` and `seed` must be the values from the input. Each sample has a label, its trace tick,
 and one schema-v2 snapshot. Valid labels are `loading`, `ready`, `countdown`, `racing`,
@@ -232,12 +240,12 @@ is the lower-left of the track bounds: positive X points right and positive Y po
 coordinates with Y down are transformed into this world coordinate system before simulation.
 
 `rotation` is degrees in `[0, 360)`: `0` faces positive X, `90` faces positive Y, and positive
-angles rotate counter-clockwise. `angularVelocity` is degrees per second with the same sign. A
-participant's forward axis is `(cos(rotation), sin(rotation))`; `longitudinalSpeed` is its velocity
-projected on that axis, so positive values move forward and negative values reverse. The lateral
-axis is `(-sin(rotation), cos(rotation))`; `lateralSpeed` is the velocity projected on that axis.
-`velocityX` and `velocityY` are world units per second. `driftAmount` is a dimensionless value in
-the simulation's normalized drift range `[0, 1]`.
+angles rotate counter-clockwise. `angularVelocity` is degrees per second with the same sign.
+`longitudinalSpeed` and `lateralSpeed` are the stored reference-state components. During a normal
+physics update they are the forward and lateral components used to rebuild velocity, but an
+explicitly seeded tick-0 state may intentionally keep a speed component that is inconsistent with
+the emitted velocity. `velocityX` and `velocityY` are world units per second. `driftAmount` is a
+dimensionless value in the simulation's normalized drift range `[0, 1]`.
 
 All time fields are seconds. `remainingSeconds` measures countdown time; snapshot
 `elapsedSimulationTime` measures completed physics time; result `elapsedSimulationTime` and
@@ -308,9 +316,10 @@ compare \
 
 The golden path must have the same relative category and basename as the input scenario. `compare`
 is a contract for the common comparator CLI: its implementation may be Kotlin, Dart, or another
-small portable tool, but its schema validation, ordered-array rules, exact fields, approximate
-field list, angle handling, and `0.0001` tolerance must be the rules in this document. It must not
-silently normalize malformed output into a passing result.
+small portable tool, but it must validate both complete trace documents against the trace/snapshot
+schemas before comparison. Its ordered-array rules, exact fields, approximate field list, angle
+handling, and `0.0001` tolerance must be the rules in this document. It must not silently normalize
+malformed output into a passing result.
 
 When the contract changes, update the affected JSON Schema, this README, the Kotlin reference
 encoder/comparator tests, and the Dart adapter together. A behavior change that alters a golden

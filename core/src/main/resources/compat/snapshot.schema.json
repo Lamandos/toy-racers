@@ -110,7 +110,7 @@
         "angularVelocity": { "type": "number", "description": "Degrees per second." },
         "longitudinalSpeed": { "type": "number" },
         "lateralSpeed": { "type": "number" },
-        "driftAmount": { "type": "number" },
+        "driftAmount": { "type": "number", "minimum": 0, "maximum": 1 },
         "surface": {
           "type": "string",
           "enum": ["asphalt", "parquet", "tile", "grass", "boost", "oil"]

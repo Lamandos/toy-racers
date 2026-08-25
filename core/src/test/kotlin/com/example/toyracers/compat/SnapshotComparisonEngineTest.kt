@@ -249,6 +249,31 @@ class SnapshotComparisonEngineTest {
         assertTrue(report.contains("tick 0 (racing)"))
     }
 
+    @Test
+    fun `complete traces are schema-validated before comparison`() {
+        val expected = completeTrace()
+        val actual = completeTrace()
+        expected.get("schemaVersion").set(99L, null)
+        actual.get("schemaVersion").set(99L, null)
+        expected
+            .get("samples")
+            .get(0)
+            .get("snapshot")
+            .get("schemaVersion")
+            .set(99L, null)
+        actual
+            .get("samples")
+            .get(0)
+            .get("snapshot")
+            .get("schemaVersion")
+            .set(99L, null)
+
+        val mismatch = SnapshotComparisonEngine.compare(expected, actual).firstMismatch
+
+        assertEquals("schemaVersion", mismatch?.field)
+        assertEquals("schema validation", mismatch?.delta)
+    }
+
     private fun traceWithParticipant(fields: String) =
         trace(
             """
@@ -271,6 +296,50 @@ class SnapshotComparisonEngineTest {
     }
 
     private fun trace(document: String) = JsonReader().parse(document.trimIndent())
+
+    private fun completeTrace() =
+        trace(
+            """
+            {
+              "schemaVersion": 3,
+              "scenarioId": "schema-test",
+              "seed": 1,
+              "samples": [{
+                "label": "simulation",
+                "tick": 0,
+                "snapshot": {
+                  "schemaVersion": 2,
+                  "simulationTick": 0,
+                  "raceState": "racing",
+                  "countdown": {"state": "complete", "remainingSeconds": 0.0},
+                  "elapsedSimulationTime": 0.0,
+                  "currentLap": 1,
+                  "currentProgress": {"checkpoint": 0, "completedLaps": 0},
+                  "participants": [{
+                    "id": "player",
+                    "surface": "asphalt",
+                    "x": 0.0,
+                    "y": 0.0,
+                    "rotation": 0.0,
+                    "velocityX": 0.0,
+                    "velocityY": 0.0,
+                    "angularVelocity": 0.0,
+                    "longitudinalSpeed": 0.0,
+                    "lateralSpeed": 0.0,
+                    "driftAmount": 0.0,
+                    "checkpoint": 0,
+                    "lap": 0,
+                    "racePosition": 1,
+                    "finished": false
+                  }],
+                  "ranking": ["player"],
+                  "finishedParticipants": [],
+                  "finishResults": []
+                }
+              }]
+            }
+            """,
+        )
 
     private fun com.badlogic.gdx.utils.JsonValue.sampleParticipant() =
         get("samples")
