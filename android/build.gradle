@@ -77,6 +77,10 @@ android {
 
 }
 
+tasks.matching { it.name == 'preBuild' }.configureEach {
+  dependsOn rootProject.tasks.named('verifyAssetList')
+}
+
 tasks.register('verifyReleaseSigning') {
   group = 'verification'
   description = 'Fails unless every release signing environment variable is configured.'

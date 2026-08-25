@@ -44,7 +44,9 @@ configure(subprojects - project(':android')) {
       def assetPaths =
         fileTree(assetsFolder) {
           exclude 'assets.txt'
-        }.files.collect { assetsFolder.toPath().relativize(it.toPath()).toString() }.sort()
+        }.files.collect {
+          assetsFolder.toPath().relativize(it.toPath()).toString().replace(File.separatorChar.toString(), '/')
+        }.sort()
       assetsFile.text = assetPaths.join("\n") + "\n"
     }
   }
@@ -60,6 +62,32 @@ configure(subprojects - project(':android')) {
   compileKotlin.compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
   compileTestKotlin.compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
 
+}
+
+def checkedInAssetsFile = rootProject.file('assets/assets.txt')
+def generatedAssetsFile = project(':core').layout.buildDirectory.file('generated/assets/assets.txt')
+
+tasks.register('updateAssetList') {
+  group = 'maintenance'
+  description = 'Updates the checked-in Android asset manifest from the generated asset list.'
+  dependsOn ':core:generateAssetList'
+  doLast {
+    checkedInAssetsFile.text = generatedAssetsFile.get().asFile.text
+  }
+}
+
+tasks.register('verifyAssetList') {
+  group = 'verification'
+  description = 'Verifies that the checked-in Android asset manifest matches the assets directory.'
+  dependsOn ':core:generateAssetList'
+  inputs.file checkedInAssetsFile
+  inputs.file generatedAssetsFile
+  doLast {
+    def generatedManifest = generatedAssetsFile.get().asFile.text
+    if (checkedInAssetsFile.text != generatedManifest) {
+      throw new GradleException('assets/assets.txt is out of date. Run ./gradlew updateAssetList.')
+    }
+  }
 }
 
 subprojects {
