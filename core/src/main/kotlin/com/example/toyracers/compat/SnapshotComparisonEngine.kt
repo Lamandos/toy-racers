@@ -19,8 +19,9 @@ internal object SnapshotComparisonEngine {
         expected: JsonValue,
         actual: JsonValue,
         rootPath: String = ROOT_PATH,
+        validateSchema: Boolean = true,
     ): SnapshotComparison {
-        schemaComparison(expected, actual, rootPath)?.let { return it }
+        if (validateSchema) schemaComparison(expected, actual, rootPath)?.let { return it }
         val collector = MismatchCollector()
         compareValue(expected, actual, rootPath, ComparisonContext(), collector)
         return collector.result()

@@ -30,7 +30,7 @@ class SnapshotComparisonEngineTest {
                 """,
             )
 
-        val mismatch = SnapshotComparisonEngine.compare(expected, actual).firstMismatch
+        val mismatch = compareFragments(expected, actual).firstMismatch
 
         assertNotNull(mismatch)
         assertEquals(842L, mismatch?.tick)
@@ -44,8 +44,8 @@ class SnapshotComparisonEngineTest {
         val withinTolerance = traceWithParticipant("\"x\":183.41129")
         val outsideTolerance = traceWithParticipant("\"x\":183.41131")
 
-        assertNull(SnapshotComparisonEngine.compare(expected, withinTolerance).firstMismatch)
-        assertEquals("x", SnapshotComparisonEngine.compare(expected, outsideTolerance).firstMismatch?.field)
+        assertNull(compareFragments(expected, withinTolerance).firstMismatch)
+        assertEquals("x", compareFragments(expected, outsideTolerance).firstMismatch?.field)
     }
 
     @Test
@@ -54,8 +54,8 @@ class SnapshotComparisonEngineTest {
         val withinTolerance = traceWithParticipant("\"rotation\":0.00002")
         val outsideTolerance = traceWithParticipant("\"rotation\":0.03")
 
-        assertNull(SnapshotComparisonEngine.compare(expected, withinTolerance).firstMismatch)
-        val mismatch = SnapshotComparisonEngine.compare(expected, outsideTolerance).firstMismatch
+        assertNull(compareFragments(expected, withinTolerance).firstMismatch)
+        val mismatch = compareFragments(expected, outsideTolerance).firstMismatch
         assertEquals("rotation", mismatch?.field)
         assertTrue(checkNotNull(mismatch).delta.startsWith("angular delta"))
     }
@@ -65,7 +65,7 @@ class SnapshotComparisonEngineTest {
         val expected = traceWithParticipant("\"rotation\":0.0")
         val actual = traceWithParticipant("\"rotation\":360.0")
 
-        val mismatch = SnapshotComparisonEngine.compare(expected, actual).firstMismatch
+        val mismatch = compareFragments(expected, actual).firstMismatch
 
         assertEquals("rotation", mismatch?.field)
         assertEquals("outside [0, 360)", mismatch?.delta)
@@ -76,7 +76,7 @@ class SnapshotComparisonEngineTest {
         val expected = traceWithParticipant("\"x\":0.0")
         val actual = traceWithParticipant("\"x\":-0.0")
 
-        val mismatch = SnapshotComparisonEngine.compare(expected, actual).firstMismatch
+        val mismatch = compareFragments(expected, actual).firstMismatch
 
         assertEquals("x", mismatch?.field)
         assertEquals("-0.0", mismatch?.actual)
@@ -98,7 +98,7 @@ class SnapshotComparisonEngineTest {
                 """,
             )
 
-        val mismatch = SnapshotComparisonEngine.compare(expected, actual).firstMismatch
+        val mismatch = compareFragments(expected, actual).firstMismatch
 
         assertEquals(842L, mismatch?.tick)
         assertEquals("simulation", mismatch?.sampleLabel)
@@ -110,7 +110,7 @@ class SnapshotComparisonEngineTest {
         val expected = trace("{\"samples\":[{\"tick\":0},{\"tick\":842}]}")
         val actual = trace("{\"samples\":[{\"tick\":0}]}")
 
-        val comparison = SnapshotComparisonEngine.compare(expected, actual)
+        val comparison = compareFragments(expected, actual)
         val mismatch = comparison.firstMismatch
 
         assertEquals(842L, mismatch?.tick)
@@ -123,7 +123,7 @@ class SnapshotComparisonEngineTest {
         val expected = traceWithFinishResult("\"finishPosition\":1")
         val actual = traceWithFinishResult("\"finishPosition\":2")
 
-        val mismatch = SnapshotComparisonEngine.compare(expected, actual).firstMismatch
+        val mismatch = compareFragments(expected, actual).firstMismatch
 
         assertEquals("ai-4", mismatch?.participant)
         assertEquals("finishPosition", mismatch?.field)
@@ -148,7 +148,7 @@ class SnapshotComparisonEngineTest {
                 """,
             )
 
-        val mismatch = SnapshotComparisonEngine.compare(expected, actual).firstMismatch
+        val mismatch = compareFragments(expected, actual).firstMismatch
 
         assertEquals("ai-4", mismatch?.participant)
         assertEquals("finishResults.size", mismatch?.field)
@@ -161,8 +161,8 @@ class SnapshotComparisonEngineTest {
         val unexpectedParticipant = traceWithParticipants("player", "ai-4")
 
         listOf(
-            SnapshotComparisonEngine.compare(expected, missingParticipant).firstMismatch to "ai-4",
-            SnapshotComparisonEngine.compare(missingParticipant, unexpectedParticipant).firstMismatch to "ai-4",
+            compareFragments(expected, missingParticipant).firstMismatch to "ai-4",
+            compareFragments(missingParticipant, unexpectedParticipant).firstMismatch to "ai-4",
         ).forEach { (mismatch, participant) ->
             assertEquals(participant, mismatch?.participant)
             assertEquals("participants.size", mismatch?.field)
@@ -174,7 +174,7 @@ class SnapshotComparisonEngineTest {
         val expected = traceWithParticipant("\"x\":10.0")
         val actual = traceWithParticipant("\"x\":10.0,\"x\":10.0")
 
-        val mismatch = SnapshotComparisonEngine.compare(expected, actual).firstMismatch
+        val mismatch = compareFragments(expected, actual).firstMismatch
 
         assertEquals("player", mismatch?.participant)
         assertEquals("x", mismatch?.field)
@@ -188,7 +188,7 @@ class SnapshotComparisonEngineTest {
             val actual = traceWithParticipant("\"x\":10.0")
             actual.sampleParticipant().get("x").set(value, null)
 
-            val mismatch = SnapshotComparisonEngine.compare(expected, actual).firstMismatch
+            val mismatch = compareFragments(expected, actual).firstMismatch
 
             assertEquals("x", mismatch?.field)
             assertEquals(label, mismatch?.actual)
@@ -207,7 +207,7 @@ class SnapshotComparisonEngineTest {
                 "\"x\":183.5288,\"y\":94.2892,\"rotation\":0.03",
             )
 
-        val report = checkNotNull(SnapshotComparisonEngine.compare(expected, actual).failureReport("drift_right_long"))
+        val report = checkNotNull(compareFragments(expected, actual).failureReport("drift_right_long"))
 
         assertTrue(report.contains("Scenario: drift_right_long"))
         assertTrue(report.contains("First mismatch: tick 842"))
@@ -242,7 +242,7 @@ class SnapshotComparisonEngineTest {
                 """,
             )
 
-        val report = checkNotNull(SnapshotComparisonEngine.compare(expected, actual).failureReport("same_tick"))
+        val report = checkNotNull(compareFragments(expected, actual).failureReport("same_tick"))
 
         assertTrue(report.contains("First mismatch: tick 0 (countdown)"))
         assertTrue(report.contains("Following differences:"))
@@ -285,6 +285,17 @@ class SnapshotComparisonEngineTest {
         assertEquals("schema validation", mismatch?.delta)
     }
 
+    @Test
+    fun `samples-only trace envelopes are schema-validated`() {
+        val expected = trace("{\"samples\":[]}")
+        val actual = trace("{\"samples\":[]}")
+
+        val mismatch = SnapshotComparisonEngine.compare(expected, actual).firstMismatch
+
+        assertEquals("schemaVersion", mismatch?.field)
+        assertEquals("schema validation", mismatch?.delta)
+    }
+
     private fun traceWithParticipant(fields: String) =
         trace(
             """
@@ -307,6 +318,11 @@ class SnapshotComparisonEngineTest {
     }
 
     private fun trace(document: String) = JsonReader().parse(document.trimIndent())
+
+    private fun compareFragments(
+        expected: com.badlogic.gdx.utils.JsonValue,
+        actual: com.badlogic.gdx.utils.JsonValue,
+    ) = SnapshotComparisonEngine.compare(expected, actual, validateSchema = false)
 
     private fun completeTrace() =
         trace(

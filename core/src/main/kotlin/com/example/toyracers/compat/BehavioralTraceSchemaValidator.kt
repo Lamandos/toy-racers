@@ -12,7 +12,10 @@ internal object BehavioralTraceSchemaValidator {
     }
 
     private fun looksLikeTraceEnvelope(value: JsonValue): Boolean =
-        value.has(SCHEMA_VERSION_FIELD) || value.has(SCENARIO_ID_FIELD) || value.has(SEED_FIELD)
+        value.has(SCHEMA_VERSION_FIELD) ||
+            value.has(SCENARIO_ID_FIELD) ||
+            value.has(SEED_FIELD) ||
+            value.has(SAMPLES_FIELD)
 
     private fun validateTrace(
         value: JsonValue,
