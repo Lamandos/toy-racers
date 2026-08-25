@@ -37,25 +37,27 @@ internal object SnapshotComparisonEngine {
                 .flatMap { (source, value) ->
                     BehavioralTraceSchemaValidator
                         .validateIfTrace(value)
-                        .map { violation -> source to violation }
+                        .map { violation -> SourcedSchemaViolation(source, value, violation) }
                 }
         if (violations.isEmpty()) return null
         val reported = violations.take(MAX_REPORTED_SCHEMA_VIOLATIONS)
         return SnapshotComparison(
-            mismatches =
-                reported.map { (source, violation) ->
-                    SnapshotMismatch(
-                        tick = null,
-                        participant = null,
-                        sampleIndex = null,
-                        sampleLabel = null,
-                        field = "$rootPath.${violation.path}".displayField(),
-                        expected = "schema-valid",
-                        actual = "$source: ${violation.message}",
-                        delta = SCHEMA_VALIDATION_FAILURE,
-                    )
-                },
+            mismatches = reported.map { it.toMismatch(rootPath) },
             hasOmittedMismatches = violations.size > MAX_REPORTED_SCHEMA_VIOLATIONS,
+        )
+    }
+
+    private fun SourcedSchemaViolation.toMismatch(rootPath: String): SnapshotMismatch {
+        val context = TraceSchemaViolationContext.resolve(value, violation.path)
+        return SnapshotMismatch(
+            tick = context.tick,
+            participant = context.participant,
+            sampleIndex = context.sampleIndex,
+            sampleLabel = context.sampleLabel,
+            field = "$rootPath.${violation.path}".displayField(),
+            expected = "schema-valid",
+            actual = "$source: ${violation.message}",
+            delta = SCHEMA_VALIDATION_FAILURE,
         )
     }
 
@@ -295,6 +297,12 @@ internal object SnapshotComparisonEngine {
     private fun String.isSampleArray(): Boolean = endsWith(".samples")
 
     private fun JsonValue.children(): List<JsonValue> = generateSequence(child) { it.next }.toList()
+
+    private data class SourcedSchemaViolation(
+        val source: String,
+        val value: JsonValue,
+        val violation: TraceSchemaViolation,
+    )
 }
 
 /** The result is reusable by golden tests and future external-runtime trace-file checks. */

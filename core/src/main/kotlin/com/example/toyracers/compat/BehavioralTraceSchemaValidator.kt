@@ -5,7 +5,10 @@ import com.badlogic.gdx.utils.JsonValue
 /** Validates complete trace documents before the structural comparison begins. */
 internal object BehavioralTraceSchemaValidator {
     fun validateIfTrace(value: JsonValue): List<TraceSchemaViolation> {
-        if (!value.isObject || !looksLikeTraceEnvelope(value)) return emptyList()
+        if (!value.isObject) {
+            return listOf(TraceSchemaViolation(ROOT_PATH, "must be an object"))
+        }
+        if (!looksLikeTraceEnvelope(value)) return emptyList()
         val violations = mutableListOf<TraceSchemaViolation>()
         validateTrace(value, ROOT_PATH, violations)
         return violations

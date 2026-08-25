@@ -296,6 +296,36 @@ class SnapshotComparisonEngineTest {
         assertEquals("schema validation", mismatch?.delta)
     }
 
+    @Test
+    fun `non-object trace roots are schema-validated`() {
+        listOf("[]", "null").forEach { document ->
+            val mismatch = SnapshotComparisonEngine.compare(trace(document), trace(document)).firstMismatch
+
+            assertEquals("$", mismatch?.field)
+            assertEquals("schema validation", mismatch?.delta)
+        }
+    }
+
+    @Test
+    fun `schema violations retain sample and participant context`() {
+        val expected = completeTrace()
+        val actual = completeTrace(participantX = "\"invalid\"")
+        actual
+            .get("samples")
+            .get(0)
+            .get("tick")
+            .set(842L, null)
+
+        val mismatch = SnapshotComparisonEngine.compare(expected, actual).firstMismatch
+
+        assertEquals(842L, mismatch?.tick)
+        assertEquals("player", mismatch?.participant)
+        assertEquals(0, mismatch?.sampleIndex)
+        assertEquals("simulation", mismatch?.sampleLabel)
+        assertEquals("x", mismatch?.field)
+        assertEquals("schema validation", mismatch?.delta)
+    }
+
     private fun traceWithParticipant(fields: String) =
         trace(
             """
@@ -324,7 +354,7 @@ class SnapshotComparisonEngineTest {
         actual: com.badlogic.gdx.utils.JsonValue,
     ) = SnapshotComparisonEngine.compare(expected, actual, validateSchema = false)
 
-    private fun completeTrace() =
+    private fun completeTrace(participantX: String = "0.0") =
         trace(
             """
             {
@@ -345,7 +375,7 @@ class SnapshotComparisonEngineTest {
                   "participants": [{
                     "id": "player",
                     "surface": "asphalt",
-                    "x": 0.0,
+                    "x": $participantX,
                     "y": 0.0,
                     "rotation": 0.0,
                     "velocityX": 0.0,
