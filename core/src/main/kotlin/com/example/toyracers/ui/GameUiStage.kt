@@ -40,6 +40,7 @@ abstract class GameUiStage(
         action: () -> Unit,
     ): TextButton =
         TextButton(text, skin, style).apply {
+            name = text
             addListener(
                 object : ClickListener() {
                     override fun clicked(

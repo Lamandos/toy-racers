@@ -97,6 +97,7 @@ subprojects {
     source.setFrom(fileTree(projectDir) {
       include 'src/main/kotlin/**/*.kt', 'src/main/java/**/*.java'
       include 'src/test/kotlin/**/*.kt', 'src/test/java/**/*.java'
+      include 'src/uiSmoke/kotlin/**/*.kt', 'src/uiSmoke/java/**/*.java'
       exclude '**/build/**', '**/generated/**', '**/StartupHelper.kt'
     })
   }
@@ -130,6 +131,7 @@ tasks.register('quickQualityCheck') {
     [project.tasks.named('ktlintCheck'), project.tasks.named('detekt')]
   }.flatten()
   dependsOn ':core:test', ':lwjgl3:test'
+  dependsOn ':lwjgl3:uiSmokeTest'
   dependsOn tasks.named('verifySourceFileLengths')
 }
 

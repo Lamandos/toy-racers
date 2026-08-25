@@ -88,6 +88,7 @@ class CarSelectionStage(
 
     private fun carCard(option: CarSelectionOption): TextButton =
         TextButton("", skin).apply {
+            name = "car-${option.model.scenarioId}"
             clearChildren()
             add(
                 Image(option.preview).apply {

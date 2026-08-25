@@ -12,8 +12,8 @@ Run this once after cloning:
 ```
 
 The script is idempotent and sets `core.hooksPath` to `.githooks`. The pre-commit hook runs Kotlin style checks,
-detekt, the 500-line source-file gate, and JVM unit tests. The pre-push hook runs the complete `qualityCheck`,
-including Android debug unit tests and the existing core coverage gate.
+detekt, the 500-line source-file gate, JVM unit tests, and the desktop UI smoke flow. The pre-push hook runs the
+complete `qualityCheck`, including Android debug unit tests and the existing core coverage gate.
 
 ## Run checks
 
@@ -23,7 +23,11 @@ including Android debug unit tests and the existing core coverage gate.
 ./gradlew ktlintCheck
 ./gradlew detekt
 ./gradlew test
+./gradlew lwjgl3:uiSmokeTest
 ```
+
+`uiSmokeTest` launches the real desktop libGDX application in a fixed 1280×720 window with disabled audio. It
+needs a working OpenGL display server; on a headless Linux machine, use `xvfb-run --auto-servernum` as CI does.
 
 Formatting is checked without modifying files. To apply safe formatting fixes explicitly, run:
 

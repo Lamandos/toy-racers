@@ -4,5 +4,5 @@ set -eu
 repository_root=$(git rev-parse --show-toplevel)
 cd "$repository_root"
 
-echo "Running full quality gates before push..."
+echo "Running full quality gates, including desktop UI smoke..."
 ./gradlew qualityCheck --no-daemon

@@ -4,5 +4,5 @@ set -eu
 repository_root=$(git rev-parse --show-toplevel)
 cd "$repository_root"
 
-echo "Running fast quality gates before commit..."
+echo "Running fast quality gates, including desktop UI smoke..."
 ./gradlew quickQualityCheck --no-daemon
