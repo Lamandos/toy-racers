@@ -183,6 +183,7 @@ internal object BehavioralScenarioValidator {
     ) {
         require(value.isArray) { "$path must be an array" }
         val maxCheckpointIndex = TRACK_CHECKPOINT_COUNTS.getValue(trackId).toLong()
+        val finishPositions = mutableSetOf<Long>()
         val allowedProperties =
             if (schemaVersion >= BehavioralScenarioLoader.CURRENT_SCENARIO_SCHEMA_VERSION) {
                 TIMER_INITIAL_STATE_PROPERTIES
@@ -195,7 +196,10 @@ internal object BehavioralScenarioValidator {
             initialState.requireProperties(allowedProperties, statePath)
             requireEnum(initialState.required(ID_FIELD, statePath), "$statePath.$ID_FIELD", INITIAL_STATE_IDS)
             FLOAT_INITIAL_STATE_FIELDS.forEach { name ->
-                initialState.get(name)?.let { requireFloat(it, "$statePath.$name") }
+                initialState.get(name)?.let {
+                    val bounds = INITIAL_STATE_FLOAT_BOUNDS[name]
+                    requireFloat(it, "$statePath.$name", bounds?.first, bounds?.second)
+                }
             }
             initialState.get(SURFACE_SPEED_MULTIPLIER_FIELD)?.let {
                 requireFloat(it, "$statePath.$SURFACE_SPEED_MULTIPLIER_FIELD", 0.0, 1.0)
@@ -220,17 +224,22 @@ internal object BehavioralScenarioValidator {
             initialState.get(COMPLETED_LAPS_FIELD)?.let {
                 requireInteger(it, "$statePath.$COMPLETED_LAPS_FIELD", 0, RaceRules.DEFAULT_LAP_COUNT.toLong())
             }
-            initialState.get(FINISH_POSITION_FIELD)?.let {
+            val finishPositionValue = initialState.get(FINISH_POSITION_FIELD)
+            finishPositionValue?.let {
                 requireInteger(it, "$statePath.$FINISH_POSITION_FIELD", 1, MAX_FINISH_POSITION)
             }
             initialState.get(FINISHED_FIELD)?.let { requireBoolean(it, "$statePath.$FINISHED_FIELD") }
             val finished = initialState.get(FINISHED_FIELD)?.asBoolean() ?: false
-            val hasFinishPosition = initialState.get(FINISH_POSITION_FIELD) != null
+            val hasFinishPosition = finishPositionValue != null
             require(!finished || hasFinishPosition) {
                 "$statePath.$FINISH_POSITION_FIELD is required when $FINISHED_FIELD is true"
             }
             require(!hasFinishPosition || finished) {
                 "$statePath.$FINISHED_FIELD must be true when $FINISH_POSITION_FIELD is provided"
+            }
+            val finishPosition = finishPositionValue?.asLong()
+            require(finishPosition == null || finishPositions.add(finishPosition)) {
+                "$statePath.$FINISH_POSITION_FIELD must be unique across $path"
             }
         }
     }
@@ -375,6 +384,7 @@ internal object BehavioralScenarioValidator {
     private const val BRAKE_DELTA_FIELD = "brakeDelta"
     private const val STEERING_DELTA_FIELD = "steeringDelta"
     private const val SURFACE_SPEED_MULTIPLIER_FIELD = "surfaceSpeedMultiplier"
+    private const val DRIFT_AMOUNT_FIELD = "driftAmount"
     private const val LAP_START_TIME_FIELD = "lapStartTime"
     private const val TOTAL_RACE_TIME_FIELD = "totalRaceTime"
     private const val BEST_LAP_TIME_FIELD = "bestLapTime"
@@ -410,6 +420,7 @@ internal object BehavioralScenarioValidator {
             "lateralSpeed",
             "driftAmount",
         )
+    private val INITIAL_STATE_FLOAT_BOUNDS = mapOf(DRIFT_AMOUNT_FIELD to (0.0 to 1.0))
     private val INITIAL_STATE_PROPERTIES =
         setOf(ID_FIELD) + FLOAT_INITIAL_STATE_FIELDS +
             setOf(

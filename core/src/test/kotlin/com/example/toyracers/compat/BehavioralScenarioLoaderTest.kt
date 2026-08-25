@@ -27,6 +27,29 @@ class BehavioralScenarioLoaderTest {
     }
 
     @Test(expected = IllegalArgumentException::class)
+    fun `fixture loader rejects duplicate seeded finish positions`() {
+        BehavioralFixtureLoader.parseScenarioDocument(
+            JsonReader().parse(
+                """
+                {
+                  "schemaVersion": 1,
+                  "scenarios": [{
+                    "id": "duplicate-finish-position", "seed": 1, "trackId": "track-01",
+                    "playerCar": "red-stripe", "inputOrigin": "keyboard", "tags": [],
+                    "ticks": 1, "snapshotIntervalTicks": 1,
+                    "inputSegments": [{"fromTick": 1, "toTick": 1}],
+                    "initialStates": [
+                      {"id": "player", "finished": true, "finishPosition": 1},
+                      {"id": "ai-0", "finished": true, "finishPosition": 1}
+                    ]
+                  }]
+                }
+                """.trimIndent(),
+            ),
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
     fun `fixture loader rejects input tweak tick beyond Int range`() {
         BehavioralFixtureLoader.parseScenarioDocument(
             JsonReader().parse(
@@ -39,6 +62,26 @@ class BehavioralScenarioLoaderTest {
                     "ticks": 1, "snapshotIntervalTicks": 1,
                     "inputSegments": [{"fromTick": 1, "toTick": 1}],
                     "inputTweaks": [{"tick": 4294967297, "steeringDelta": 0.1}]
+                  }]
+                }
+                """.trimIndent(),
+            ),
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `fixture loader rejects drift outside normalized range`() {
+        BehavioralFixtureLoader.parseScenarioDocument(
+            JsonReader().parse(
+                """
+                {
+                  "schemaVersion": 1,
+                  "scenarios": [{
+                    "id": "invalid-drift", "seed": 1, "trackId": "track-01",
+                    "playerCar": "red-stripe", "inputOrigin": "keyboard", "tags": [],
+                    "ticks": 1, "snapshotIntervalTicks": 1,
+                    "inputSegments": [{"fromTick": 1, "toTick": 1}],
+                    "initialStates": [{"id": "player", "driftAmount": 2}]
                   }]
                 }
                 """.trimIndent(),
@@ -78,6 +121,21 @@ class BehavioralScenarioLoaderTest {
                 .get("finishPosition")
                 .getInt("maximum"),
         )
+    }
+
+    @Test
+    fun `scenario schema limits seeded drift to normalized range`() {
+        val stream = requireNotNull(javaClass.classLoader.getResourceAsStream("compat/scenario.schema.json"))
+        val schema = stream.bufferedReader().use(JsonReader()::parse)
+        val drift =
+            schema
+                .get("\$defs")
+                .get("initialState")
+                .get("properties")
+                .get("driftAmount")
+
+        assertEquals(0, drift.getInt("minimum"))
+        assertEquals(1, drift.getInt("maximum"))
     }
 
     @Test

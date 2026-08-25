@@ -1,5 +1,6 @@
 package com.example.toyracers.compat
 
+import com.badlogic.gdx.utils.JsonValue
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
@@ -62,6 +63,9 @@ internal fun Double.isNormalizedRotation(): Boolean = this >= 0.0 && this < FULL
 
 internal fun Double.isNegativeZero(): Boolean = this == 0.0 && toBits() == (-0.0).toBits()
 
+internal fun JsonValue.isNegativeZeroNumber(): Boolean =
+    isNumber && (asDouble().isNegativeZero() || (isLong && asString() == NEGATIVE_ZERO_LITERAL))
+
 internal fun angularDelta(difference: Double): String =
     "angular delta ${String.format(Locale.ROOT, "%.6f", abs(difference))}"
 
@@ -69,3 +73,4 @@ internal fun numericDelta(difference: Double): String = String.format(Locale.ROO
 
 private const val FULL_TURN = 360.0
 private const val HALF_TURN = FULL_TURN / 2.0
+private const val NEGATIVE_ZERO_LITERAL = "-0"

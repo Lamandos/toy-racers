@@ -177,7 +177,7 @@
         "velocityY": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
         "angularVelocity": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
         "lateralSpeed": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
-        "driftAmount": { "type": "number", "minimum": -3.4028234663852886e+38, "maximum": 3.4028234663852886e+38 },
+        "driftAmount": { "type": "number", "minimum": 0, "maximum": 1 },
         "surfaceSpeedMultiplier": { "type": "number", "minimum": 0, "maximum": 1 },
         "currentCheckpointIndex": {
           "type": "integer",

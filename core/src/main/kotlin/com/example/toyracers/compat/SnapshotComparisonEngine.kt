@@ -12,15 +12,53 @@ import kotlin.math.abs
 internal object SnapshotComparisonEngine {
     const val ABSOLUTE_TOLERANCE = 0.0001
     private const val ROOT_PATH = "$"
+    private const val MAX_REPORTED_SCHEMA_VIOLATIONS = 8
+    private const val SCHEMA_VALIDATION_FAILURE = "schema validation"
 
     fun compare(
         expected: JsonValue,
         actual: JsonValue,
         rootPath: String = ROOT_PATH,
+        validateSchema: Boolean = true,
     ): SnapshotComparison {
+        if (validateSchema) schemaComparison(expected, actual, rootPath)?.let { return it }
         val collector = MismatchCollector()
         compareValue(expected, actual, rootPath, ComparisonContext(), collector)
         return collector.result()
+    }
+
+    private fun schemaComparison(
+        expected: JsonValue,
+        actual: JsonValue,
+        rootPath: String,
+    ): SnapshotComparison? {
+        val violations =
+            listOf("expected" to expected, "actual" to actual)
+                .flatMap { (source, value) ->
+                    BehavioralTraceSchemaValidator
+                        .validateIfTrace(value)
+                        .map { violation -> SourcedSchemaViolation(source, value, violation) }
+                }
+        if (violations.isEmpty()) return null
+        val reported = violations.take(MAX_REPORTED_SCHEMA_VIOLATIONS)
+        return SnapshotComparison(
+            mismatches = reported.map { it.toMismatch(rootPath) },
+            hasOmittedMismatches = violations.size > MAX_REPORTED_SCHEMA_VIOLATIONS,
+        )
+    }
+
+    private fun SourcedSchemaViolation.toMismatch(rootPath: String): SnapshotMismatch {
+        val context = TraceSchemaViolationContext.resolve(value, violation.path)
+        return SnapshotMismatch(
+            tick = context.tick,
+            participant = context.participant,
+            sampleIndex = context.sampleIndex,
+            sampleLabel = context.sampleLabel,
+            field = "$rootPath.${violation.path}".displayField(),
+            expected = "schema-valid",
+            actual = "$source: ${violation.message}",
+            delta = SCHEMA_VALIDATION_FAILURE,
+        )
     }
 
     private fun compareValue(
@@ -175,7 +213,7 @@ internal object SnapshotComparisonEngine {
             collector.nonFiniteNumber(context, path, expectedValue, actualValue)
             return
         }
-        if (expectedValue.isNegativeZero() || actualValue.isNegativeZero()) {
+        if (expected.isNegativeZeroNumber() || actual.isNegativeZeroNumber()) {
             collector.negativeZero(context, path, expected, actual)
             return
         }
@@ -259,6 +297,12 @@ internal object SnapshotComparisonEngine {
     private fun String.isSampleArray(): Boolean = endsWith(".samples")
 
     private fun JsonValue.children(): List<JsonValue> = generateSequence(child) { it.next }.toList()
+
+    private data class SourcedSchemaViolation(
+        val source: String,
+        val value: JsonValue,
+        val violation: TraceSchemaViolation,
+    )
 }
 
 /** The result is reusable by golden tests and future external-runtime trace-file checks. */
