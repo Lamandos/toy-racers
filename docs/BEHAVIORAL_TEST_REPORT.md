@@ -5,7 +5,7 @@
 Total scenarios: 63 (the referenced `full-race-input.json` is an input script, not a scenario)
 Passing: 63
 Failing: 0
-Long-running scenarios: 2 (1,000 and 5,000 physical ticks)
+Long-running stress fixtures: 2 additional fixtures (1,000 and 5,000 physical ticks; excluded from the 63-scenario count)
 Full-race scenarios: 10 (three-lap races)
 Fuzz scenarios: 100 generated scenarios, 120 ticks each, fixed seeds
 Determinism runs: 20 repeated normalized-trace runs of the 5,000-tick scenario; the 50 legacy scenarios also require a byte-identical second run
@@ -20,7 +20,7 @@ The scenario and golden-master results were collected with:
 ./gradlew behavioralTest fuzzSmokeTest coverageReport --no-daemon
 ```
 
-Coverage is JaCoCo coverage for the configured portable `core` gameplay packages and the regular JVM unit-test task. Scenario counts are taken from `compatibility/scenarios`, excluding the referenced input script.
+Coverage is JaCoCo coverage for the configured portable `core` gameplay packages and the regular JVM unit-test task. Scenario counts are taken from `compatibility/scenarios`, excluding the referenced input script. That inventory contains 13 scenarios with at least 1,000 ticks; the exact-duration 1,000- and 5,000-tick stress fixtures are additional resources under `core/src/test/resources/compat/stress`.
 
 ## Coverage by subsystem
 
@@ -32,6 +32,8 @@ Coverage is JaCoCo coverage for the configured portable `core` gameplay packages
 | Track | 9 | 93.47% | Branch coverage: 61.32%; `track` package |
 | Surface | 5 | 100.00% | Branch coverage: 60.00%; `surface` package |
 | AI | 7 | 98.74% | Branch coverage: 72.12%; `ai` package |
+| Camera | — | 82.02% | Branch coverage: 55.00%; `camera` package; unit tests only |
+| Input | — | 100.00% | Branch coverage: 83.33%; `PlayerControlConfig*` and `PlayerInput*`; unit tests only |
 
 ## Behavioral coverage
 
@@ -57,7 +59,7 @@ Coverage is JaCoCo coverage for the configured portable `core` gameplay packages
 
 The following cannot currently be checked reliably by the automated headless behavioral suite:
 
-- No Kotlin-versus-Dart/Flame differential run exists yet; fuzz currently exercises only the Kotlin reference simulation and checks invariants, not an independent implementation's output.
+- No Kotlin-versus-Dart/Flame differential run exists yet; fuzz currently exercises only the Kotlin reference simulation and verifies scenario ID and seed propagation, the final tick, and normalized generated controls. It does not validate physics outputs or other simulation invariants.
 - Exact rendering and pixel output are not covered. GPU drivers, OpenGL implementations, fonts, window systems, and display scaling can change screenshots; screenshot goldens are intentionally not enabled.
 - Real-device touch behavior, Android lifecycle behavior, frame pacing, memory use, and input timing still require a physical-device check.
 - Audio playback, the audio fade before results navigation, and audio-device-specific behavior are outside the headless trace.
@@ -76,4 +78,3 @@ Golden masters intentionally preserve these current behaviors, which may be surp
 - When the player finishes during an `advance` call, the accumulator is cleared and the loop stops. Any sub-tick remainder and additional whole ticks supplied by that same call are intentionally discarded; later requested samples keep the frozen finished state.
 - `RaceStepResult.maxImpactSpeed` includes the player's track contacts and car contacts but excludes track contacts for AI cars, so it cannot always be recomputed as the maximum of the exposed contacts.
 - A test-only explicitly seeded initial state may contain a speed component inconsistent with its emitted velocity. This is preserved as fixture behavior and is not produced by the normal constructor path.
-
