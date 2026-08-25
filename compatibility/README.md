@@ -152,16 +152,22 @@ adapters must reproduce that arithmetic before canonicalizing the number.
 The normal runner emits countdown and racing transition samples at trace tick 0, then applies input
 for requested ticks `1..ticks`. It samples tick 1, every positive multiple of
 `snapshotIntervalTicks`, the final requested tick, and the tick on which the race first finishes.
-After a participant finishes, the compatibility CLI continues the requested trace loop, but
-`RaceSession.advance` performs no further physical steps: later interval/final samples retain the
+An AI participant finishing does not stop the simulation. The compatibility CLI continues the
+requested trace loop and `RaceSession.advance` keeps performing physical steps until the player
+finishes. On the player's finish tick the race transitions to `FINISHED`; subsequent requested
+ticks still emit interval/final samples, but perform no further physical steps and retain the
 finished state and frozen `simulationTick`.
 
-Scenarios tagged `state-machine` additionally emit loading, ready, and intermediate countdown
-samples at tick 0. Scenarios tagged `event-snapshots` append `checkpoint`, `lap`, or `finish`
-samples when the player's corresponding state changes. If that tick is independently sampled,
-the event sample follows its `simulation` sample; otherwise the event sample is emitted alone.
-Sample order is part of the trace contract. For example, a checkpoint at tick 258 between periodic
-samples is a `checkpoint` sample at tick 258, not an additional `simulation` sample.
+Scenarios tagged `state-machine` emit exactly seven samples at trace tick 0, in this order:
+`loading`, `ready`, `countdown` with `remainingSeconds` 3, `countdown` with 2, `countdown` with 1,
+`countdown` after one fixed-step advance with `remainingSeconds = float32(1 - float32(1 / 60))`,
+and `racing` with zero remaining countdown. The final transition consumes the remaining countdown
+duration and contributes no physical step. Scenarios tagged `event-snapshots` append `checkpoint`,
+`lap`, or `finish` samples when the player's corresponding state changes. If that tick is
+independently sampled, the event sample follows its `simulation` sample; otherwise the event sample
+is emitted alone. Sample order is part of the trace contract. For example, a checkpoint at tick 258
+between periodic samples is a `checkpoint` sample at tick 258, not an additional `simulation`
+sample.
 
 ## Output
 
