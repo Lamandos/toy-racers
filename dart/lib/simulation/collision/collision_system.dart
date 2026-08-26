@@ -24,4 +24,17 @@ abstract interface class CollisionSystem {
     required CarConfig config,
     required Track track,
   });
+
+  /// Resolves one ordered pair of car contacts in place.
+  ///
+  /// The participant order is significant: implementations must update both
+  /// states and return the single aggregate result for [firstState] against
+  /// [secondState]. Car configurations provide the collision capsule geometry
+  /// and response settings for the corresponding participant.
+  CollisionResult resolveCarCollision({
+    required CarState firstState,
+    required CarConfig firstConfig,
+    required CarState secondState,
+    required CarConfig secondConfig,
+  });
 }

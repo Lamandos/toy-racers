@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../tool/simulation_architecture.dart';
+
 final _prohibitedImports = RegExp(
   r'''^[ \t]*import\b[^;]*(?:['"](?:package:flutter/[^'"]+|package:flame/[^'"]+|dart:ui)['"])[^;]*;''',
   multiLine: true,
@@ -71,28 +73,37 @@ void main() {
   test(
     'simulation sources do not depend on presentation or wall-clock APIs',
     () {
-      final sourceFiles = <File>[
-        File('lib/simulation.dart'),
-        ...Directory('lib/simulation')
-            .listSync(recursive: true)
-            .whereType<File>()
-            .where((file) => file.path.endsWith('.dart')),
-      ];
-      for (final sourceFile in sourceFiles) {
-        final source = sourceFile.readAsStringSync();
-        expect(
-          _prohibitedImports.hasMatch(source),
-          isFalse,
-          reason: '${sourceFile.path} must not import presentation APIs',
-        );
-        expect(
-          _prohibitedWallClockReferences.hasMatch(source),
-          isFalse,
-          reason: '${sourceFile.path} must not reference wall-clock APIs',
-        );
-      }
+      expect(
+        findSimulationArchitectureViolations(libDirectory: Directory('lib')),
+        isEmpty,
+      );
     },
   );
+
+  test('architecture rule follows transitive local imports', () {
+    final fixture = Directory.systemTemp.createTempSync(
+      'toy-racers-architecture-',
+    );
+    try {
+      final libDirectory = Directory('${fixture.path}/lib')
+        ..createSync(recursive: true);
+      Directory('${libDirectory.path}/simulation').createSync();
+      Directory('${libDirectory.path}/platform').createSync();
+      File('${libDirectory.path}/simulation.dart')
+          .writeAsStringSync("export 'simulation/entry.dart';\n");
+      File('${libDirectory.path}/simulation/entry.dart')
+          .writeAsStringSync("import '../platform/input.dart';\n");
+      File('${libDirectory.path}/platform/input.dart')
+          .writeAsStringSync("import 'package:flutter/widgets.dart';\n");
+
+      expect(
+        findSimulationArchitectureViolations(libDirectory: libDirectory),
+        hasLength(1),
+      );
+    } finally {
+      fixture.deleteSync(recursive: true);
+    }
+  });
 
   test('simulation assembly runs with the Dart VM', () async {
     final result = await Process.run('dart', <String>[

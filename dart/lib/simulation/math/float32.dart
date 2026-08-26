@@ -33,11 +33,11 @@ final class Float32 {
 
   /// Subtracts two binary32 values and narrows the result to binary32.
   static double subtract(double left, double right) =>
-      narrow(narrow(left) - narrow(right));
+      _narrowArithmeticResult(narrow(left) - narrow(right));
 
   /// Multiplies two binary32 values and narrows the result to binary32.
   static double multiply(double left, double right) =>
-      narrow(narrow(left) * narrow(right));
+      _narrowArithmeticResult(narrow(left) * narrow(right));
 
   /// Divides two binary32 values and narrows the result to binary32.
   static double divide(double dividend, double divisor) {
@@ -45,7 +45,7 @@ final class Float32 {
     if (narrowedDivisor == 0) {
       throw ArgumentError.value(divisor, 'divisor', 'must not be zero');
     }
-    return narrow(narrow(dividend) / narrowedDivisor);
+    return _narrowArithmeticResult(narrow(dividend) / narrowedDivisor);
   }
 
   /// Clamps a binary32 [value] inclusively between binary32 limits.

@@ -1,7 +1,20 @@
+import 'dart:io';
+
 import 'package:toy_racers/simulation.dart';
+
+import 'simulation_architecture.dart';
 
 /// Verifies that the simulation assembly can start in a plain Dart process.
 void main() {
+  final violations = findSimulationArchitectureViolations(
+    libDirectory: Directory('lib'),
+  );
+  if (violations.isNotEmpty) {
+    stderr.writeln(violations.join('\n'));
+    exitCode = 1;
+    return;
+  }
+
   final track = Track(
     id: 'architecture-check',
     racingLine: <TrackPoint>[

@@ -10,15 +10,27 @@ void main() {
     expect(() => Float32.narrow(1e100), throwsArgumentError);
   });
 
+  test('Float32 preserves arithmetic overflow as IEEE infinity', () {
+    const maximumFiniteFloat32 = 3.4028234663852886e38;
+
+    expect(
+      Float32.add(maximumFiniteFloat32, maximumFiniteFloat32),
+      double.infinity,
+    );
+    expect(
+      Float32.subtract(-maximumFiniteFloat32, maximumFiniteFloat32),
+      double.negativeInfinity,
+    );
+    expect(Float32.multiply(maximumFiniteFloat32, 2), double.infinity);
+    expect(Float32.divide(maximumFiniteFloat32, 0.5), double.infinity);
+  });
+
   test('DriverInput clamps binary32 input sums that overflow', () {
     const maximumFiniteFloat32 = 3.4028234663852886e38;
 
     expect(
-      DriverInput(
-        throttle: maximumFiniteFloat32,
-      ).combinedWith(
-        DriverInput(throttle: maximumFiniteFloat32),
-      ),
+      DriverInput(throttle: maximumFiniteFloat32)
+          .combinedWith(DriverInput(throttle: maximumFiniteFloat32)),
       DriverInput(throttle: 1),
     );
   });
@@ -93,5 +105,20 @@ void main() {
     expect(session.snapshot.simulationTick, 0);
     expect(session.snapshot.racePhase, RacePhase.loading);
     expect(session.track.racingLine, hasLength(3));
+  });
+
+  test('RaceState advances countdown before allowing racing time', () {
+    final raceState = RaceState();
+    raceState.markReady();
+    raceState.startCountdown();
+
+    expect(raceState.advance(1), 0);
+    expect(raceState.phase, RacePhase.countdown);
+    expect(raceState.countdownRemainingSeconds, 2);
+
+    expect(raceState.advance(2), 0);
+    expect(raceState.phase, RacePhase.racing);
+    expect(raceState.countdownRemainingSeconds, 0);
+    expect(raceState.advance(1 / 60), Float32.narrow(1 / 60));
   });
 }
