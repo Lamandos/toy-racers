@@ -99,6 +99,26 @@ class SurfaceScenarioTest {
         assertEquals(1f, surfaceState.speedMultiplier, TOLERANCE)
     }
 
+    @Test
+    fun `every declared surface applies its documented road allowance`() {
+        SurfaceType.entries.forEach { surface ->
+            val car = fullSpeedCar()
+            val surfaceState = SurfaceSpeedState()
+
+            SurfaceSpeedSystem().update(
+                car,
+                carConfig,
+                surfaceState,
+                surface,
+                TRANSITION_SECONDS,
+            )
+
+            val expectedMultiplier = if (surface.isRoad) 1f else OFF_ROAD_MULTIPLIER
+            assertEquals(expectedMultiplier, surfaceState.speedMultiplier, TOLERANCE)
+            assertEquals(carConfig.maxForwardSpeed * expectedMultiplier, car.speed, TOLERANCE)
+        }
+    }
+
     private fun fullSpeedCar(): CarState =
         CarState(
             velocityX = carConfig.maxForwardSpeed,

@@ -15,6 +15,16 @@ It verifies the versioned legacy fixture set, the file-per-scenario compatibilit
 deterministic repeat test. GitHub Actions runs these mandatory checks in separate jobs; `qualityCheck`, used by the
 pre-push hook, runs them together.
 
+For release acceptance, run the full 115-fixture inventory twenty times sequentially:
+
+```sh
+./gradlew behavioralStabilityTest --no-daemon
+```
+
+This deliberately long task compares the canonical JSON trace of every legacy, file-per-scenario, full-race, and
+long-running replay on every run. GitHub Actions exposes the same task through **Run workflow** with
+`run_behavioral_stability` enabled.
+
 ## Repository golden masters
 
 The file-per-scenario golden-master infrastructure lives in
