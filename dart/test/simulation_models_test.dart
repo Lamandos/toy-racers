@@ -10,6 +10,19 @@ void main() {
     expect(() => Float32.narrow(1e100), throwsArgumentError);
   });
 
+  test('DriverInput clamps binary32 input sums that overflow', () {
+    const maximumFiniteFloat32 = 3.4028234663852886e38;
+
+    expect(
+      DriverInput(
+        throttle: maximumFiniteFloat32,
+      ).combinedWith(
+        DriverInput(throttle: maximumFiniteFloat32),
+      ),
+      DriverInput(throttle: 1),
+    );
+  });
+
   test('CarConfig validates collision geometry using binary32 arithmetic', () {
     expect(
       () => CarConfig(

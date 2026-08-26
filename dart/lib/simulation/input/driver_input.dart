@@ -27,10 +27,18 @@ final class DriverInput {
 
   /// Adds an input tweak before applying the reference control ranges once.
   DriverInput combinedWith(DriverInput other) => DriverInput(
-    throttle: Float32.add(throttle, other.throttle),
-    brake: Float32.add(brake, other.brake),
-    steering: Float32.add(steering, other.steering),
-  ).normalized();
+    throttle: Float32.clamp(
+      Float32.add(throttle, other.throttle),
+      0,
+      1,
+    ),
+    brake: Float32.clamp(Float32.add(brake, other.brake), 0, 1),
+    steering: Float32.clamp(
+      Float32.add(steering, other.steering),
+      -1,
+      1,
+    ),
+  );
 
   @override
   bool operator ==(Object other) =>

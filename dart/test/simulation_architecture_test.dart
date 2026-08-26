@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 final _prohibitedImports = RegExp(
-  r'''^\s*import\s+['"](?:package:flutter/[^'"]+|package:flame/[^'"]+|dart:ui)['"]''',
+  r'''^[ \t]*import\b[^;]*(?:['"](?:package:flutter/[^'"]+|package:flame/[^'"]+|dart:ui)['"])[^;]*;''',
   multiLine: true,
 );
 final _prohibitedWallClockReferences = RegExp(
@@ -39,6 +39,16 @@ void main() {
       isTrue,
     );
     expect(_prohibitedImports.hasMatch("import 'dart:ui';"), isTrue);
+  });
+
+  test('architecture rule recognizes prohibited conditional imports', () {
+    expect(
+      _prohibitedImports.hasMatch(
+        "import 'safe_stub.dart'\n"
+        "    if (dart.library.ui) 'package:flutter/widgets.dart';",
+      ),
+      isTrue,
+    );
   });
 
   test('architecture rule recognizes common wall-clock APIs', () {

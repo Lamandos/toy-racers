@@ -24,8 +24,12 @@ final class Float32 {
   }
 
   /// Adds two binary32 values and narrows the result to binary32.
+  ///
+  /// A finite arithmetic result that overflows binary32 is retained as an
+  /// infinity so a later operation, such as clamping, can reproduce Float
+  /// arithmetic semantics.
   static double add(double left, double right) =>
-      narrow(narrow(left) + narrow(right));
+      _narrowArithmeticResult(narrow(left) + narrow(right));
 
   /// Subtracts two binary32 values and narrows the result to binary32.
   static double subtract(double left, double right) =>
@@ -55,7 +59,7 @@ final class Float32 {
         'must be greater than or equal to minimum',
       );
     }
-    final narrowedValue = narrow(value);
+    final narrowedValue = _narrowArithmeticResult(value);
     if (narrowedValue < narrowedMinimum) {
       return narrowedMinimum;
     }
@@ -64,4 +68,7 @@ final class Float32 {
     }
     return narrowedValue;
   }
+
+  static double _narrowArithmeticResult(double value) =>
+      Float32List.fromList(<double>[value]).single;
 }
