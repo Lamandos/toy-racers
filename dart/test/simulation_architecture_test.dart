@@ -6,6 +6,9 @@ final _prohibitedImports = RegExp(
   r'''^\s*import\s+['"](?:package:flutter/[^'"]+|package:flame/[^'"]+|dart:ui)['"]''',
   multiLine: true,
 );
+final _prohibitedWallClockReferences = RegExp(
+  r'''(?:DateTime\.(?:now|timestamp)\b|Stopwatch\s*\(|Timer(?:\s*\(|\.(?:periodic|run)\b)|Future(?:<[^>]+>)?\.delayed\b)''',
+);
 
 void main() {
   test('simulation keeps every required pure-Dart module boundary', () {
@@ -38,6 +41,23 @@ void main() {
     expect(_prohibitedImports.hasMatch("import 'dart:ui';"), isTrue);
   });
 
+  test('architecture rule recognizes common wall-clock APIs', () {
+    const wallClockExamples = <String>[
+      'Future<void>.delayed(const Duration(seconds: 1));',
+      'Future.delayed(const Duration(seconds: 1));',
+      'Timer.periodic(const Duration(seconds: 1), callback);',
+      'Timer.run(callback);',
+      'DateTime.timestamp();',
+    ];
+    for (final source in wallClockExamples) {
+      expect(
+        _prohibitedWallClockReferences.hasMatch(source),
+        isTrue,
+        reason: '$source must be rejected',
+      );
+    }
+  });
+
   test(
     'simulation sources do not depend on presentation or wall-clock APIs',
     () {
@@ -48,12 +68,6 @@ void main() {
             .whereType<File>()
             .where((file) => file.path.endsWith('.dart')),
       ];
-      const prohibitedWallClockReferences = <String>[
-        'DateTime.now',
-        'Stopwatch(',
-        'Timer(',
-      ];
-
       for (final sourceFile in sourceFiles) {
         final source = sourceFile.readAsStringSync();
         expect(
@@ -61,13 +75,11 @@ void main() {
           isFalse,
           reason: '${sourceFile.path} must not import presentation APIs',
         );
-        for (final reference in prohibitedWallClockReferences) {
-          expect(
-            source.contains(reference),
-            isFalse,
-            reason: '${sourceFile.path} must not reference $reference',
-          );
-        }
+        expect(
+          _prohibitedWallClockReferences.hasMatch(source),
+          isFalse,
+          reason: '${sourceFile.path} must not reference wall-clock APIs',
+        );
       }
     },
   );
