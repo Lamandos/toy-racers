@@ -12,7 +12,15 @@ final class Float32 {
     if (!value.isFinite) {
       throw ArgumentError.value(value, 'value', 'must be finite');
     }
-    return Float32List.fromList(<double>[value]).single;
+    final narrowed = Float32List.fromList(<double>[value]).single;
+    if (!narrowed.isFinite) {
+      throw ArgumentError.value(
+        value,
+        'value',
+        'must fit in a finite IEEE-754 binary32 value',
+      );
+    }
+    return narrowed;
   }
 
   /// Adds two binary32 values and narrows the result to binary32.

@@ -6,6 +6,49 @@ void main() {
     expect(Float32.narrow(1 / 60), 0.01666666753590107);
   });
 
+  test('Float32 rejects finite values that overflow binary32', () {
+    expect(() => Float32.narrow(1e100), throwsArgumentError);
+  });
+
+  test('CarConfig validates collision geometry using binary32 arithmetic', () {
+    expect(
+      () => CarConfig(
+        collisionRadius: 5.960464477539063e-8,
+        collisionLongitudinalOffset: 1,
+        length: 2,
+      ),
+      returnsNormally,
+    );
+  });
+
+  test('SimulationScenario preserves signed 64-bit seeds as decimal text', () {
+    final scenario = SimulationScenario(
+      id: 'maximum-seed',
+      seed: '9223372036854775807',
+      trackId: 'track-01',
+      playerCarId: 'red-stripe',
+      ticks: 1,
+      snapshotIntervalTicks: 1,
+    );
+
+    expect(scenario.seed, '9223372036854775807');
+    expect(scenario.seedValue, BigInt.parse('9223372036854775807'));
+  });
+
+  test('SimulationScenario rejects seeds outside signed 64-bit range', () {
+    expect(
+      () => SimulationScenario(
+        id: 'overflowing-seed',
+        seed: '9223372036854775808',
+        trackId: 'track-01',
+        playerCarId: 'red-stripe',
+        ticks: 1,
+        snapshotIntervalTicks: 1,
+      ),
+      throwsArgumentError,
+    );
+  });
+
   test('DriverInput adds a tweak before one normalization pass', () {
     final command = DriverInput(throttle: 0.8, brake: -0.2, steering: 0.9);
     final tweak = DriverInput(throttle: 0.4, brake: 0.4, steering: 0.3);

@@ -87,11 +87,16 @@ final class CarConfig {
         'must be greater than or equal to 1',
       );
     }
-    if (this.collisionRadius * 2 > this.width) {
+    final collisionWidth = Float32.multiply(this.collisionRadius, 2);
+    if (collisionWidth > this.width) {
       throw ArgumentError('Collision shape must fit inside car width');
     }
-    if (this.collisionLongitudinalOffset + this.collisionRadius >
-        this.length / 2) {
+    final collisionLength = Float32.add(
+      this.collisionLongitudinalOffset,
+      this.collisionRadius,
+    );
+    final halfLength = Float32.divide(this.length, 2);
+    if (collisionLength > halfLength) {
       throw ArgumentError('Collision shape must fit inside car length');
     }
   }

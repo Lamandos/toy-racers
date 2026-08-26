@@ -2,6 +2,11 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+final _prohibitedImports = RegExp(
+  r'''^\s*import\s+['"](?:package:flutter/[^'"]+|package:flame/[^'"]+|dart:ui)['"]''',
+  multiLine: true,
+);
+
 void main() {
   test('simulation keeps every required pure-Dart module boundary', () {
     const requiredDirectories = <String>[
@@ -21,6 +26,18 @@ void main() {
     }
   });
 
+  test('architecture rule recognizes complete presentation import URIs', () {
+    expect(
+      _prohibitedImports.hasMatch("import 'package:flutter/widgets.dart';"),
+      isTrue,
+    );
+    expect(
+      _prohibitedImports.hasMatch("import 'package:flame/game.dart';"),
+      isTrue,
+    );
+    expect(_prohibitedImports.hasMatch("import 'dart:ui';"), isTrue);
+  });
+
   test(
     'simulation sources do not depend on presentation or wall-clock APIs',
     () {
@@ -31,10 +48,6 @@ void main() {
             .whereType<File>()
             .where((file) => file.path.endsWith('.dart')),
       ];
-      final prohibitedImports = RegExp(
-        r'''^\s*import\s+['"](?:package:flutter/|package:flame/|dart:ui)['"]''',
-        multiLine: true,
-      );
       const prohibitedWallClockReferences = <String>[
         'DateTime.now',
         'Stopwatch(',
@@ -44,7 +57,7 @@ void main() {
       for (final sourceFile in sourceFiles) {
         final source = sourceFile.readAsStringSync();
         expect(
-          prohibitedImports.hasMatch(source),
+          _prohibitedImports.hasMatch(source),
           isFalse,
           reason: '${sourceFile.path} must not import presentation APIs',
         );
