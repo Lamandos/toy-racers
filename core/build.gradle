@@ -205,12 +205,20 @@ jar {
   duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
+def coverageTestTasks = [
+  tasks.named('test', Test),
+  tasks.named('behavioralCompatibilityTest', Test),
+  tasks.named('deterministicRepeatTest', Test),
+  tasks.named('compatibilityGoldenTest', Test),
+]
+def coverageExecutionData = coverageTestTasks.collect { testTask ->
+  testTask.map { it.extensions.getByName('jacoco').destinationFile }
+}
+
 jacocoTestReport {
-  dependsOn test, behavioralCompatibilityTest, deterministicRepeatTest, compatibilityGoldenTest, differentialFuzzSmokeTest
+  dependsOn coverageTestTasks
   classDirectories.setFrom(unitTestCoverageClasses)
-  executionData.setFrom(fileTree(layout.buildDirectory) {
-    include 'jacoco/*.exec'
-  })
+  executionData.setFrom(coverageExecutionData)
   reports {
     html.required = true
     xml.required = true
@@ -220,9 +228,7 @@ jacocoTestReport {
 jacocoTestCoverageVerification {
   dependsOn jacocoTestReport
   classDirectories.setFrom(unitTestCoverageClasses)
-  executionData.setFrom(fileTree(layout.buildDirectory) {
-    include 'jacoco/*.exec'
-  })
+  executionData.setFrom(coverageExecutionData)
   violationRules {
     rule {
       limit {
