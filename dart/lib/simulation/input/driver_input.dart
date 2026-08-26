@@ -25,19 +25,14 @@ final class DriverInput {
     steering: Float32.clamp(steering, -1, 1),
   );
 
-  /// Adds an input tweak before applying the reference control ranges once.
+  /// Adds a behavioral input tweak before applying the reference ranges once.
+  ///
+  /// This maps to `BehavioralInput.withTweak` in the Kotlin compatibility
+  /// runner. It is intentionally distinct from Kotlin's device-input merge.
   DriverInput combinedWith(DriverInput other) => DriverInput(
-    throttle: Float32.clamp(
-      Float32.add(throttle, other.throttle),
-      0,
-      1,
-    ),
+    throttle: Float32.clamp(Float32.add(throttle, other.throttle), 0, 1),
     brake: Float32.clamp(Float32.add(brake, other.brake), 0, 1),
-    steering: Float32.clamp(
-      Float32.add(steering, other.steering),
-      -1,
-      1,
-    ),
+    steering: Float32.clamp(Float32.add(steering, other.steering), -1, 1),
   );
 
   @override
