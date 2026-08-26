@@ -105,6 +105,33 @@ void main() {
     }
   });
 
+  test('architecture rule follows part and URI-based part of directives', () {
+    final fixture = Directory.systemTemp.createTempSync(
+      'toy-racers-architecture-parts-',
+    );
+    try {
+      final libDirectory = Directory('${fixture.path}/lib')
+        ..createSync(recursive: true);
+      Directory('${libDirectory.path}/simulation').createSync();
+      Directory('${libDirectory.path}/shared').createSync();
+      File('${libDirectory.path}/simulation.dart')
+          .writeAsStringSync("export 'simulation/entry.dart';\n");
+      File('${libDirectory.path}/simulation/entry.dart')
+          .writeAsStringSync("part '../shared/timing.dart';\n");
+      File('${libDirectory.path}/shared/timing.dart')
+          .writeAsStringSync("part of '../shared/timing_library.dart';\n");
+      File('${libDirectory.path}/shared/timing_library.dart')
+          .writeAsStringSync('final now = DateTime.now();\n');
+
+      expect(
+        findSimulationArchitectureViolations(libDirectory: libDirectory),
+        hasLength(1),
+      );
+    } finally {
+      fixture.deleteSync(recursive: true);
+    }
+  });
+
   test('simulation assembly runs with the Dart VM', () async {
     final result = await Process.run('dart', <String>[
       'run',

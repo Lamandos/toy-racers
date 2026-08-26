@@ -58,6 +58,12 @@ final class RaceState {
 
   void finish() => _transition(RacePhase.racing, RacePhase.finished);
 
+  /// Starts a fresh countdown regardless of the current race phase.
+  void restart() {
+    _phase = RacePhase.countdown;
+    _countdownRemainingSeconds = _countdownDurationSeconds;
+  }
+
   double _advanceCountdown(double deltaSeconds) {
     if (deltaSeconds < _countdownRemainingSeconds) {
       _countdownRemainingSeconds = Float32.subtract(

@@ -5,6 +5,7 @@
 // than implementing gameplay rules of its own.
 
 export 'simulation/ai/ai_driver.dart';
+export 'simulation/ai/ai_race_context.dart';
 export 'simulation/car/car_config.dart';
 export 'simulation/car/car_physics.dart';
 export 'simulation/car/car_state.dart';

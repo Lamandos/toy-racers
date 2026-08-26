@@ -121,4 +121,83 @@ void main() {
     expect(raceState.countdownRemainingSeconds, 0);
     expect(raceState.advance(1 / 60), Float32.narrow(1 / 60));
   });
+
+  test('RaceState restart starts a fresh countdown from every phase', () {
+    void expectRestartFrom(void Function(RaceState) prepare) {
+      final raceState = RaceState();
+      prepare(raceState);
+
+      raceState.restart();
+
+      expect(raceState.phase, RacePhase.countdown);
+      expect(raceState.countdownRemainingSeconds, 3);
+    }
+
+    expectRestartFrom((_) {});
+    expectRestartFrom((state) => state.markReady());
+    expectRestartFrom((state) {
+      state.markReady();
+      state.startCountdown();
+      state.advance(1);
+    });
+    expectRestartFrom((state) {
+      state.markReady();
+      state.startCountdown();
+      state.advance(3);
+    });
+    expectRestartFrom((state) {
+      state.markReady();
+      state.startCountdown();
+      state.advance(3);
+      state.pause();
+    });
+    expectRestartFrom((state) {
+      state.markReady();
+      state.startCountdown();
+      state.advance(3);
+      state.finish();
+    });
+  });
+
+  test('AiDriver receives the current race context on every update', () {
+    final driver = _RecordingAiDriver();
+    final firstContext = AiRaceContext(
+      obstacles: <AiObstacle>[AiObstacle(x: 4, y: 1, radius: 0.5, speed: 2)],
+      finished: false,
+      isOnTrack: true,
+    );
+    final secondContext = AiRaceContext(finished: true, isOnTrack: false);
+
+    driver.update(
+      carState: CarState(),
+      deltaSeconds: Float32.narrow(1 / 60),
+      context: firstContext,
+    );
+    driver.update(
+      carState: CarState(),
+      deltaSeconds: Float32.narrow(1 / 60),
+      context: secondContext,
+    );
+
+    expect(driver.contexts, hasLength(2));
+    expect(driver.contexts[0], same(firstContext));
+    expect(driver.contexts[1], same(secondContext));
+    expect(driver.contexts[0].obstacles.single.speed, 2);
+    expect(driver.contexts[1].finished, isTrue);
+    expect(driver.contexts[1].isOnTrack, isFalse);
+  });
+}
+
+final class _RecordingAiDriver implements AiDriver {
+  final List<AiRaceContext> contexts = <AiRaceContext>[];
+
+  @override
+  DriverInput update({
+    required CarState carState,
+    required double deltaSeconds,
+    required AiRaceContext context,
+  }) {
+    contexts.add(context);
+    return DriverInput.none;
+  }
 }

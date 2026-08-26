@@ -2,7 +2,7 @@ import 'dart:collection';
 import 'dart:io';
 
 final _directivePattern = RegExp(
-  r'''^[ \t]*(?:import|export)\b[^;]*;''',
+  r'''^[ \t]*(?:import|export|part)\b[^;]*;''',
   multiLine: true,
 );
 final _uriPattern = RegExp(r'''['"]([^'"]+)['"]''');

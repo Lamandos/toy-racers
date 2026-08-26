@@ -1,5 +1,6 @@
 import '../car/car_state.dart';
 import '../input/driver_input.dart';
+import 'ai_race_context.dart';
 
 /// Produces a deterministic driving command for a non-player participant.
 ///
@@ -9,5 +10,6 @@ abstract interface class AiDriver {
   DriverInput update({
     required CarState carState,
     required double deltaSeconds,
+    required AiRaceContext context,
   });
 }
