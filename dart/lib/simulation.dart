@@ -1,0 +1,21 @@
+// Headless, deterministic gameplay simulation contracts for Toy Racers.
+//
+// This library is intentionally independent of Flutter, Flame, and `dart:ui`.
+// Presentation code must observe simulation state through this boundary rather
+// than implementing gameplay rules of its own.
+
+export 'simulation/ai/ai_driver.dart';
+export 'simulation/car/car_config.dart';
+export 'simulation/car/car_physics.dart';
+export 'simulation/car/car_state.dart';
+export 'simulation/collision/collision_system.dart';
+export 'simulation/input/driver_input.dart';
+export 'simulation/math/float32.dart';
+export 'simulation/race/race_phase.dart';
+export 'simulation/race/race_session.dart';
+export 'simulation/scenario/simulation_scenario.dart';
+export 'simulation/snapshot/simulation_snapshot.dart';
+export 'simulation/surface/surface_speed_system.dart';
+export 'simulation/surface/surface_type.dart';
+export 'simulation/track/track.dart';
+export 'simulation/track/track_point.dart';

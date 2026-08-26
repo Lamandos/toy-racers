@@ -11,11 +11,23 @@ used by this bootstrap.
 ## Migration boundary
 
 Issue #40 treats the Kotlin/libGDX implementation as the behavioral oracle.
-This bootstrap deliberately contains no gameplay simulation, rendering, UI,
-audio, or input implementation. New gameplay code must begin in
-`lib/simulation/` as pure Dart: it must not import Flutter, Flame, `dart:ui`,
-wall-clock time, or a render loop. Flutter and Flame belong only in the later
-presentation layer after the deterministic simulation gate passes.
+The project now has a deliberately small simulation architecture in
+[`lib/simulation/`](lib/simulation/). It establishes the pure-Dart ownership
+boundaries and binary32 data contracts; it does not yet port gameplay physics,
+collision handling, race rules, AI behaviour, track loading, or compatibility
+JSON encoding. Those behaviours must be implemented incrementally against the
+Kotlin golden masters.
+
+Simulation modules may not import Flutter, Flame, or `dart:ui`; they may not
+use wall-clock time or a render loop. Flutter and Flame belong only in the
+later presentation layer after the deterministic simulation gate passes.
+
+`package:toy_racers/simulation.dart` is the public pure-Dart entrypoint. The
+included headless assembly check can be run without creating a Flutter binding:
+
+```sh
+dart run tool/simulation_architecture_check.dart
+```
 
 Read these contracts before adding simulation code:
 
