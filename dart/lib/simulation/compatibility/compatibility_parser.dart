@@ -600,6 +600,9 @@ final class CompatibilityScenarioParser {
   }
 
   static double _narrowFloat(double number, String path) {
+    if (number < -_maximumFloatValue || number > _maximumFloatValue) {
+      _fail(path, 'must fit in a finite IEEE-754 binary32 value');
+    }
     try {
       return Float32.narrow(number);
     } on ArgumentError {
@@ -625,6 +628,7 @@ final class CompatibilityScenarioParser {
 
   static const int _maximumFinishPosition = 6;
   static const int _maximumTick = 2147483647;
+  static const double _maximumFloatValue = 3.4028234663852886e38;
   static final BigInt _minimumSeed = BigInt.parse('-9223372036854775808');
   static final BigInt _maximumSeed = BigInt.parse('9223372036854775807');
   static final RegExp _inputScriptFilename = RegExp(

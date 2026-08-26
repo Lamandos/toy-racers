@@ -189,11 +189,31 @@ final class CompatibilityTraceJson {
       throw CompatibilityFormatException(r'$', 'output numbers must be finite');
     }
     final narrowed = Float32.narrow(value);
-    if (narrowed == 0) {
-      output.write('0.000000');
-      return;
+    output.write(_formatFloat(narrowed));
+  }
+
+  static String _formatFloat(double value) {
+    final formatted = value.toStringAsFixed(_fractionDigits);
+    if (formatted == _negativeZero) {
+      return _zero;
     }
-    output.write(narrowed.toStringAsFixed(6));
+    if (!formatted.contains('e')) {
+      return formatted;
+    }
+    return _expandLargeFloat(value);
+  }
+
+  static String _expandLargeFloat(double value) {
+    final scientific = value.abs().toString();
+    final exponentMarker = scientific.indexOf('e');
+    final significand = scientific.substring(0, exponentMarker);
+    final exponent = int.parse(scientific.substring(exponentMarker + 1));
+    final decimalIndex = significand.indexOf('.');
+    final wholeDigits = decimalIndex == -1 ? significand.length : decimalIndex;
+    final digits = significand.replaceAll('.', '');
+    final expandedLength = wholeDigits + exponent;
+    final integer = digits.padRight(expandedLength, '0');
+    return '${value.isNegative ? '-' : ''}$integer.$_zeroFraction';
   }
 
   static void _validateTrace(CompatibilityTrace trace) {
@@ -430,12 +450,12 @@ final class CompatibilityTraceJson {
     }
   }
 
-  static void _requireFinite(double value, String path) {
+  static double _requireFinite(double value, String path) {
     if (!value.isFinite) {
       _fail(path, 'must be finite');
     }
     try {
-      Float32.narrow(value);
+      return Float32.narrow(value);
     } on ArgumentError {
       _fail(path, 'must fit in a finite IEEE-754 binary32 value');
     }
@@ -455,9 +475,9 @@ final class CompatibilityTraceJson {
     double maximum, {
     bool exclusiveMaximum = false,
   }) {
-    _requireFinite(value, path);
-    if (value < minimum ||
-        (exclusiveMaximum ? value >= maximum : value > maximum)) {
+    final narrowed = _requireFinite(value, path);
+    if (narrowed < minimum ||
+        (exclusiveMaximum ? narrowed >= maximum : narrowed > maximum)) {
       _fail(path, 'must be in the required range');
     }
   }
@@ -512,4 +532,8 @@ final class CompatibilityTraceJson {
     'boost',
     'oil',
   };
+  static const int _fractionDigits = 6;
+  static const String _negativeZero = '-0.000000';
+  static const String _zero = '0.000000';
+  static const String _zeroFraction = '000000';
 }

@@ -102,6 +102,26 @@ void main() {
       _scenarioDocument(version: 1)
           .replaceFirst('"throttle":1', '"throttle":Infinity'),
       _scenarioDocument(version: 1)
+          .replaceFirst('"throttle":1', '"throttle":3.4028235e38'),
+      _scenarioDocument(
+        version: 2,
+        input:
+            '"inputSegments":[{"fromTick":1,"toTick":3}],'
+            '"inputTweaks":[{"tick":1,"throttleDelta":3.4028235e38}]',
+      ),
+      _scenarioDocument(
+        version: 3,
+        input:
+            '"inputSegments":[{"fromTick":1,"toTick":3}],'
+            '"initialStates":[{"id":"player","x":3.4028235e38}]',
+      ),
+      _scenarioDocument(
+        version: 3,
+        input:
+            '"inputSegments":[{"fromTick":1,"toTick":3}],'
+            '"initialStates":[{"id":"player","lapStartTime":3.4028235e38}]',
+      ),
+      _scenarioDocument(version: 1)
           .replaceFirst('"id":"example"', '"id":"example","id":"again"'),
       _scenarioDocument(
         version: 3,
@@ -156,12 +176,12 @@ void main() {
         checkpoint: 0,
         completedLaps: 0,
       ),
-      participants: const <CompatibilityParticipantSnapshot>[
+      participants: <CompatibilityParticipantSnapshot>[
         CompatibilityParticipantSnapshot(
           id: 'player',
           surface: 'asphalt',
-          x: -0.0,
-          y: 2,
+          x: -1e-8,
+          y: Float32.narrow(3.4028234663852886e38),
           rotation: 0,
           velocityX: 0,
           velocityY: 0,
@@ -197,7 +217,55 @@ void main() {
     expect(encoded, contains('"seed":9223372036854775807'));
     expect(encoded, contains('"schemaVersion":2'));
     expect(encoded, contains('"elapsedSimulationTime":0.016667'));
+    expect(
+      encoded,
+      contains('"y":340282346638528860000000000000000000000.000000'),
+    );
     expect(encoded, isNot(contains('-0.000000')));
+  });
+
+  test('rejects snapshot rotations that narrow to 360 degrees', () {
+    final snapshot = CompatibilitySnapshot(
+      simulationTick: 0,
+      raceState: 'loading',
+      countdown: const CompatibilityCountdown(
+        state: 'not-started',
+        remainingSeconds: 0,
+      ),
+      elapsedSimulationTime: 0,
+      currentLap: 1,
+      currentProgress: const CompatibilityProgress(
+        checkpoint: 0,
+        completedLaps: 0,
+      ),
+      participants: const <CompatibilityParticipantSnapshot>[
+        CompatibilityParticipantSnapshot(
+          id: 'player',
+          surface: 'asphalt',
+          x: 0,
+          y: 0,
+          rotation: 359.99999,
+          velocityX: 0,
+          velocityY: 0,
+          angularVelocity: 0,
+          longitudinalSpeed: 0,
+          lateralSpeed: 0,
+          driftAmount: 0,
+          checkpoint: 0,
+          lap: 0,
+          racePosition: 1,
+          finished: false,
+        ),
+      ],
+      ranking: const <String>['player'],
+      finishedParticipants: const <String>[],
+      finishResults: const <CompatibilityFinishResult>[],
+    );
+
+    expect(
+      () => CompatibilityTraceJson.encodeSnapshot(snapshot),
+      throwsA(isA<CompatibilityFormatException>()),
+    );
   });
 
   test('refuses non-finite snapshot output', () {
