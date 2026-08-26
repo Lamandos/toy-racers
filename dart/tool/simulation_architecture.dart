@@ -6,8 +6,12 @@ final _directivePattern = RegExp(
   multiLine: true,
 );
 final _uriPattern = RegExp(r'''['"]([^'"]+)['"]''');
+final _namedPartOfPattern = RegExp(
+  r'''^[ \t]*part\s+of\s+(?!['"])[^;]+;''',
+  multiLine: true,
+);
 final _wallClockPattern = RegExp(
-  r'''(?:DateTime\.(?:now|timestamp)\b|Stopwatch\s*\(|Timer(?:\s*\(|\.(?:periodic|run)\b)|Future(?:<[^>]+>)?\.delayed\b)''',
+  r'''(?:DateTime\.(?:now|timestamp)\b|Stopwatch\s*\(|\b(?:[A-Za-z_]\w*\s*\.\s*)?Timer\s*(?:\(|\.\s*(?:new|periodic|run)\b)|Future(?:<[^>]+>)?\.delayed\b)''',
 );
 
 /// Finds presentation or wall-clock dependencies reachable from simulation.
@@ -50,6 +54,9 @@ List<String> findArchitectureViolations({
       continue;
     }
     final source = sourceFile.readAsStringSync();
+    if (_namedPartOfPattern.hasMatch(source)) {
+      violations.add('${sourceFile.path} uses a named part of declaration');
+    }
     if (_wallClockPattern.hasMatch(source)) {
       violations.add('${sourceFile.path} references wall-clock APIs');
     }

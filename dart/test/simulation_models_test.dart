@@ -23,6 +23,7 @@ void main() {
     );
     expect(Float32.multiply(maximumFiniteFloat32, 2), double.infinity);
     expect(Float32.divide(maximumFiniteFloat32, 0.5), double.infinity);
+    expect(Float32.divide(1, 0), double.infinity);
   });
 
   test('DriverInput clamps binary32 input sums that overflow', () {
@@ -186,18 +187,37 @@ void main() {
     expect(driver.contexts[1].finished, isTrue);
     expect(driver.contexts[1].isOnTrack, isFalse);
   });
+
+  test('AiDriver can return a deterministic respawn request', () {
+    final driver = _RecordingAiDriver(requestRespawn: true);
+
+    final decision = driver.update(
+      carState: CarState(),
+      deltaSeconds: Float32.narrow(1 / 60),
+      context: AiRaceContext(isOnTrack: false),
+    );
+
+    expect(decision.input, DriverInput.none);
+    expect(decision.requestRespawn, isTrue);
+  });
 }
 
 final class _RecordingAiDriver implements AiDriver {
+  _RecordingAiDriver({this.requestRespawn = false});
+
+  final bool requestRespawn;
   final List<AiRaceContext> contexts = <AiRaceContext>[];
 
   @override
-  DriverInput update({
+  AiDriverDecision update({
     required CarState carState,
     required double deltaSeconds,
     required AiRaceContext context,
   }) {
     contexts.add(context);
-    return DriverInput.none;
+    return AiDriverDecision(
+      input: DriverInput.none,
+      requestRespawn: requestRespawn,
+    );
   }
 }

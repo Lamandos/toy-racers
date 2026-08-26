@@ -40,13 +40,9 @@ final class Float32 {
       _narrowArithmeticResult(narrow(left) * narrow(right));
 
   /// Divides two binary32 values and narrows the result to binary32.
-  static double divide(double dividend, double divisor) {
-    final narrowedDivisor = narrow(divisor);
-    if (narrowedDivisor == 0) {
-      throw ArgumentError.value(divisor, 'divisor', 'must not be zero');
-    }
-    return _narrowArithmeticResult(narrow(dividend) / narrowedDivisor);
-  }
+  /// IEEE-754 infinity and NaN results are preserved.
+  static double divide(double dividend, double divisor) =>
+      _narrowArithmeticResult(narrow(dividend) / narrow(divisor));
 
   /// Clamps a binary32 [value] inclusively between binary32 limits.
   static double clamp(double value, double minimum, double maximum) {
