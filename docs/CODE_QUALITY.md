@@ -1,7 +1,9 @@
 # Code quality
 
-The repository uses the same Gradle quality gates locally and in GitHub Actions. Java 21, Gradle 9.5.0,
-ktlint 1.8.0 (Gradle plugin 14.2.0), and detekt 1.23.8 are pinned in the repository.
+The repository uses aligned Kotlin/Gradle and Dart/Flutter quality gates locally and in GitHub Actions.
+Java 21, Gradle 9.5.0, ktlint 1.8.0 (Gradle plugin 14.2.0), and detekt 1.23.8 are pinned in the
+repository. The Dart project uses the Flutter stable channel, `flutter_lints`, Flutter's built-in test
+runner, and built-in LCOV coverage output.
 
 ## Install Git hooks
 
@@ -12,10 +14,11 @@ Run this once after cloning:
 ```
 
 The script is idempotent and sets `core.hooksPath` to `.githooks`. The pre-commit hook runs Kotlin style checks,
-detekt, the 500-line source-file gate, JVM unit tests, and the desktop UI smoke flow. The pre-push hook runs the
-complete `qualityCheck`, including behavioral compatibility fixtures, deterministic repeat tests, Android debug unit
-tests, the core coverage gate, and mutation testing. The fixed-seed fuzz smoke and the 20-run full behavioral
-stability suite are intentionally opt-in.
+detekt, the 500-line source-file gate, JVM unit tests, the desktop UI smoke flow, plus Flutter analysis and tests.
+The pre-push hook runs the complete `qualityCheck`, including behavioral compatibility fixtures, deterministic repeat
+tests, Android debug unit tests, the core coverage gate, mutation testing, and Flutter analysis plus LCOV-producing
+tests. Flutter stable must be available on `PATH`. The fixed-seed fuzz smoke and the 20-run full behavioral stability
+suite are intentionally opt-in.
 
 On headless Linux, both hooks automatically use `xvfb-run --auto-servernum` for the desktop UI smoke flow. Install
 Xvfb before committing or pushing from that environment.
@@ -35,6 +38,12 @@ Xvfb before committing or pushing from that environment.
 ./gradlew detekt
 ./gradlew test
 ./gradlew lwjgl3:uiSmokeTest
+
+cd dart
+flutter pub get --enforce-lockfile
+flutter analyze --fatal-infos
+flutter test
+flutter test --coverage
 ```
 
 `behavioralTest` is the primary local behavioral suite. It verifies the versioned behavioral fixtures and both
@@ -68,6 +77,9 @@ Formatting is checked without modifying files. To apply safe formatting fixes ex
 ./gradlew ktlintFormat
 ```
 
+Flutter analysis is also read-only. Its configured rules are in `dart/analysis_options.yaml`; the
+coverage command writes ignored output to `dart/coverage/lcov.info`.
+
 ## Diagnose failures
 
 - ktlint reports are under `<module>/build/reports/ktlint/`; run `ktlintFormat`, review the diff, then rerun the check.
@@ -75,6 +87,8 @@ Formatting is checked without modifying files. To apply safe formatting fixes ex
 - test reports are under `<module>/build/reports/tests/`; rerun a focused test with
   `./gradlew core:test --tests 'fully.qualified.TestName'`.
 - `verifySourceFileLengths` reports every Kotlin or Java source file over 500 physical lines.
+- Flutter reports lint findings through `flutter analyze --fatal-infos`; Flutter test output and
+  coverage are produced with `flutter test --coverage` from `dart/`.
 
 Generated sources and build artifacts are excluded. `StartupHelper.kt` is also excluded from detekt because it is
 the Apache-2.0-licensed libGDX launcher helper retained from the project generator; it remains covered by ktlint.
