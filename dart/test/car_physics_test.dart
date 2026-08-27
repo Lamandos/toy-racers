@@ -153,6 +153,86 @@ void main() {
     expect(moving.rotationDegrees.abs(), greaterThan(0));
   });
 
+  test('matches Kotlin velocity reconstruction after steering', () {
+    // The scenario golden has another velocity reconstruction in
+    // SurfaceSpeedSystem after this one. These are the raw CarPhysics states
+    // observed from Kotlin immediately before that later pipeline stage.
+    final state = CarState(longitudinalSpeed: 12, velocityX: 12);
+    final handlingConfig = CarModel.redStripe.performance.applyTo();
+    final expectedStates = <int, _ReferenceCarState>{
+      1: const _ReferenceCarState(
+        rotationDegrees: 1.6342038,
+        velocityX: 11.932201,
+        velocityY: 0.039687753,
+        angularVelocity: 98.05222,
+        longitudinalSpeed: 11.928479,
+        lateralSpeed: -0.3006153,
+      ),
+      10: const _ReferenceCarState(
+        rotationDegrees: 15.793542,
+        velocityX: 11.067972,
+        velocityY: 1.3840306,
+        angularVelocity: 90.98581,
+        longitudinalSpeed: 11.026835,
+        lateralSpeed: -1.6806082,
+      ),
+      20: const _ReferenceCarState(
+        rotationDegrees: 30.09106,
+        velocityX: 9.473427,
+        velocityY: 3.345108,
+        angularVelocity: 81.51651,
+        longitudinalSpeed: 9.873846,
+        lateralSpeed: -1.8554597,
+      ),
+    };
+
+    for (var tick = 1; tick <= 20; tick++) {
+      _update(physics, state, handlingConfig, PlayerInput(steering: -0.85));
+      final expected = expectedStates[tick];
+      if (expected != null) {
+        _expectReferenceState(state, expected);
+      }
+    }
+  });
+
+  test('grip removes lateral velocity after reconstructing velocity', () {
+    final state = CarState(velocityY: 10);
+
+    _update(physics, state, config, PlayerInput.none);
+
+    expect(state.velocityY.abs(), lessThan(10));
+    expect(state.lateralSpeed, state.velocityY);
+  });
+
+  test('drift retains more lateral velocity than normal grip', () {
+    final drifting = CarState(longitudinalSpeed: 24, velocityX: 24);
+    final normalGrip = drifting.copy();
+    final driftConfig = CarConfig(rollingResistance: 0, driftDrag: 0);
+    final noDriftConfig = CarConfig(
+      rollingResistance: 0,
+      driftDrag: 0,
+      driftEntrySpeed: 100,
+    );
+
+    _update(physics, drifting, driftConfig, PlayerInput(steering: 1));
+    _update(physics, normalGrip, noDriftConfig, PlayerInput(steering: 1));
+
+    expect(drifting.driftAmount, greaterThan(0));
+    expect(
+      drifting.lateralSpeed.abs(),
+      greaterThan(normalGrip.lateralSpeed.abs()),
+    );
+  });
+
+  test('rolling resistance brings coasting forward velocity toward rest', () {
+    final state = CarState(longitudinalSpeed: 20, velocityX: 20);
+
+    _update(physics, state, config, PlayerInput.none);
+
+    expect(state.longitudinalSpeed, lessThan(20));
+    expect(state.longitudinalSpeed, greaterThan(0));
+  });
+
   test(
     'steering reverses direction while backing up without entering drift',
     () {
@@ -252,3 +332,30 @@ void _update(
   input: input,
   deltaSeconds: CarPhysics.fixedDeltaSeconds,
 );
+
+final class _ReferenceCarState {
+  const _ReferenceCarState({
+    required this.rotationDegrees,
+    required this.velocityX,
+    required this.velocityY,
+    required this.angularVelocity,
+    required this.longitudinalSpeed,
+    required this.lateralSpeed,
+  });
+
+  final double rotationDegrees;
+  final double velocityX;
+  final double velocityY;
+  final double angularVelocity;
+  final double longitudinalSpeed;
+  final double lateralSpeed;
+}
+
+void _expectReferenceState(CarState actual, _ReferenceCarState expected) {
+  expect(actual.rotationDegrees, Float32.narrow(expected.rotationDegrees));
+  expect(actual.velocityX, Float32.narrow(expected.velocityX));
+  expect(actual.velocityY, Float32.narrow(expected.velocityY));
+  expect(actual.angularVelocity, Float32.narrow(expected.angularVelocity));
+  expect(actual.longitudinalSpeed, Float32.narrow(expected.longitudinalSpeed));
+  expect(actual.lateralSpeed, Float32.narrow(expected.lateralSpeed));
+}
