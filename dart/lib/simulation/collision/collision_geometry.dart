@@ -10,7 +10,7 @@ import '../track/track_point.dart';
 final class CollisionGeometry {
   CollisionGeometry._();
 
-  static const double minimumDistance = 0.0001;
+  static final double minimumDistance = Float32.narrow(0.0001);
 
   static List<CollisionCircle> carCircles(CarState state, CarConfig config) {
     final basis = CollisionBasis.fromDegrees(state.rotationDegrees);
@@ -134,7 +134,7 @@ final class CollisionGeometry {
       Float32.narrow(math.sqrt(squared));
 
   static double hypot(double x, double y) =>
-      distanceFromSquared(lengthSquared(x, y));
+      Float32.narrow(math.sqrt(x * x + y * y));
 
   static double dot(double x, double y, double basisX, double basisY) =>
       Float32.add(Float32.multiply(x, basisX), Float32.multiply(y, basisY));

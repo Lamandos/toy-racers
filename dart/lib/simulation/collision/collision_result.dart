@@ -25,18 +25,24 @@ final class CollisionContact {
 
 /// Summary emitted by one deterministic collision resolution pass.
 final class CollisionResult {
-  CollisionResult([
+  /// [maxImpactSpeed] preserves the constructor used before contacts were
+  /// exposed. New callers should provide [contacts] so the aggregate is
+  /// derived from the ordered collision details.
+  CollisionResult({
     Iterable<CollisionContact> contacts = const <CollisionContact>[],
-  ]) : contacts = List<CollisionContact>.unmodifiable(contacts);
+    double maxImpactSpeed = 0,
+  }) : contacts = List<CollisionContact>.unmodifiable(contacts),
+       _legacyMaxImpactSpeed = Float32.narrow(maxImpactSpeed);
 
   static final CollisionResult none = CollisionResult();
 
   final List<CollisionContact> contacts;
+  final double _legacyMaxImpactSpeed;
 
   bool get collided => contacts.isNotEmpty;
 
   double get maxImpactSpeed {
-    var maximum = 0.0;
+    var maximum = _legacyMaxImpactSpeed;
     for (final contact in contacts) {
       if (contact.impactSpeed > maximum) {
         maximum = contact.impactSpeed;

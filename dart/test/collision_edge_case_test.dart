@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:toy_racers/simulation.dart';
+import 'package:toy_racers/simulation/collision/collision_geometry.dart';
 
 import 'collision_test_support.dart';
 
@@ -13,6 +14,33 @@ void main() {
   );
 
   group('CollisionSystem geometry and impact state', () {
+    test(
+      'keeps double-precision hypot intermediates at the binary32 boundary',
+      () {
+        expect(
+          CollisionGeometry.hypot(
+            132.68743896484375,
+            -117.60503387451172,
+          ),
+          177.30453491210938,
+        );
+        expect(CollisionGeometry.minimumDistance, 0.00009999999747378752);
+
+        final state = CarState(velocityX: 0.0001);
+        CollisionGeometry.updateLongitudinalSpeed(state);
+
+        expect(state.velocityX, Float32.narrow(0.0001));
+        expect(state.longitudinalSpeed, Float32.narrow(0.0001));
+      },
+    );
+
+    test('retains the legacy max impact speed constructor', () {
+      final result = CollisionResult(maxImpactSpeed: 2.5);
+
+      expect(result.contacts, isEmpty);
+      expect(result.maxImpactSpeed, Float32.narrow(2.5));
+    });
+
     test(
       'world edge removes outward velocity and retains tangential speed',
       () {

@@ -193,15 +193,17 @@ final class DefaultCollisionSystem implements CollisionSystem {
     );
     CollisionGeometry.updateLongitudinalSpeed(first);
     CollisionGeometry.updateLongitudinalSpeed(second);
-    return CollisionResult(<CollisionContact>[
-      CollisionContact(
-        type: CollisionType.car,
-        normalX: Float32.narrow(-normal.x),
-        normalY: Float32.narrow(-normal.y),
-        penetration: penetration,
-        impactSpeed: closingSpeed,
-      ),
-    ]);
+    return CollisionResult(
+      contacts: <CollisionContact>[
+        CollisionContact(
+          type: CollisionType.car,
+          normalX: Float32.narrow(-normal.x),
+          normalY: Float32.narrow(-normal.y),
+          penetration: penetration,
+          impactSpeed: closingSpeed,
+        ),
+      ],
+    );
   }
 
   void _resolveCollisionShape(
@@ -515,7 +517,9 @@ final class DefaultCollisionSystem implements CollisionSystem {
   }
 
   static CollisionResult _resultFor(List<CollisionContact> contacts) =>
-      contacts.isEmpty ? CollisionResult.none : CollisionResult(contacts);
+      contacts.isEmpty
+          ? CollisionResult.none
+          : CollisionResult(contacts: contacts);
 
   static double _minimum(double left, double right) =>
       left < right ? left : right;
