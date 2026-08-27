@@ -10,6 +10,8 @@ export 'simulation/car/car_config.dart';
 export 'simulation/car/car_model.dart';
 export 'simulation/car/car_physics.dart';
 export 'simulation/car/car_state.dart';
+export 'simulation/collision/collision_config.dart';
+export 'simulation/collision/collision_result.dart';
 export 'simulation/collision/collision_system.dart';
 export 'simulation/compatibility/compatibility_exception.dart';
 export 'simulation/compatibility/behavior_simulation.dart';
