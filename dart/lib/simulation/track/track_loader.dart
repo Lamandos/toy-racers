@@ -47,7 +47,7 @@ final class TrackLoader {
     TrackId.bathroom => track02TmxPath,
   };
 
-  Track _createTrack01(TiledTrackObjects objects) => Track(
+  Track _createTrack01(TiledTrackObjects objects) => Track.fromDefinition(
     id: TrackId.livingRoom.id,
     name: TrackId.livingRoom.displayName,
     worldBounds: _rectangle(0, 0, 36, 24),
@@ -79,7 +79,7 @@ final class TrackLoader {
     racingLineWaypointRadius: 10,
   );
 
-  Track _createTrack02(TiledTrackObjects objects) => Track(
+  Track _createTrack02(TiledTrackObjects objects) => Track.fromDefinition(
     id: TrackId.bathroom.id,
     name: TrackId.bathroom.displayName,
     worldBounds: _rectangle(0, 0, 36, 36),

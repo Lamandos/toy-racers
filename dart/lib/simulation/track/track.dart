@@ -7,24 +7,156 @@ import 'track_point.dart';
 
 /// Immutable simulation data for one complete race track.
 final class Track {
-  Track({
+  /// Creates a track using the original minimal public construction contract.
+  ///
+  /// Complete track definitions should use [Track.fromDefinition]. The
+  /// neutral geometry values here keep existing simulation consumers source
+  /// compatible while they migrate to the richer track model.
+  factory Track({
+    required String id,
+    required Iterable<TrackPoint> racingLine,
+    double racingLineWaypointRadius = 3,
+    String? name,
+    TrackRectangle? worldBounds,
+    TrackRectangle? cameraBounds,
+    TrackRectangle? outerBoundary,
+    Iterable<TrackRectangle> innerObstacles = const <TrackRectangle>[],
+    Iterable<TrackCollisionShape> collisionShapes =
+        const <TrackCollisionShape>[],
+    SurfaceType? backgroundSurface,
+    Iterable<SurfaceRegion> surfaceRegions = const <SurfaceRegion>[],
+    TrackPolygon? roadOuter,
+    TrackPolygon? roadInner,
+    StartLine? startLine,
+    Iterable<Checkpoint>? checkpoints,
+    Iterable<StartGridPosition>? startGrid,
+  }) {
+    if (!_hasDefinitionArguments(
+      name: name,
+      worldBounds: worldBounds,
+      cameraBounds: cameraBounds,
+      outerBoundary: outerBoundary,
+      backgroundSurface: backgroundSurface,
+      startLine: startLine,
+      checkpoints: checkpoints,
+      startGrid: startGrid,
+    )) {
+      return Track._legacy(
+        id: id,
+        racingLine: racingLine,
+        racingLineWaypointRadius: racingLineWaypointRadius,
+      );
+    }
+    if (name == null ||
+        worldBounds == null ||
+        cameraBounds == null ||
+        outerBoundary == null ||
+        backgroundSurface == null ||
+        startLine == null ||
+        checkpoints == null ||
+        startGrid == null) {
+      throw ArgumentError(
+        'Complete track definitions must provide all geometry fields.',
+      );
+    }
+    return Track._create(
+      id: id,
+      name: name,
+      worldBounds: worldBounds,
+      cameraBounds: cameraBounds,
+      outerBoundary: outerBoundary,
+      innerObstacles: innerObstacles,
+      collisionShapes: collisionShapes,
+      backgroundSurface: backgroundSurface,
+      surfaceRegions: surfaceRegions,
+      roadOuter: roadOuter,
+      roadInner: roadInner,
+      startLine: startLine,
+      checkpoints: checkpoints,
+      startGrid: startGrid,
+      racingLine: racingLine,
+      racingLineWaypointRadius: racingLineWaypointRadius,
+    );
+  }
+
+  /// Creates a track with its complete race, collision, and surface data.
+  factory Track.fromDefinition({
+    required String id,
+    required String name,
+    required TrackRectangle worldBounds,
+    required TrackRectangle cameraBounds,
+    required TrackRectangle outerBoundary,
+    Iterable<TrackRectangle> innerObstacles = const <TrackRectangle>[],
+    Iterable<TrackCollisionShape> collisionShapes =
+        const <TrackCollisionShape>[],
+    required SurfaceType backgroundSurface,
+    Iterable<SurfaceRegion> surfaceRegions = const <SurfaceRegion>[],
+    TrackPolygon? roadOuter,
+    TrackPolygon? roadInner,
+    required StartLine startLine,
+    required Iterable<Checkpoint> checkpoints,
+    required Iterable<StartGridPosition> startGrid,
+    required Iterable<TrackPoint> racingLine,
+    double racingLineWaypointRadius = 3,
+  }) => Track._create(
+    id: id,
+    name: name,
+    worldBounds: worldBounds,
+    cameraBounds: cameraBounds,
+    outerBoundary: outerBoundary,
+    innerObstacles: innerObstacles,
+    collisionShapes: collisionShapes,
+    backgroundSurface: backgroundSurface,
+    surfaceRegions: surfaceRegions,
+    roadOuter: roadOuter,
+    roadInner: roadInner,
+    startLine: startLine,
+    checkpoints: checkpoints,
+    startGrid: startGrid,
+    racingLine: racingLine,
+    racingLineWaypointRadius: racingLineWaypointRadius,
+  );
+
+  Track._legacy({
+    required String id,
+    required Iterable<TrackPoint> racingLine,
+    required double racingLineWaypointRadius,
+  }) : id = _requireText(id, 'id'),
+       name = id,
+       worldBounds = _legacyBounds(),
+       cameraBounds = _legacyBounds(),
+       outerBoundary = _legacyBounds(),
+       innerObstacles = const <TrackRectangle>[],
+       collisionShapes = const <TrackCollisionShape>[],
+       backgroundSurface = SurfaceType.asphalt,
+       surfaceRegions = const <SurfaceRegion>[],
+       roadOuter = null,
+       roadInner = null,
+       startLine = StartLine(bounds: _legacyBounds(), forwardX: 1, forwardY: 0),
+       checkpoints = const <Checkpoint>[],
+       startGrid = const <StartGridPosition>[],
+       racingLine = List<TrackPoint>.unmodifiable(racingLine),
+       racingLineWaypointRadius = Float32.narrow(racingLineWaypointRadius) {
+    _validateRacingLine(this.racingLine, this.racingLineWaypointRadius);
+  }
+
+  Track._create({
     required String id,
     required String name,
     required this.worldBounds,
     required this.cameraBounds,
     required this.outerBoundary,
-    Iterable<TrackRectangle> innerObstacles = const <TrackRectangle>[],
-    Iterable<TrackCollisionShape> collisionShapes =
-        const <TrackCollisionShape>[],
+    required Iterable<TrackRectangle> innerObstacles,
+    required Iterable<TrackCollisionShape> collisionShapes,
     required this.backgroundSurface,
-    Iterable<SurfaceRegion> surfaceRegions = const <SurfaceRegion>[],
-    this.roadOuter,
-    this.roadInner,
+    required Iterable<SurfaceRegion> surfaceRegions,
+    required this.roadOuter,
+    required this.roadInner,
     required this.startLine,
     required Iterable<Checkpoint> checkpoints,
     required Iterable<StartGridPosition> startGrid,
     required Iterable<TrackPoint> racingLine,
-    double racingLineWaypointRadius = 3,
+    required double racingLineWaypointRadius,
   }) : id = _requireText(id, 'id'),
        name = _requireText(name, 'name'),
        innerObstacles = List<TrackRectangle>.unmodifiable(innerObstacles),
@@ -77,22 +209,9 @@ final class Track {
     )) {
       throw ArgumentError('Start positions must be inside world bounds.');
     }
-    if (this.racingLine.length < _minimumRacingLinePoints) {
-      throw ArgumentError.value(
-        this.racingLine.length,
-        'racingLine',
-        'must contain at least $_minimumRacingLinePoints points',
-      );
-    }
+    _validateRacingLine(this.racingLine, this.racingLineWaypointRadius);
     if (!this.racingLine.every(worldBounds.containsPoint)) {
       throw ArgumentError('Racing line must be inside world bounds.');
-    }
-    if (this.racingLineWaypointRadius <= 0) {
-      throw ArgumentError.value(
-        racingLineWaypointRadius,
-        'racingLineWaypointRadius',
-        'must be greater than zero',
-      );
     }
     if ((roadOuter == null) != (roadInner == null)) {
       throw ArgumentError('Tiled road contours must be provided together.');
@@ -117,6 +236,47 @@ final class Track {
   final List<StartGridPosition> startGrid;
   final List<TrackPoint> racingLine;
   final double racingLineWaypointRadius;
+
+  static bool _hasDefinitionArguments({
+    required String? name,
+    required TrackRectangle? worldBounds,
+    required TrackRectangle? cameraBounds,
+    required TrackRectangle? outerBoundary,
+    required SurfaceType? backgroundSurface,
+    required StartLine? startLine,
+    required Iterable<Checkpoint>? checkpoints,
+    required Iterable<StartGridPosition>? startGrid,
+  }) =>
+      name != null ||
+      worldBounds != null ||
+      cameraBounds != null ||
+      outerBoundary != null ||
+      backgroundSurface != null ||
+      startLine != null ||
+      checkpoints != null ||
+      startGrid != null;
+
+  static TrackRectangle _legacyBounds() => TrackRectangle(0, 0, 1, 1);
+
+  static void _validateRacingLine(
+    List<TrackPoint> racingLine,
+    double racingLineWaypointRadius,
+  ) {
+    if (racingLine.length < _minimumRacingLinePoints) {
+      throw ArgumentError.value(
+        racingLine.length,
+        'racingLine',
+        'must contain at least $_minimumRacingLinePoints points',
+      );
+    }
+    if (racingLineWaypointRadius <= 0) {
+      throw ArgumentError.value(
+        racingLineWaypointRadius,
+        'racingLineWaypointRadius',
+        'must be greater than zero',
+      );
+    }
+  }
 
   /// Returns the surface selected by the reference track rules at [point].
   SurfaceType surfaceAt(TrackPoint point) =>

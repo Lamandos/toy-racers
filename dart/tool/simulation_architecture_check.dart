@@ -16,7 +16,7 @@ void main() {
   }
 
   final bounds = TrackRectangle(0, 0, 1, 1);
-  final track = Track(
+  final track = Track.fromDefinition(
     id: 'architecture-check',
     name: 'ARCHITECTURE CHECK',
     worldBounds: bounds,

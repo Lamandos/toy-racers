@@ -118,6 +118,21 @@ void main() {
     expect(session.track.racingLine, hasLength(3));
   });
 
+  test('Track preserves its original minimal construction contract', () {
+    final track = Track(
+      id: 'legacy-track',
+      racingLine: <TrackPoint>[
+        TrackPoint(0, 0),
+        TrackPoint(1, 0),
+        TrackPoint(0, 1),
+      ],
+    );
+
+    expect(track.id, 'legacy-track');
+    expect(track.racingLine, hasLength(3));
+    expect(track.racingLineWaypointRadius, 3);
+  });
+
   test('RaceState advances countdown before allowing racing time', () {
     final raceState = RaceState();
     raceState.markReady();
@@ -222,7 +237,7 @@ void main() {
 
 Track _testTrack(Iterable<TrackPoint> racingLine) {
   final bounds = TrackRectangle(0, 0, 1, 1);
-  return Track(
+  return Track.fromDefinition(
     id: 'test-track',
     name: 'TEST TRACK',
     worldBounds: bounds,
