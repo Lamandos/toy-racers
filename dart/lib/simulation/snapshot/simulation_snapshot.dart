@@ -3,8 +3,9 @@ import '../race/race_phase.dart';
 
 /// Immutable observation emitted by a deterministic simulation operation.
 ///
-/// The complete compatibility-schema encoder will extend this boundary without
-/// exposing rendering, device, or platform state to the simulation.
+/// `CompatibilitySnapshot` and `CompatibilityTraceJson` provide the complete
+/// schema-v2/v3 compatibility output without exposing rendering, device, or
+/// platform state to the simulation.
 final class SimulationSnapshot {
   SimulationSnapshot({
     required this.simulationTick,

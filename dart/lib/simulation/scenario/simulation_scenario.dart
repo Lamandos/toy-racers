@@ -1,9 +1,8 @@
 /// A parsed, language-neutral scenario identity for deterministic replay.
 ///
-/// JSON decoding and schema validation belong in a future runner. This model
-/// keeps the signed-64-bit seed and fixed tick counts at the simulation edge.
-/// Pass seeds from a JSON boundary as decimal strings so web builds do not
-/// round values outside JavaScript's safe-integer range.
+/// This model keeps the signed-64-bit seed and fixed tick counts at the
+/// simulation edge. Pass seeds from a JSON boundary as decimal strings so web
+/// builds do not round values outside JavaScript's safe-integer range.
 final class SimulationScenario {
   SimulationScenario({
     required String id,
@@ -33,10 +32,10 @@ final class SimulationScenario {
     }
   }
 
-  static final BigInt _minimumSignedInt64 =
-      BigInt.parse('-9223372036854775808');
-  static final BigInt _maximumSignedInt64 =
-      BigInt.parse('9223372036854775807');
+  static final BigInt _minimumSignedInt64 = BigInt.parse(
+    '-9223372036854775808',
+  );
+  static final BigInt _maximumSignedInt64 = BigInt.parse('9223372036854775807');
   static const int _maximumTickCount = 2147483647;
 
   final String id;

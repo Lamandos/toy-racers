@@ -17,8 +17,14 @@ architecture in
 [`lib/simulation/`](lib/simulation/). It establishes the pure-Dart ownership
 boundaries and binary32 data contracts; it does not yet port gameplay physics,
 collision handling, race rules, AI behaviour, track loading, or compatibility
-JSON encoding. Those behaviours must be implemented incrementally against the
-Kotlin golden masters.
+replay execution. Those behaviours must be implemented incrementally against
+the Kotlin golden masters.
+
+`CompatibilityScenarioParser` reads the shared scenario v1-v3 and input-script
+v1 documents directly. `CompatibilityTraceJson` writes the shared snapshot v2
+and trace v3 output with canonical number formatting. The canonical contracts
+remain in [`../compatibility/schemas/`](../compatibility/schemas/); the Dart
+project deliberately does not contain a forked schema copy.
 
 New gameplay code must begin in `lib/simulation/` as pure Dart. Simulation
 modules may not import Flutter, Flame, or `dart:ui`; they may not use wall-clock
