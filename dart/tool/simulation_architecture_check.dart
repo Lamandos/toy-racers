@@ -15,8 +15,30 @@ void main() {
     return;
   }
 
+  final bounds = TrackRectangle(0, 0, 1, 1);
   final track = Track(
     id: 'architecture-check',
+    name: 'ARCHITECTURE CHECK',
+    worldBounds: bounds,
+    cameraBounds: bounds,
+    outerBoundary: bounds,
+    backgroundSurface: SurfaceType.asphalt,
+    startLine: StartLine(
+      bounds: TrackRectangle(0, 0, 0.1, 0.1),
+      forwardX: 1,
+      forwardY: 0,
+    ),
+    checkpoints: <Checkpoint>[
+      Checkpoint(
+        order: 0,
+        gate: TrackSegment(TrackPoint(0, 0), TrackPoint(1, 0)),
+        forwardX: 0,
+        forwardY: 1,
+      ),
+    ],
+    startGrid: <StartGridPosition>[
+      StartGridPosition(position: TrackPoint(0, 0), rotationDegrees: 0),
+    ],
     racingLine: <TrackPoint>[
       TrackPoint(0, 0),
       TrackPoint(1, 0),

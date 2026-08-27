@@ -102,7 +102,7 @@ void main() {
       TrackPoint(0, 1),
     ];
     final session = RaceSession(
-      track: Track(id: 'test-track', racingLine: racingLine),
+      track: _testTrack(racingLine),
       participants: <RaceParticipant>[
         RaceParticipant(
           id: 'player',
@@ -218,6 +218,35 @@ void main() {
 
     expect(command, DriverInput(throttle: 0.5));
   });
+}
+
+Track _testTrack(Iterable<TrackPoint> racingLine) {
+  final bounds = TrackRectangle(0, 0, 1, 1);
+  return Track(
+    id: 'test-track',
+    name: 'TEST TRACK',
+    worldBounds: bounds,
+    cameraBounds: bounds,
+    outerBoundary: bounds,
+    backgroundSurface: SurfaceType.asphalt,
+    startLine: StartLine(
+      bounds: TrackRectangle(0, 0, 0.1, 0.1),
+      forwardX: 1,
+      forwardY: 0,
+    ),
+    checkpoints: <Checkpoint>[
+      Checkpoint(
+        order: 0,
+        gate: TrackSegment(TrackPoint(0, 0), TrackPoint(1, 0)),
+        forwardX: 0,
+        forwardY: 1,
+      ),
+    ],
+    startGrid: <StartGridPosition>[
+      StartGridPosition(position: TrackPoint(0, 0), rotationDegrees: 0),
+    ],
+    racingLine: racingLine,
+  );
 }
 
 final class _RecordingAiDriver implements AiDriver {

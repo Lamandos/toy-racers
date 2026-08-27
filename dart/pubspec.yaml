@@ -10,6 +10,10 @@ dependencies:
   flame: ^1.38.1
   flutter:
     sdk: flutter
+  # Parses the canonical Tiled TMX sources inside the pure-Dart simulation.
+  # Flame's Tiled support belongs to the presentation layer and is not
+  # reference-compatible with the Kotlin geometry adapter.
+  xml: ^6.5.0
 
 dev_dependencies:
   flutter_test:
