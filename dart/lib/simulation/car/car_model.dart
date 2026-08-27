@@ -6,41 +6,41 @@ enum CarModel {
   redStripe(
     scenarioId: 'red-stripe',
     performance: CarPerformance._fromEnum(
-      acceleration: 1.10,
-      maxSpeed: 0.95,
-      handling: 0.80,
+      acceleration: 1.100000023841858,
+      maxSpeed: 0.949999988079071,
+      handling: 0.800000011920929,
     ),
   ),
   blueStripe(
     scenarioId: 'blue-stripe',
     performance: CarPerformance._fromEnum(
-      acceleration: 0.95,
-      maxSpeed: 0.80,
-      handling: 1.10,
+      acceleration: 0.949999988079071,
+      maxSpeed: 0.800000011920929,
+      handling: 1.100000023841858,
     ),
   ),
   yellowSport(
     scenarioId: 'yellow-sport',
     performance: CarPerformance._fromEnum(
-      acceleration: 0.80,
-      maxSpeed: 1.10,
-      handling: 0.95,
+      acceleration: 0.800000011920929,
+      maxSpeed: 1.100000023841858,
+      handling: 0.949999988079071,
     ),
   ),
   greenRacer(
     scenarioId: 'green-racer',
     performance: CarPerformance._fromEnum(
-      acceleration: 0.95,
-      maxSpeed: 1.10,
-      handling: 0.80,
+      acceleration: 0.949999988079071,
+      maxSpeed: 1.100000023841858,
+      handling: 0.800000011920929,
     ),
   ),
   orangeTruck(
     scenarioId: 'orange-truck',
     performance: CarPerformance._fromEnum(
-      acceleration: 0.80,
-      maxSpeed: 0.95,
-      handling: 1.10,
+      acceleration: 0.800000011920929,
+      maxSpeed: 0.949999988079071,
+      handling: 1.100000023841858,
     ),
   );
 
@@ -80,8 +80,9 @@ final class CarPerformance {
     required this.handling,
   });
 
-  static const double _minimumMultiplier = 0.80;
-  static const double _maximumMultiplier = 1.10;
+  // These constants are the exact binary64 spellings of binary32 bounds.
+  static const double _minimumMultiplier = 0.800000011920929;
+  static const double _maximumMultiplier = 1.100000023841858;
 
   final double acceleration;
   final double maxSpeed;
@@ -94,7 +95,7 @@ final class CarPerformance {
       throw ArgumentError.value(
         value,
         name,
-        'must be in the range [$_minimumMultiplier, $_maximumMultiplier]',
+        'must be in the range [0.80, 1.10]',
       );
     }
     return narrowedValue;

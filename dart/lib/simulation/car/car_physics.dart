@@ -5,19 +5,68 @@ import '../math/float32.dart';
 import 'car_config.dart';
 import 'car_state.dart';
 
-/// Deterministic reference-compatible arcade vehicle integrator.
+/// Contract for deterministic car integration.
 ///
-/// It owns throttle, brake, reverse, steering, grip, drift, and position
-/// integration. Callers supply an explicit fixed timestep; no rendering or
-/// wall-clock state participates in an update.
-final class CarPhysics {
+/// The default factory keeps the original construction syntax while allowing
+/// callers to provide test or platform-specific implementations through the
+/// interface.
+abstract interface class CarPhysics {
+  factory CarPhysics() = DefaultCarPhysics;
+
   /// Advances [state] by an explicit fixed [deltaSeconds] using [input].
   void update({
     required CarState state,
     required CarConfig config,
     required PlayerInput input,
     required double deltaSeconds,
+  });
+
+  /// The fixed physics step used by the reference simulation.
+  static final double fixedDeltaSeconds = Float32.fixedDeltaSeconds;
+
+  /// Maximum frame delta accepted by a real-time adapter.
+  static final double maxFrameDeltaSeconds = Float32.narrow(0.25);
+}
+
+/// Reference-compatible arcade vehicle integrator.
+final class DefaultCarPhysics implements CarPhysics {
+  @override
+  void update({
+    required CarState state,
+    required CarConfig config,
+    required PlayerInput input,
+    required double deltaSeconds,
   }) {
+    final step = _validatedStep(deltaSeconds);
+    if (step == 0) {
+      return;
+    }
+
+    final normalizedInput = input.normalized();
+    var basis = _Basis.fromDegrees(state.rotationDegrees);
+    _applyAcceleration(state, config, normalizedInput, basis, step);
+
+    var speeds = _speedsInBasis(state, basis);
+    speeds = _applyBraking(speeds, config, normalizedInput, step);
+    speeds = _applyRollingResistance(speeds, config, step);
+    state.driftAmount = _nextDriftAmount(
+      speeds: speeds,
+      steering: normalizedInput.steering,
+      currentDriftAmount: state.driftAmount,
+      config: config,
+      step: step,
+    );
+
+    final velocityBeforeSteering = _velocityFromSpeeds(basis, speeds);
+    _applySteering(state, config, normalizedInput, speeds.longitudinal, step);
+
+    basis = _Basis.fromDegrees(state.rotationDegrees);
+    speeds = _reprojectVelocity(velocityBeforeSteering, basis);
+    speeds = _applyGripAndDriftDrag(speeds, state.driftAmount, config, step);
+    _storeFinalState(state, basis, speeds, step);
+  }
+
+  static double _validatedStep(double deltaSeconds) {
     final step = Float32.narrow(deltaSeconds);
     if (step < 0) {
       throw ArgumentError.value(
@@ -26,93 +75,143 @@ final class CarPhysics {
         'must not be negative',
       );
     }
-    if (step == 0) {
-      return;
-    }
+    return step;
+  }
 
-    final normalizedInput = input.normalized();
-    var basis = _Basis.fromDegrees(state.rotationDegrees);
-
-    state.velocityX = Float32.add(
+  static void _applyAcceleration(
+    CarState state,
+    CarConfig config,
+    PlayerInput input,
+    _Basis basis,
+    double step,
+  ) {
+    state.velocityX = _acceleratedVelocity(
       state.velocityX,
-      Float32.multiply(
-        Float32.multiply(
-          Float32.multiply(basis.forwardX, config.acceleration),
-          normalizedInput.throttle,
-        ),
-        step,
-      ),
+      basis.forwardX,
+      config.acceleration,
+      input.throttle,
+      step,
     );
-    state.velocityY = Float32.add(
+    state.velocityY = _acceleratedVelocity(
       state.velocityY,
-      Float32.multiply(
-        Float32.multiply(
-          Float32.multiply(basis.forwardY, config.acceleration),
-          normalizedInput.throttle,
-        ),
-        step,
-      ),
+      basis.forwardY,
+      config.acceleration,
+      input.throttle,
+      step,
     );
+  }
 
-    var longitudinalSpeed = basis.forwardDot(state.velocityX, state.velocityY);
-    final lateralSpeedBeforeSteering = basis.rightDot(
-      state.velocityX,
-      state.velocityY,
-    );
-    if (normalizedInput.brake > 0) {
-      final brakingDistance = Float32.multiply(
-        Float32.multiply(config.brakeForce, normalizedInput.brake),
-        step,
+  static double _acceleratedVelocity(
+    double velocity,
+    double forwardComponent,
+    double acceleration,
+    double throttle,
+    double step,
+  ) => Float32.add(
+    velocity,
+    Float32.multiply(
+      Float32.multiply(
+        Float32.multiply(forwardComponent, acceleration),
+        throttle,
+      ),
+      step,
+    ),
+  );
+
+  static _SpeedComponents _speedsInBasis(CarState state, _Basis basis) =>
+      _SpeedComponents(
+        longitudinal: basis.forwardDot(state.velocityX, state.velocityY),
+        lateral: basis.rightDot(state.velocityX, state.velocityY),
       );
-      if (longitudinalSpeed > _stopEpsilon) {
-        longitudinalSpeed = _moveToward(longitudinalSpeed, 0, brakingDistance);
-      } else {
-        longitudinalSpeed = Float32.subtract(
-          longitudinalSpeed,
-          Float32.multiply(
-            Float32.multiply(config.reverseAcceleration, normalizedInput.brake),
-            step,
-          ),
-        );
-      }
+
+  static _SpeedComponents _applyBraking(
+    _SpeedComponents speeds,
+    CarConfig config,
+    PlayerInput input,
+    double step,
+  ) {
+    if (input.brake <= 0) {
+      return speeds;
     }
 
-    longitudinalSpeed = Float32.clamp(
+    final brakingDistance = Float32.multiply(
+      Float32.multiply(config.brakeForce, input.brake),
+      step,
+    );
+    final longitudinalSpeed = speeds.longitudinal > _stopEpsilon
+        ? _moveToward(speeds.longitudinal, 0, brakingDistance)
+        : Float32.subtract(
+            speeds.longitudinal,
+            Float32.multiply(
+              Float32.multiply(config.reverseAcceleration, input.brake),
+              step,
+            ),
+          );
+    return _SpeedComponents(
+      longitudinal: longitudinalSpeed,
+      lateral: speeds.lateral,
+    );
+  }
+
+  static _SpeedComponents _applyRollingResistance(
+    _SpeedComponents speeds,
+    CarConfig config,
+    double step,
+  ) => _SpeedComponents(
+    longitudinal: Float32.clamp(
       _moveToward(
-        longitudinalSpeed,
+        speeds.longitudinal,
         0,
         Float32.multiply(config.rollingResistance, step),
       ),
       -config.maxReverseSpeed,
       config.maxForwardSpeed,
-    );
+    ),
+    lateral: speeds.lateral,
+  );
 
+  static double _nextDriftAmount({
+    required _SpeedComponents speeds,
+    required double steering,
+    required double currentDriftAmount,
+    required CarConfig config,
+    required double step,
+  }) {
     final targetDriftAmount = _targetDriftAmount(
-      longitudinalSpeed: longitudinalSpeed,
-      lateralSpeed: lateralSpeedBeforeSteering,
-      steering: normalizedInput.steering,
+      longitudinalSpeed: speeds.longitudinal,
+      lateralSpeed: speeds.lateral,
+      steering: steering,
       config: config,
     );
-    state.driftAmount = _moveToward(
-      state.driftAmount,
+    final response = targetDriftAmount > currentDriftAmount
+        ? config.driftEntryResponse
+        : config.driftExitResponse;
+    return _moveToward(
+      currentDriftAmount,
       targetDriftAmount,
-      Float32.multiply(
-        targetDriftAmount > state.driftAmount
-            ? config.driftEntryResponse
-            : config.driftExitResponse,
-        step,
-      ),
+      Float32.multiply(response, step),
     );
+  }
 
-    final velocityBeforeSteeringX = Float32.add(
-      Float32.multiply(basis.forwardX, longitudinalSpeed),
-      Float32.multiply(basis.rightX, lateralSpeedBeforeSteering),
-    );
-    final velocityBeforeSteeringY = Float32.add(
-      Float32.multiply(basis.forwardY, longitudinalSpeed),
-      Float32.multiply(basis.rightY, lateralSpeedBeforeSteering),
-    );
+  static _Velocity _velocityFromSpeeds(_Basis basis, _SpeedComponents speeds) =>
+      _Velocity(
+        x: Float32.add(
+          Float32.multiply(basis.forwardX, speeds.longitudinal),
+          Float32.multiply(basis.rightX, speeds.lateral),
+        ),
+        y: Float32.add(
+          Float32.multiply(basis.forwardY, speeds.longitudinal),
+          Float32.multiply(basis.rightY, speeds.lateral),
+        ),
+      );
 
+  static void _applySteering(
+    CarState state,
+    CarConfig config,
+    PlayerInput input,
+    double longitudinalSpeed,
+    double step,
+  ) {
     final steeringAuthority = Float32.clamp(
       Float32.divide(longitudinalSpeed.abs(), _steeringReferenceSpeed),
       0,
@@ -121,7 +220,7 @@ final class CarPhysics {
     state.angularVelocity = Float32.multiply(
       Float32.multiply(
         Float32.multiply(
-          Float32.multiply(-normalizedInput.steering, config.steeringSpeed),
+          Float32.multiply(-input.steering, config.steeringSpeed),
           _interpolate(1, config.driftSteeringMultiplier, state.driftAmount),
         ),
         steeringAuthority,
@@ -134,22 +233,28 @@ final class CarPhysics {
         Float32.multiply(state.angularVelocity, step),
       ),
     );
+  }
 
-    basis = _Basis.fromDegrees(state.rotationDegrees);
-    longitudinalSpeed = basis.forwardDot(
-      velocityBeforeSteeringX,
-      velocityBeforeSteeringY,
-    );
-    var lateralSpeed = basis.rightDot(
-      velocityBeforeSteeringX,
-      velocityBeforeSteeringY,
-    );
+  static _SpeedComponents _reprojectVelocity(
+    _Velocity velocity,
+    _Basis basis,
+  ) => _SpeedComponents(
+    longitudinal: basis.forwardDot(velocity.x, velocity.y),
+    lateral: basis.rightDot(velocity.x, velocity.y),
+  );
+
+  static _SpeedComponents _applyGripAndDriftDrag(
+    _SpeedComponents speeds,
+    double driftAmount,
+    CarConfig config,
+    double step,
+  ) {
     final effectiveGrip = Float32.multiply(
       config.grip,
-      _interpolate(1, config.driftGripMultiplier, state.driftAmount),
+      _interpolate(1, config.driftGripMultiplier, driftAmount),
     );
-    lateralSpeed = Float32.multiply(
-      lateralSpeed,
+    final lateralSpeed = Float32.multiply(
+      speeds.lateral,
       _nonNegative(
         Float32.subtract(
           1,
@@ -160,38 +265,48 @@ final class CarPhysics {
         ),
       ),
     );
-    longitudinalSpeed = _moveToward(
-      longitudinalSpeed,
+    final longitudinalSpeed = _moveToward(
+      speeds.longitudinal,
       0,
       Float32.multiply(
         Float32.multiply(
-          Float32.multiply(config.driftDrag, state.driftAmount),
+          Float32.multiply(config.driftDrag, driftAmount),
           lateralSpeed.abs(),
         ),
         step,
       ),
     );
-
-    longitudinalSpeed = Float32.clamp(
-      longitudinalSpeed,
-      -config.maxReverseSpeed,
-      config.maxForwardSpeed,
+    return _SpeedComponents(
+      longitudinal: Float32.clamp(
+        longitudinalSpeed,
+        -config.maxReverseSpeed,
+        config.maxForwardSpeed,
+      ),
+      lateral: lateralSpeed,
     );
+  }
+
+  static void _storeFinalState(
+    CarState state,
+    _Basis basis,
+    _SpeedComponents speeds,
+    double step,
+  ) {
     state.velocityX = Float32.add(
-      Float32.multiply(basis.forwardX, longitudinalSpeed),
-      Float32.multiply(basis.rightX, lateralSpeed),
+      Float32.multiply(basis.forwardX, speeds.longitudinal),
+      Float32.multiply(basis.rightX, speeds.lateral),
     );
     state.velocityY = Float32.add(
-      Float32.multiply(basis.forwardY, longitudinalSpeed),
-      Float32.multiply(basis.rightY, lateralSpeed),
+      Float32.multiply(basis.forwardY, speeds.longitudinal),
+      Float32.multiply(basis.rightY, speeds.lateral),
     );
-    state.longitudinalSpeed = longitudinalSpeed;
-    state.lateralSpeed = lateralSpeed;
+    state.longitudinalSpeed = speeds.longitudinal;
+    state.lateralSpeed = speeds.lateral;
     state.x = Float32.add(state.x, Float32.multiply(state.velocityX, step));
     state.y = Float32.add(state.y, Float32.multiply(state.velocityY, step));
   }
 
-  double _targetDriftAmount({
+  static double _targetDriftAmount({
     required double longitudinalSpeed,
     required double lateralSpeed,
     required double steering,
@@ -252,10 +367,22 @@ final class CarPhysics {
 
   static double _nonNegative(double value) => _maximum(0, value);
 
-  static final double fixedDeltaSeconds = Float32.fixedDeltaSeconds;
-  static final double maxFrameDeltaSeconds = Float32.narrow(0.25);
   static final double _steeringReferenceSpeed = Float32.narrow(12);
   static final double _stopEpsilon = Float32.narrow(0.01);
+}
+
+final class _SpeedComponents {
+  const _SpeedComponents({required this.longitudinal, required this.lateral});
+
+  final double longitudinal;
+  final double lateral;
+}
+
+final class _Velocity {
+  const _Velocity({required this.x, required this.y});
+
+  final double x;
+  final double y;
 }
 
 final class _Basis {
@@ -289,5 +416,6 @@ final class _Basis {
   double rightDot(double x, double y) =>
       Float32.add(Float32.multiply(x, rightX), Float32.multiply(y, rightY));
 
-  static const double _radiansPerDegree = math.pi / 180.0;
+  // Matches java.lang.Math.toRadians' binary64 conversion constant.
+  static const double _radiansPerDegree = 0.017453292519943295;
 }

@@ -80,26 +80,34 @@ final class CarState {
   @override
   bool operator ==(Object other) =>
       other is CarState &&
-      x == other.x &&
-      y == other.y &&
-      rotationDegrees == other.rotationDegrees &&
-      longitudinalSpeed == other.longitudinalSpeed &&
-      velocityX == other.velocityX &&
-      velocityY == other.velocityY &&
-      angularVelocity == other.angularVelocity &&
-      lateralSpeed == other.lateralSpeed &&
-      driftAmount == other.driftAmount;
+      _floatEquals(x, other.x) &&
+      _floatEquals(y, other.y) &&
+      _floatEquals(rotationDegrees, other.rotationDegrees) &&
+      _floatEquals(longitudinalSpeed, other.longitudinalSpeed) &&
+      _floatEquals(velocityX, other.velocityX) &&
+      _floatEquals(velocityY, other.velocityY) &&
+      _floatEquals(angularVelocity, other.angularVelocity) &&
+      _floatEquals(lateralSpeed, other.lateralSpeed) &&
+      _floatEquals(driftAmount, other.driftAmount);
 
   @override
   int get hashCode => Object.hash(
-    x,
-    y,
-    rotationDegrees,
-    longitudinalSpeed,
-    velocityX,
-    velocityY,
-    angularVelocity,
-    lateralSpeed,
-    driftAmount,
+    _floatHash(x),
+    _floatHash(y),
+    _floatHash(rotationDegrees),
+    _floatHash(longitudinalSpeed),
+    _floatHash(velocityX),
+    _floatHash(velocityY),
+    _floatHash(angularVelocity),
+    _floatHash(lateralSpeed),
+    _floatHash(driftAmount),
   );
+
+  static bool _floatEquals(double left, double right) =>
+      left == right &&
+      (left != 0 ||
+          Float32.isNegativeZero(left) == Float32.isNegativeZero(right));
+
+  static int _floatHash(double value) =>
+      Float32.isNegativeZero(value) ? 0x80000000 : value.hashCode;
 }

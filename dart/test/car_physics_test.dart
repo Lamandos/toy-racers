@@ -57,6 +57,17 @@ void main() {
   );
 
   test('CarPerformance validates multiplier bounds at runtime', () {
+    final upperBound = CarPerformance(
+      acceleration: 1.10,
+      maxSpeed: 1,
+      handling: 1,
+    );
+
+    expect(upperBound.acceleration, Float32.narrow(1.10));
+    expect(
+      CarModel.redStripe.performance.acceleration,
+      upperBound.acceleration,
+    );
     expect(
       () => CarPerformance(acceleration: 0.79, maxSpeed: 1, handling: 1),
       throwsArgumentError,
@@ -65,6 +76,14 @@ void main() {
       () => CarPerformance(acceleration: 1, maxSpeed: 1.11, handling: 1),
       throwsArgumentError,
     );
+  });
+
+  test('CarState equality distinguishes positive and negative zero', () {
+    final positiveZero = CarState();
+    final negativeZero = CarState(x: -0.0);
+
+    expect(positiveZero == negativeZero, isFalse);
+    expect(negativeZero, negativeZero.copy());
   });
 
   test('uses the reference radians conversion for large headings', () {
