@@ -22,6 +22,16 @@ void main() {
     );
   });
 
+  test('deprecated DriverInput retains its additive merge semantics', () {
+    final first = DriverInput(throttle: 0.4, brake: 0.2, steering: 0.6);
+    final second = DriverInput(throttle: 0.4, brake: 0.4, steering: -0.4);
+
+    expect(
+      first.combinedWith(second),
+      DriverInput(throttle: 0.8, brake: 0.6, steering: Float32.add(0.6, -0.4)),
+    );
+  });
+
   test('PlayerControlConfig scales steering without changing pedals', () {
     final input = PlayerInput(throttle: 0.7, brake: 0.2, steering: -1);
 
@@ -38,13 +48,34 @@ void main() {
       final redStripe = CarModel.fromScenarioId('red-stripe');
       final applied = redStripe.performance.applyTo();
 
-    expect(redStripe, CarModel.redStripe);
-    expect(applied.acceleration, Float32.narrow(28.6));
-    expect(applied.maxForwardSpeed, Float32.narrow(32.3));
+      expect(redStripe, CarModel.redStripe);
+      expect(applied.acceleration, Float32.narrow(28.6));
+      expect(applied.maxForwardSpeed, Float32.narrow(32.3));
       expect(applied.steeringSpeed, 116);
       expect(() => CarModel.fromScenarioId('unknown-car'), throwsArgumentError);
     },
   );
+
+  test('CarPerformance validates multiplier bounds at runtime', () {
+    expect(
+      () => CarPerformance(acceleration: 0.79, maxSpeed: 1, handling: 1),
+      throwsArgumentError,
+    );
+    expect(
+      () => CarPerformance(acceleration: 1, maxSpeed: 1.11, handling: 1),
+      throwsArgumentError,
+    );
+  });
+
+  test('uses the reference radians conversion for large headings', () {
+    final state = CarState(rotationDegrees: 3.8907556e24);
+
+    _update(physics, state, config, PlayerInput(throttle: 1));
+
+    expect(state.rotationDegrees, 120);
+    expect(state.velocityX, Float32.narrow(-0.33304566));
+    expect(state.velocityY, Float32.narrow(-0.0012035221));
+  });
 
   test('throttle accelerates forward and respects the forward speed limit', () {
     final state = CarState();

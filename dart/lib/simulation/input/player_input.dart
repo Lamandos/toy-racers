@@ -5,7 +5,7 @@ import '../math/float32.dart';
 /// Keyboard and touch are input provenance only: both adapters must provide
 /// this same normalized command shape. Raw binary32 values are retained until
 /// the simulation boundary calls [normalized].
-final class PlayerInput {
+class PlayerInput {
   PlayerInput({double throttle = 0, double brake = 0, double steering = 0})
     : throttle = Float32.narrow(throttle),
       brake = Float32.narrow(brake),

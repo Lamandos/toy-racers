@@ -272,7 +272,7 @@ final class _Basis {
   final double rightY;
 
   factory _Basis.fromDegrees(double rotationDegrees) {
-    final radians = rotationDegrees / 180 * math.pi;
+    final radians = rotationDegrees * _radiansPerDegree;
     final forwardX = Float32.narrow(math.cos(radians));
     final forwardY = Float32.narrow(math.sin(radians));
     return _Basis(
@@ -288,4 +288,6 @@ final class _Basis {
 
   double rightDot(double x, double y) =>
       Float32.add(Float32.multiply(x, rightX), Float32.multiply(y, rightY));
+
+  static const double _radiansPerDegree = math.pi / 180.0;
 }

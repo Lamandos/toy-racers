@@ -5,7 +5,7 @@ import 'car_config.dart';
 enum CarModel {
   redStripe(
     scenarioId: 'red-stripe',
-    performance: CarPerformance(
+    performance: CarPerformance._fromEnum(
       acceleration: 1.10,
       maxSpeed: 0.95,
       handling: 0.80,
@@ -13,7 +13,7 @@ enum CarModel {
   ),
   blueStripe(
     scenarioId: 'blue-stripe',
-    performance: CarPerformance(
+    performance: CarPerformance._fromEnum(
       acceleration: 0.95,
       maxSpeed: 0.80,
       handling: 1.10,
@@ -21,7 +21,7 @@ enum CarModel {
   ),
   yellowSport(
     scenarioId: 'yellow-sport',
-    performance: CarPerformance(
+    performance: CarPerformance._fromEnum(
       acceleration: 0.80,
       maxSpeed: 1.10,
       handling: 0.95,
@@ -29,7 +29,7 @@ enum CarModel {
   ),
   greenRacer(
     scenarioId: 'green-racer',
-    performance: CarPerformance(
+    performance: CarPerformance._fromEnum(
       acceleration: 0.95,
       maxSpeed: 1.10,
       handling: 0.80,
@@ -37,7 +37,7 @@ enum CarModel {
   ),
   orangeTruck(
     scenarioId: 'orange-truck',
-    performance: CarPerformance(
+    performance: CarPerformance._fromEnum(
       acceleration: 0.80,
       maxSpeed: 0.95,
       handling: 1.10,
@@ -62,16 +62,23 @@ enum CarModel {
 
 /// Relative tuning applied to the common [CarConfig] baseline.
 final class CarPerformance {
-  const CarPerformance({
+  factory CarPerformance({
+    required double acceleration,
+    required double maxSpeed,
+    required double handling,
+  }) {
+    return CarPerformance._fromEnum(
+      acceleration: _validatedMultiplier(acceleration, 'acceleration'),
+      maxSpeed: _validatedMultiplier(maxSpeed, 'maxSpeed'),
+      handling: _validatedMultiplier(handling, 'handling'),
+    );
+  }
+
+  const CarPerformance._fromEnum({
     required this.acceleration,
     required this.maxSpeed,
     required this.handling,
-  }) : assert(acceleration >= _minimumMultiplier),
-       assert(acceleration <= _maximumMultiplier),
-       assert(maxSpeed >= _minimumMultiplier),
-       assert(maxSpeed <= _maximumMultiplier),
-       assert(handling >= _minimumMultiplier),
-       assert(handling <= _maximumMultiplier);
+  });
 
   static const double _minimumMultiplier = 0.80;
   static const double _maximumMultiplier = 1.10;
@@ -79,6 +86,19 @@ final class CarPerformance {
   final double acceleration;
   final double maxSpeed;
   final double handling;
+
+  static double _validatedMultiplier(double value, String name) {
+    final narrowedValue = Float32.narrow(value);
+    if (narrowedValue < _minimumMultiplier ||
+        narrowedValue > _maximumMultiplier) {
+      throw ArgumentError.value(
+        value,
+        name,
+        'must be in the range [$_minimumMultiplier, $_maximumMultiplier]',
+      );
+    }
+    return narrowedValue;
+  }
 
   double get total =>
       Float32.add(Float32.add(acceleration, maxSpeed), handling);
