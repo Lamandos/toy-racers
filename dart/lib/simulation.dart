@@ -23,6 +23,7 @@ export 'simulation/race/race_phase.dart';
 export 'simulation/race/race_session.dart';
 export 'simulation/scenario/simulation_scenario.dart';
 export 'simulation/snapshot/simulation_snapshot.dart';
+export 'simulation/surface/surface_speed_config.dart';
 export 'simulation/surface/surface_speed_system.dart';
 export 'simulation/surface/surface_type.dart';
 export 'simulation/track/checkpoint.dart';
