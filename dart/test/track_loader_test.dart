@@ -1,10 +1,27 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/services.dart';
 import 'package:toy_racers/simulation.dart';
 
 void main() {
-  final loader = TrackLoader(_readCanonicalTmx);
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  late TrackLoader loader;
+
+  setUpAll(() async {
+    final sources = <String, String>{
+      TrackLoader.track01TmxPath:
+          await rootBundle.loadString(TrackLoader.track01TmxPath),
+      TrackLoader.track02TmxPath:
+          await rootBundle.loadString(TrackLoader.track02TmxPath),
+    };
+    loader = TrackLoader((assetPath) {
+      final source = sources[assetPath];
+      if (source == null) {
+        throw ArgumentError.value(assetPath, 'assetPath');
+      }
+      return source;
+    });
+  });
 
   test('loads both canonical TMX tracks with Kotlin world dimensions', () {
     final livingRoom = loader.load(TrackId.livingRoom);
@@ -136,9 +153,6 @@ void main() {
     expect(() => loader.loadById('missing-track'), throwsArgumentError);
   });
 }
-
-String _readCanonicalTmx(String assetPath) =>
-    File('../$assetPath').readAsStringSync();
 
 Checkpoint _checkpoint(
   int order,
