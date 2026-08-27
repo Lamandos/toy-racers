@@ -136,8 +136,8 @@ final class _RecordingSimulation implements BehaviorSimulation {
   int _simulationTick = 0;
 
   @override
-  DriverInput get lastAppliedPlayerInput =>
-      inputs.isEmpty ? DriverInput.none : inputs.last;
+  PlayerInput get lastAppliedPlayerInput =>
+      inputs.isEmpty ? PlayerInput.none : inputs.last;
 
   @override
   CompatibilitySnapshot get snapshot => _createSnapshot();

@@ -106,7 +106,7 @@ final class BehaviorRunner {
     var previousPlayer = _player(simulation.snapshot);
     for (var tick = 1; tick <= scenario.ticks; tick++) {
       final snapshot = simulation.advance(
-        input: scenario.inputForTick(tick),
+        input: DriverInput.from(scenario.inputForTick(tick)),
         deltaSeconds: fixedBehaviorTimestep,
       );
       final finishedThisTick =

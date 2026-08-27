@@ -9,7 +9,8 @@ import 'ai_race_context.dart';
 /// contract instead of requiring shared mutable state between the driver and
 /// session.
 final class AiDriverDecision {
-  AiDriverDecision({required this.input, this.requestRespawn = false});
+  AiDriverDecision({required PlayerInput input, this.requestRespawn = false})
+    : input = DriverInput.from(input);
 
   final DriverInput input;
   final bool requestRespawn;

@@ -1,47 +1,35 @@
 import '../math/float32.dart';
+import 'player_input.dart';
 
-/// A portable control command produced by the player or an AI driver.
-///
-/// Commands retain their raw binary32 values until the simulation boundary
-/// explicitly calls [normalized]. This preserves the compatibility contract's
-/// one-time normalization after an optional input tweak has been applied.
-final class DriverInput {
-  DriverInput({double throttle = 0, double brake = 0, double steering = 0})
-    : throttle = Float32.narrow(throttle),
-      brake = Float32.narrow(brake),
-      steering = Float32.narrow(steering);
+export 'player_input.dart';
 
-  final double throttle;
-  final double brake;
-  final double steering;
+/// Backwards-compatible input contract from the initial simulation API.
+@Deprecated('Use PlayerInput instead.')
+final class DriverInput extends PlayerInput {
+  DriverInput({super.throttle, super.brake, super.steering});
 
-  /// A zero command. Each call returns an immutable value.
+  DriverInput.from(PlayerInput input)
+    : this(
+        throttle: input.throttle,
+        brake: input.brake,
+        steering: input.steering,
+      );
+
+  /// A zero command with the legacy [DriverInput] type.
   static DriverInput get none => DriverInput();
 
-  /// Applies the reference control ranges once.
+  @override
   DriverInput normalized() => DriverInput(
     throttle: Float32.clamp(throttle, 0, 1),
     brake: Float32.clamp(brake, 0, 1),
     steering: Float32.clamp(steering, -1, 1),
   );
 
-  /// Adds a behavioral input tweak before applying the reference ranges once.
-  ///
-  /// This maps to `BehavioralInput.withTweak` in the Kotlin compatibility
-  /// runner. It is intentionally distinct from Kotlin's device-input merge.
-  DriverInput combinedWith(DriverInput other) => DriverInput(
+  /// Preserves the original additive merge semantics of [DriverInput].
+  @override
+  DriverInput combinedWith(PlayerInput other) => DriverInput(
     throttle: Float32.clamp(Float32.add(throttle, other.throttle), 0, 1),
     brake: Float32.clamp(Float32.add(brake, other.brake), 0, 1),
     steering: Float32.clamp(Float32.add(steering, other.steering), -1, 1),
   );
-
-  @override
-  bool operator ==(Object other) =>
-      other is DriverInput &&
-      throttle == other.throttle &&
-      brake == other.brake &&
-      steering == other.steering;
-
-  @override
-  int get hashCode => Object.hash(throttle, brake, steering);
 }
