@@ -2,8 +2,8 @@ import '../car/car_config.dart';
 import '../car/car_model.dart';
 import '../car/car_physics.dart';
 import '../car/car_state.dart';
+import '../input/driver_input.dart';
 import '../input/player_control_config.dart';
-import '../input/player_input.dart';
 import '../math/float32.dart';
 import '../race/race_phase.dart';
 import '../surface/surface_speed_system.dart';
@@ -44,8 +44,13 @@ abstract interface class BehaviorSimulation {
   CompatibilitySnapshot finishCountdown();
 
   /// Applies one normalized player [input] for exactly [deltaSeconds].
+  ///
+  /// The covariant parameter keeps implementations of the original
+  /// `DriverInput`-based contract source-compatible. The behavior runner
+  /// supplies [DriverInput] at this boundary, while newer implementations may
+  /// accept the broader [PlayerInput] type.
   CompatibilitySnapshot advance({
-    required PlayerInput input,
+    required covariant PlayerInput input,
     required double deltaSeconds,
   });
 }
@@ -156,7 +161,7 @@ final class _CompatibilitySimulation implements BehaviorSimulation {
 
   @override
   CompatibilitySnapshot advance({
-    required PlayerInput input,
+    required DriverInput input,
     required double deltaSeconds,
   }) {
     final narrowedDelta = Float32.narrow(deltaSeconds);

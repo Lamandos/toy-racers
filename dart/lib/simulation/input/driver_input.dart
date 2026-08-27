@@ -8,6 +8,13 @@ export 'player_input.dart';
 final class DriverInput extends PlayerInput {
   DriverInput({super.throttle, super.brake, super.steering});
 
+  DriverInput.from(PlayerInput input)
+    : this(
+        throttle: input.throttle,
+        brake: input.brake,
+        steering: input.steering,
+      );
+
   /// A zero command with the legacy [DriverInput] type.
   static DriverInput get none => DriverInput();
 

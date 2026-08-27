@@ -129,7 +129,7 @@ void main() {
 }
 
 final class _RecordingSimulation implements BehaviorSimulation {
-  final List<PlayerInput> inputs = <PlayerInput>[];
+  final List<DriverInput> inputs = <DriverInput>[];
   final List<String> initialStateIds = <String>[];
   String _phase = 'loading';
   double _countdownRemainingSeconds = 3;
@@ -179,7 +179,7 @@ final class _RecordingSimulation implements BehaviorSimulation {
 
   @override
   CompatibilitySnapshot advance({
-    required PlayerInput input,
+    required DriverInput input,
     required double deltaSeconds,
   }) {
     inputs.add(input);

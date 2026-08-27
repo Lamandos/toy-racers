@@ -85,6 +85,16 @@ void main() {
     );
   });
 
+  test('PlayerInput merges signed-zero pedals as positive zero', () {
+    final merged = PlayerInput(
+      throttle: 0,
+      brake: 0,
+    ).combinedWith(PlayerInput(throttle: -0.0, brake: -0.0));
+
+    expect(Float32.isNegativeZero(merged.throttle), isFalse);
+    expect(Float32.isNegativeZero(merged.brake), isFalse);
+  });
+
   test('RaceSession begins with a deterministic headless snapshot', () {
     final racingLine = <TrackPoint>[
       TrackPoint(0, 0),
@@ -199,6 +209,14 @@ void main() {
 
     expect(decision.input, PlayerInput.none);
     expect(decision.requestRespawn, isTrue);
+  });
+
+  test('AI driver decisions preserve the deprecated input result type', () {
+    final DriverInput command = AiDriverDecision(
+      input: PlayerInput(throttle: 0.5),
+    ).input;
+
+    expect(command, DriverInput(throttle: 0.5));
   });
 }
 

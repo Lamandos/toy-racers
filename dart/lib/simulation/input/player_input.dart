@@ -27,8 +27,8 @@ class PlayerInput {
 
   /// Merges simultaneous keyboard and touch commands as in the reference.
   PlayerInput combinedWith(PlayerInput other) => PlayerInput(
-    throttle: throttle > other.throttle ? throttle : other.throttle,
-    brake: brake > other.brake ? brake : other.brake,
+    throttle: _maximumPedal(throttle, other.throttle),
+    brake: _maximumPedal(brake, other.brake),
     steering: Float32.clamp(Float32.add(steering, other.steering), -1, 1),
   ).normalized();
 
@@ -51,4 +51,11 @@ class PlayerInput {
 
   @override
   int get hashCode => Object.hash(throttle, brake, steering);
+
+  static double _maximumPedal(double value, double other) {
+    if (value == other && value == 0) {
+      return 0;
+    }
+    return value > other ? value : other;
+  }
 }

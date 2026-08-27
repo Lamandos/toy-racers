@@ -1,5 +1,5 @@
 import '../car/car_state.dart';
-import '../input/player_input.dart';
+import '../input/driver_input.dart';
 import 'ai_race_context.dart';
 
 /// The deterministic result of one [AiDriver] update.
@@ -9,9 +9,10 @@ import 'ai_race_context.dart';
 /// contract instead of requiring shared mutable state between the driver and
 /// session.
 final class AiDriverDecision {
-  AiDriverDecision({required this.input, this.requestRespawn = false});
+  AiDriverDecision({required PlayerInput input, this.requestRespawn = false})
+    : input = DriverInput.from(input);
 
-  final PlayerInput input;
+  final DriverInput input;
   final bool requestRespawn;
 }
 
