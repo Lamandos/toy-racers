@@ -11,6 +11,7 @@ export 'simulation/car/car_physics.dart';
 export 'simulation/car/car_state.dart';
 export 'simulation/collision/collision_system.dart';
 export 'simulation/compatibility/compatibility_exception.dart';
+export 'simulation/compatibility/behavior_simulation.dart';
 export 'simulation/compatibility/compatibility_models.dart';
 export 'simulation/compatibility/compatibility_parser.dart';
 export 'simulation/compatibility/compatibility_trace_json.dart';

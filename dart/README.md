@@ -22,9 +22,27 @@ the Kotlin golden masters.
 
 `CompatibilityScenarioParser` reads the shared scenario v1-v3 and input-script
 v1 documents directly. `CompatibilityTraceJson` writes the shared snapshot v2
-and trace v3 output with canonical number formatting. The canonical contracts
-remain in [`../compatibility/schemas/`](../compatibility/schemas/); the Dart
-project deliberately does not contain a forked schema copy.
+and trace v3 output with canonical number formatting. The headless
+`tool/behavior_runner.dart` replays one scenario using only the pure-Dart
+simulation boundary; it does not create a Flutter binding, Flame game, or
+render loop. The canonical contracts remain in
+[`../compatibility/schemas/`](../compatibility/schemas/); the Dart project
+deliberately does not contain a forked schema copy.
+
+Run one scenario from this directory with:
+
+```sh
+dart run tool/behavior_runner.dart \
+  --scenario ../compatibility/scenarios/car/straight_acceleration.json \
+  --output build/behavior/actual.json
+```
+
+The runner already owns parsing, input-script resolution, initial-state
+injection, one `1 / 60` fixed step per requested tick, lifecycle/event
+sampling, and canonical JSON output. The reference-compatible implementations
+of physics, collisions, tracks, race rules, and AI are still migration work;
+until they land, generated traces are structurally valid but are not expected
+to match Kotlin golden masters.
 
 New gameplay code must begin in `lib/simulation/` as pure Dart. Simulation
 modules may not import Flutter, Flame, or `dart:ui`; they may not use wall-clock
