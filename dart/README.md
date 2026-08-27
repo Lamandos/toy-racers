@@ -15,10 +15,10 @@ This bootstrap contains no gameplay rendering, UI, audio, or input
 implementation. The project now has a deliberately small simulation
 architecture in
 [`lib/simulation/`](lib/simulation/). It establishes the pure-Dart ownership
-boundaries and binary32 data contracts; it does not yet port gameplay physics,
-collision handling, race rules, AI behaviour, track loading, or compatibility
-replay execution. Those behaviours must be implemented incrementally against
-the Kotlin golden masters.
+boundaries and binary32 data contracts, including the reference-compatible
+`CarPhysics` integrator. Collision handling, surfaces, race rules, AI
+behaviour, track loading, and complete compatibility replay execution still
+must be implemented incrementally against the Kotlin golden masters.
 
 `CompatibilityScenarioParser` reads the shared scenario v1-v3 and input-script
 v1 documents directly. `CompatibilityTraceJson` writes the shared snapshot v2
@@ -39,10 +39,10 @@ dart run tool/behavior_runner.dart \
 
 The runner already owns parsing, input-script resolution, initial-state
 injection, one `1 / 60` fixed step per requested tick, lifecycle/event
-sampling, and canonical JSON output. The reference-compatible implementations
-of physics, collisions, tracks, race rules, and AI are still migration work;
-until they land, generated traces are structurally valid but are not expected
-to match Kotlin golden masters.
+sampling, and canonical JSON output. The reference-compatible car-physics
+implementation is active in the runner. The remaining collision, surface,
+track, race-rule, and AI migrations mean generated traces are structurally
+valid but are not yet expected to match Kotlin golden masters.
 
 New gameplay code must begin in `lib/simulation/` as pure Dart. Simulation
 modules may not import Flutter, Flame, or `dart:ui`; they may not use wall-clock
