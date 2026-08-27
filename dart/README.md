@@ -5,8 +5,8 @@ implementation of Toy Racers. It was generated with Flutter 3.47.1 on the
 stable channel. Develop and run CI with the Flutter stable channel.
 
 The project includes the Android, iOS, web, Windows, macOS, and Linux targets.
-The committed `pubspec.lock` resolves Flame 1.38.1 and every transitive package
-used by this bootstrap.
+The committed `pubspec.lock` resolves Flame 1.38.1, the pure-Dart `xml`
+parser, and every transitive package used by this bootstrap.
 
 ## Migration boundary
 
@@ -16,9 +16,12 @@ implementation. The project now has a deliberately small simulation
 architecture in
 [`lib/simulation/`](lib/simulation/). It establishes the pure-Dart ownership
 boundaries and binary32 data contracts, including the reference-compatible
-`CarPhysics` integrator. Collision handling, surfaces, race rules, AI
-behaviour, track loading, and complete compatibility replay execution still
-must be implemented incrementally against the Kotlin golden masters.
+`CarPhysics` integrator. `TrackLoader` now reads the canonical TMX sources
+through an injected pure-Dart text source and supplies both built-in tracks,
+their collision and road contours, world coordinates, race metadata, and
+surface lookup. Collision response, surface speed effects, race rules, AI
+behaviour, and complete compatibility replay execution still must be
+implemented incrementally against the Kotlin golden masters.
 
 `CompatibilityScenarioParser` reads the shared scenario v1-v3 and input-script
 v1 documents directly. `CompatibilityTraceJson` writes the shared snapshot v2
@@ -40,9 +43,10 @@ dart run tool/behavior_runner.dart \
 The runner already owns parsing, input-script resolution, initial-state
 injection, one `1 / 60` fixed step per requested tick, lifecycle/event
 sampling, and canonical JSON output. The reference-compatible car-physics
-implementation is active in the runner. The remaining collision, surface,
-track, race-rule, and AI migrations mean generated traces are structurally
-valid but are not yet expected to match Kotlin golden masters.
+implementation is active in the runner. Track data is available to the pure
+simulation through `TrackLoader`; connecting it to the replay pipeline waits
+for collision, surface, race-rule, and AI migrations, so generated traces are
+structurally valid but are not yet expected to match Kotlin golden masters.
 
 New gameplay code must begin in `lib/simulation/` as pure Dart. Simulation
 modules may not import Flutter, Flame, or `dart:ui`; they may not use wall-clock
@@ -65,6 +69,8 @@ Read these contracts before adding simulation code:
 ## Dependencies
 
 - `flame` is the required presentation engine for the later Flutter layer.
+- `xml` reads the canonical TMX collision and road-contour sources without
+  bringing Flame Tiled into simulation.
 - `flutter_lints` supplies the shared static-analysis rules.
 - `flutter_test` is Flutter's SDK test framework.
 
