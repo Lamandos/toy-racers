@@ -36,7 +36,12 @@ final class Track {
       worldBounds: worldBounds,
       cameraBounds: cameraBounds,
       outerBoundary: outerBoundary,
+      innerObstacles: innerObstacles,
+      collisionShapes: collisionShapes,
       backgroundSurface: backgroundSurface,
+      surfaceRegions: surfaceRegions,
+      roadOuter: roadOuter,
+      roadInner: roadInner,
       startLine: startLine,
       checkpoints: checkpoints,
       startGrid: startGrid,
@@ -242,7 +247,12 @@ final class Track {
     required TrackRectangle? worldBounds,
     required TrackRectangle? cameraBounds,
     required TrackRectangle? outerBoundary,
+    required Iterable<TrackRectangle> innerObstacles,
+    required Iterable<TrackCollisionShape> collisionShapes,
     required SurfaceType? backgroundSurface,
+    required Iterable<SurfaceRegion> surfaceRegions,
+    required TrackPolygon? roadOuter,
+    required TrackPolygon? roadInner,
     required StartLine? startLine,
     required Iterable<Checkpoint>? checkpoints,
     required Iterable<StartGridPosition>? startGrid,
@@ -251,7 +261,12 @@ final class Track {
       worldBounds != null ||
       cameraBounds != null ||
       outerBoundary != null ||
+      innerObstacles.isNotEmpty ||
+      collisionShapes.isNotEmpty ||
       backgroundSurface != null ||
+      surfaceRegions.isNotEmpty ||
+      roadOuter != null ||
+      roadInner != null ||
       startLine != null ||
       checkpoints != null ||
       startGrid != null;

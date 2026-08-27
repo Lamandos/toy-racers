@@ -133,6 +133,33 @@ void main() {
     expect(track.racingLineWaypointRadius, 3);
   });
 
+  test('Track rejects partial geometry instead of discarding it', () {
+    final cases = <String, Track Function()>{
+      'inner obstacles': () => _partialTrack(
+        innerObstacles: <TrackRectangle>[TrackRectangle(0, 0, 1, 1)],
+      ),
+      'collision shapes': () => _partialTrack(
+        collisionShapes: <TrackCollisionShape>[
+          TrackCircle(center: TrackPoint(0, 0), radius: 1),
+        ],
+      ),
+      'surface regions': () => _partialTrack(
+        surfaceRegions: <SurfaceRegion>[
+          SurfaceRegion(
+            bounds: TrackRectangle(0, 0, 1, 1),
+            surface: SurfaceType.grass,
+          ),
+        ],
+      ),
+      'road outer contour': () => _partialTrack(roadOuter: _testPolygon),
+      'road inner contour': () => _partialTrack(roadInner: _testPolygon),
+    };
+
+    for (final entry in cases.entries) {
+      expect(entry.value, throwsArgumentError, reason: entry.key);
+    }
+  });
+
   test('RaceState advances countdown before allowing racing time', () {
     final raceState = RaceState();
     raceState.markReady();
@@ -263,6 +290,32 @@ Track _testTrack(Iterable<TrackPoint> racingLine) {
     racingLine: racingLine,
   );
 }
+
+Track _partialTrack({
+  Iterable<TrackRectangle> innerObstacles = const <TrackRectangle>[],
+  Iterable<TrackCollisionShape> collisionShapes = const <TrackCollisionShape>[],
+  Iterable<SurfaceRegion> surfaceRegions = const <SurfaceRegion>[],
+  TrackPolygon? roadOuter,
+  TrackPolygon? roadInner,
+}) => Track(
+  id: 'partial-track',
+  racingLine: <TrackPoint>[
+    TrackPoint(0, 0),
+    TrackPoint(1, 0),
+    TrackPoint(0, 1),
+  ],
+  innerObstacles: innerObstacles,
+  collisionShapes: collisionShapes,
+  surfaceRegions: surfaceRegions,
+  roadOuter: roadOuter,
+  roadInner: roadInner,
+);
+
+final TrackPolygon _testPolygon = TrackPolygon(<TrackPoint>[
+  TrackPoint(0, 0),
+  TrackPoint(1, 0),
+  TrackPoint(0, 1),
+]);
 
 final class _RecordingAiDriver implements AiDriver {
   _RecordingAiDriver({this.requestRespawn = false});
