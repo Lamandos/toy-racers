@@ -129,15 +129,15 @@ void main() {
 }
 
 final class _RecordingSimulation implements BehaviorSimulation {
-  final List<DriverInput> inputs = <DriverInput>[];
+  final List<PlayerInput> inputs = <PlayerInput>[];
   final List<String> initialStateIds = <String>[];
   String _phase = 'loading';
   double _countdownRemainingSeconds = 3;
   int _simulationTick = 0;
 
   @override
-  DriverInput get lastAppliedPlayerInput =>
-      inputs.isEmpty ? DriverInput.none : inputs.last;
+  PlayerInput get lastAppliedPlayerInput =>
+      inputs.isEmpty ? PlayerInput.none : inputs.last;
 
   @override
   CompatibilitySnapshot get snapshot => _createSnapshot();
@@ -179,7 +179,7 @@ final class _RecordingSimulation implements BehaviorSimulation {
 
   @override
   CompatibilitySnapshot advance({
-    required DriverInput input,
+    required PlayerInput input,
     required double deltaSeconds,
   }) {
     inputs.add(input);

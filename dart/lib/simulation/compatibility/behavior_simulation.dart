@@ -1,6 +1,9 @@
 import '../car/car_config.dart';
+import '../car/car_model.dart';
+import '../car/car_physics.dart';
 import '../car/car_state.dart';
-import '../input/driver_input.dart';
+import '../input/player_control_config.dart';
+import '../input/player_input.dart';
 import '../math/float32.dart';
 import '../race/race_phase.dart';
 import '../surface/surface_speed_system.dart';
@@ -20,7 +23,7 @@ abstract interface class BehaviorSimulation {
   ///
   /// Input is deliberately not included in a compatibility trace, but keeping
   /// it observable here makes the runner boundary testable without UI input.
-  DriverInput get lastAppliedPlayerInput;
+  PlayerInput get lastAppliedPlayerInput;
 
   /// Applies explicitly supplied state before the replay lifecycle begins.
   void applyInitialStates(List<CompatibilityInitialState> states);
@@ -42,7 +45,7 @@ abstract interface class BehaviorSimulation {
 
   /// Applies one normalized player [input] for exactly [deltaSeconds].
   CompatibilitySnapshot advance({
-    required DriverInput input,
+    required PlayerInput input,
     required double deltaSeconds,
   });
 }
@@ -71,11 +74,13 @@ final class _CompatibilitySimulation implements BehaviorSimulation {
 
   final List<_CompatibilityParticipant> _participants;
   final RaceState _raceState;
+  final CarPhysics _carPhysics = CarPhysics();
+  final PlayerControlConfig _playerControlConfig = PlayerControlConfig();
   int _simulationTick = 0;
-  DriverInput _lastPlayerInput = DriverInput.none;
+  PlayerInput _lastPlayerInput = PlayerInput.none;
 
   @override
-  DriverInput get lastAppliedPlayerInput => _lastPlayerInput;
+  PlayerInput get lastAppliedPlayerInput => _lastPlayerInput;
 
   @override
   CompatibilitySnapshot get snapshot {
@@ -151,7 +156,7 @@ final class _CompatibilitySimulation implements BehaviorSimulation {
 
   @override
   CompatibilitySnapshot advance({
-    required DriverInput input,
+    required PlayerInput input,
     required double deltaSeconds,
   }) {
     final narrowedDelta = Float32.narrow(deltaSeconds);
@@ -166,7 +171,14 @@ final class _CompatibilitySimulation implements BehaviorSimulation {
     if (racingSeconds == 0) {
       return snapshot;
     }
-    _lastPlayerInput = input.normalized();
+    _lastPlayerInput = _playerControlConfig.applyTo(input.normalized());
+    final player = _participantById(_playerId);
+    _carPhysics.update(
+      state: player.carState,
+      config: player.carConfig,
+      input: _lastPlayerInput,
+      deltaSeconds: narrowedDelta,
+    );
     _simulationTick += 1;
     _advanceRaceTimers();
     return snapshot;
@@ -230,7 +242,12 @@ final class _CompatibilitySimulation implements BehaviorSimulation {
   ) => <_CompatibilityParticipant>[
     for (var index = 0; index < _aiCount; index++)
       _CompatibilityParticipant(id: 'ai-$index', racePosition: index + 2),
-    _CompatibilityParticipant(id: _playerId, racePosition: 1),
+    _CompatibilityParticipant(
+      id: _playerId,
+      racePosition: 1,
+      carConfig: CarModel.fromScenarioId(scenario.playerCar).performance
+          .applyTo(),
+    ),
   ];
 
   static int _compareRacePosition(
@@ -280,10 +297,13 @@ final class _CompatibilitySimulation implements BehaviorSimulation {
 
 /// Mutable participant state observed by the compatibility trace adapter.
 final class _CompatibilityParticipant {
-  _CompatibilityParticipant({required this.id, required this.racePosition})
-    : carState = CarState(),
-      carConfig = CarConfig(),
-      surfaceSpeedState = SurfaceSpeedState();
+  _CompatibilityParticipant({
+    required this.id,
+    required this.racePosition,
+    CarConfig? carConfig,
+  }) : carState = CarState(),
+       carConfig = carConfig ?? CarConfig(),
+       surfaceSpeedState = SurfaceSpeedState();
 
   final String id;
   final CarState carState;

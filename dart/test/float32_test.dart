@@ -91,10 +91,10 @@ void main() {
     });
 
     test('normalizes input after binary32 tweak addition', () {
-      final input = DriverInput(throttle: 0.7, brake: 1.1, steering: 0.7);
-      final tweak = DriverInput(throttle: 0.2, brake: -0.2, steering: 0.2);
+      final input = PlayerInput(throttle: 0.7, brake: 1.1, steering: 0.7);
+      final tweak = PlayerInput(throttle: 0.2, brake: -0.2, steering: 0.2);
 
-      final combined = input.combinedWith(tweak);
+      final combined = input.withTweak(tweak);
 
       expect(combined.throttle, 0.8999999761581421);
       expect(combined.brake, 0.9000000357627869);

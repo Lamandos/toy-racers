@@ -1,4 +1,4 @@
-import '../input/driver_input.dart';
+import '../input/player_input.dart';
 import '../math/float32.dart';
 import 'compatibility_exception.dart';
 import 'compatibility_models.dart';
@@ -215,7 +215,7 @@ final class CompatibilityScenarioParser {
         minimum: 1,
         maximum: _maximumTick,
       ),
-      input: DriverInput(
+      input: PlayerInput(
         throttle: _optionalFloat(object, 'throttle', path) ?? 0,
         brake: _optionalFloat(object, 'brake', path) ?? 0,
         steering: _optionalFloat(object, 'steering', path) ?? 0,
@@ -245,7 +245,7 @@ final class CompatibilityScenarioParser {
             minimum: 1,
             maximum: ticks,
           ),
-          delta: DriverInput(
+          delta: PlayerInput(
             throttle: _optionalFloat(object, 'throttleDelta', itemPath) ?? 0,
             brake: _optionalFloat(object, 'brakeDelta', itemPath) ?? 0,
             steering: _optionalFloat(object, 'steeringDelta', itemPath) ?? 0,

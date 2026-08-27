@@ -76,4 +76,30 @@ final class CarState {
     lateralSpeed: lateralSpeed,
     driftAmount: driftAmount,
   );
+
+  @override
+  bool operator ==(Object other) =>
+      other is CarState &&
+      x == other.x &&
+      y == other.y &&
+      rotationDegrees == other.rotationDegrees &&
+      longitudinalSpeed == other.longitudinalSpeed &&
+      velocityX == other.velocityX &&
+      velocityY == other.velocityY &&
+      angularVelocity == other.angularVelocity &&
+      lateralSpeed == other.lateralSpeed &&
+      driftAmount == other.driftAmount;
+
+  @override
+  int get hashCode => Object.hash(
+    x,
+    y,
+    rotationDegrees,
+    longitudinalSpeed,
+    velocityX,
+    velocityY,
+    angularVelocity,
+    lateralSpeed,
+    driftAmount,
+  );
 }

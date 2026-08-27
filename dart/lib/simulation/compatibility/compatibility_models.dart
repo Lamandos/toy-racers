@@ -1,4 +1,4 @@
-import '../input/driver_input.dart';
+import '../input/player_input.dart';
 
 /// A versioned scenario document from `compatibility/schemas`.
 final class CompatibilityScenarioDocument {
@@ -55,8 +55,8 @@ final class CompatibilityScenario {
   BigInt get seedValue => BigInt.parse(seed);
 
   /// Returns the command for [tick] after its optional tweak and one clamp.
-  DriverInput inputForTick(int tick) {
-    DriverInput? segmentInput;
+  PlayerInput inputForTick(int tick) {
+    PlayerInput? segmentInput;
     for (final segment in inputSegments) {
       if (segment.contains(tick)) {
         segmentInput = segment.input;
@@ -70,8 +70,8 @@ final class CompatibilityScenario {
         break;
       }
     }
-    final base = segmentInput ?? DriverInput.none;
-    return tweak == null ? base.normalized() : base.combinedWith(tweak.delta);
+    final base = segmentInput ?? PlayerInput.none;
+    return tweak == null ? base.normalized() : base.withTweak(tweak.delta);
   }
 }
 
@@ -95,7 +95,7 @@ final class CompatibilityInputSegment {
 
   final int fromTick;
   final int toTick;
-  final DriverInput input;
+  final PlayerInput input;
 
   bool contains(int tick) => tick >= fromTick && tick <= toTick;
 }
@@ -105,7 +105,7 @@ final class CompatibilityInputTweak {
   const CompatibilityInputTweak({required this.tick, required this.delta});
 
   final int tick;
-  final DriverInput delta;
+  final PlayerInput delta;
 }
 
 /// Optional state injected before the first physical simulation tick.

@@ -26,13 +26,13 @@ void main() {
     expect(Float32.divide(1, 0), double.infinity);
   });
 
-  test('DriverInput clamps binary32 input sums that overflow', () {
+  test('PlayerInput clamps binary32 input tweaks that overflow', () {
     const maximumFiniteFloat32 = 3.4028234663852886e38;
 
     expect(
-      DriverInput(throttle: maximumFiniteFloat32)
-          .combinedWith(DriverInput(throttle: maximumFiniteFloat32)),
-      DriverInput(throttle: 1),
+      PlayerInput(throttle: maximumFiniteFloat32)
+          .withTweak(PlayerInput(throttle: maximumFiniteFloat32)),
+      PlayerInput(throttle: 1),
     );
   });
 
@@ -75,13 +75,13 @@ void main() {
     );
   });
 
-  test('DriverInput adds a tweak before one normalization pass', () {
-    final command = DriverInput(throttle: 0.8, brake: -0.2, steering: 0.9);
-    final tweak = DriverInput(throttle: 0.4, brake: 0.4, steering: 0.3);
+  test('PlayerInput adds a tweak before one normalization pass', () {
+    final command = PlayerInput(throttle: 0.8, brake: -0.2, steering: 0.9);
+    final tweak = PlayerInput(throttle: 0.4, brake: 0.4, steering: 0.3);
 
     expect(
-      command.combinedWith(tweak),
-      DriverInput(throttle: 1, brake: 0.2, steering: 1),
+      command.withTweak(tweak),
+      PlayerInput(throttle: 1, brake: 0.2, steering: 1),
     );
   });
 
@@ -197,7 +197,7 @@ void main() {
       context: AiRaceContext(isOnTrack: false),
     );
 
-    expect(decision.input, DriverInput.none);
+    expect(decision.input, PlayerInput.none);
     expect(decision.requestRespawn, isTrue);
   });
 }
@@ -216,7 +216,7 @@ final class _RecordingAiDriver implements AiDriver {
   }) {
     contexts.add(context);
     return AiDriverDecision(
-      input: DriverInput.none,
+      input: PlayerInput.none,
       requestRespawn: requestRespawn,
     );
   }

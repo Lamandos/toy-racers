@@ -1,5 +1,5 @@
 import '../car/car_state.dart';
-import '../input/driver_input.dart';
+import '../input/player_input.dart';
 import 'ai_race_context.dart';
 
 /// The deterministic result of one [AiDriver] update.
@@ -11,7 +11,7 @@ import 'ai_race_context.dart';
 final class AiDriverDecision {
   AiDriverDecision({required this.input, this.requestRespawn = false});
 
-  final DriverInput input;
+  final PlayerInput input;
   final bool requestRespawn;
 }
 
