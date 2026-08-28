@@ -243,6 +243,7 @@ final class AiConfig {
     }
     if (staticObstacleReactionDistance < sensorRayStep ||
         staticObstacleReactionDistance > obstacleDetectionDistance ||
+        overtakeSpeedAdvantage < 0 ||
         overtakeMinimumClearance < 0 ||
         overtakeMinimumClearance > obstacleDetectionDistance ||
         wrongWayAngleDegrees < 90 ||

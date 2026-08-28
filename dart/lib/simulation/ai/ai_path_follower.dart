@@ -16,7 +16,7 @@ final class AiPathFollower {
     if (this.racingLine.length < _minimumRacingLinePoints) {
       throw ArgumentError('Racing line must contain at least 3 points.');
     }
-    targetWaypointIndex = _waypointAfterNearest(initialPosition);
+    _targetWaypointIndex = _waypointAfterNearest(initialPosition);
   }
 
   static const int _minimumRacingLinePoints = 3;
@@ -24,10 +24,12 @@ final class AiPathFollower {
   final List<TrackPoint> racingLine;
   final AiConfig config;
   final double racingLineBias;
-  late int targetWaypointIndex;
+  late int _targetWaypointIndex;
+
+  int get targetWaypointIndex => _targetWaypointIndex;
 
   void reset(TrackPoint position) {
-    targetWaypointIndex = _waypointAfterNearest(position);
+    _targetWaypointIndex = _waypointAfterNearest(position);
   }
 
   void update(TrackPoint position) {
@@ -37,16 +39,16 @@ final class AiPathFollower {
       config.waypointRadius,
     );
     while (checked < racingLine.length &&
-        _distanceSquared(position, racingLine[targetWaypointIndex]) <=
+        _distanceSquared(position, racingLine[_targetWaypointIndex]) <=
             radiusSquared) {
-      targetWaypointIndex = (targetWaypointIndex + 1) % racingLine.length;
+      _targetWaypointIndex = (_targetWaypointIndex + 1) % racingLine.length;
       checked++;
     }
   }
 
   TrackPoint target() {
     final index =
-        (targetWaypointIndex + config.lookAheadPoints - 1) % racingLine.length;
+        (_targetWaypointIndex + config.lookAheadPoints - 1) % racingLine.length;
     final point = racingLine[index];
     if (racingLineBias == 0) {
       return point;
@@ -98,9 +100,9 @@ final class AiPathFollower {
   }
 
   double turnAheadDegrees(CarState carState) {
-    final target = racingLine[targetWaypointIndex];
+    final target = racingLine[_targetWaypointIndex];
     final next =
-        racingLine[(targetWaypointIndex + config.lookAheadPoints) %
+        racingLine[(_targetWaypointIndex + config.lookAheadPoints) %
             racingLine.length];
     final approach = Float32.narrow(
       math.atan2(
