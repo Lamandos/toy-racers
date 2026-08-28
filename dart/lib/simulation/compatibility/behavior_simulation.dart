@@ -1,28 +1,28 @@
-import '../car/car_config.dart';
 import '../car/car_model.dart';
 import '../car/car_physics.dart';
 import '../car/car_state.dart';
 import '../input/driver_input.dart';
-import '../input/player_control_config.dart';
+import '../input/player_input.dart';
 import '../math/float32.dart';
 import '../race/race_phase.dart';
-import '../surface/surface_speed_system.dart';
+import '../race/race_progress.dart';
+import '../race/race_result.dart';
+import '../race/race_session.dart';
+import '../surface/surface_type.dart';
+import '../track/track.dart';
+import '../track/start_grid_position.dart';
 import 'compatibility_models.dart';
 
 /// A headless simulation boundary used by the compatibility behavior runner.
 ///
 /// The runner owns file I/O, scenario parsing, replay order, and trace output.
-/// This interface keeps those concerns separate from the evolving pure-Dart
-/// gameplay implementation. A future reference-compatible race session can
-/// replace [createCompatibilitySimulation] without changing the CLI contract.
+/// This interface keeps those concerns separate from the pure-Dart gameplay
+/// systems that own car state, race progression, and fixed-step timing.
 abstract interface class BehaviorSimulation {
   /// The current normalized observation, without advancing simulation time.
   CompatibilitySnapshot get snapshot;
 
   /// The normalized player command applied during the latest physical tick.
-  ///
-  /// Input is deliberately not included in a compatibility trace, but keeping
-  /// it observable here makes the runner boundary testable without UI input.
   PlayerInput get lastAppliedPlayerInput;
 
   /// Applies explicitly supplied state before the replay lifecycle begins.
@@ -44,43 +44,27 @@ abstract interface class BehaviorSimulation {
   CompatibilitySnapshot finishCountdown();
 
   /// Applies one normalized player [input] for exactly [deltaSeconds].
-  ///
-  /// The covariant parameter keeps implementations of the original
-  /// `DriverInput`-based contract source-compatible. The behavior runner
-  /// supplies [DriverInput] at this boundary, while newer implementations may
-  /// accept the broader [PlayerInput] type.
   CompatibilitySnapshot advance({
     required covariant PlayerInput input,
     required double deltaSeconds,
   });
 }
 
-/// Creates the pure-Dart simulation used by the behavior runner.
-///
-/// This bootstrap implementation establishes the deterministic replay boundary
-/// while the physics, collision, track, race-rule, and AI migrations are added
-/// independently. It deliberately has no Flutter, Flame, render-loop, or
-/// wall-clock dependency.
+/// Creates the pure-Dart simulation used by the compatibility behavior runner.
 BehaviorSimulation createCompatibilitySimulation(
-  CompatibilityScenario scenario,
-) => _CompatibilitySimulation(scenario);
+  CompatibilityScenario scenario, {
+  required Track track,
+}) => _CompatibilitySimulation(scenario, track);
 
-/// Initial pure-Dart replay state, ready for the gameplay migration pipeline.
-///
-/// It owns lifecycle, initial-state injection, stable participant ordering, and
-/// fixed-tick time accounting. Concrete gameplay systems will update the same
-/// state through [advance] as they are ported.
+/// Adapts [RaceSession] state to the versioned compatibility trace contract.
 final class _CompatibilitySimulation implements BehaviorSimulation {
-  _CompatibilitySimulation(CompatibilityScenario scenario)
-    : _participants = _createParticipants(scenario),
-      _raceState = RaceState();
+  _CompatibilitySimulation(CompatibilityScenario scenario, Track track)
+    : _session = RaceSession(
+        track: track,
+        participants: _createParticipants(track, scenario),
+      );
 
-  static final double fixedDeltaSeconds = Float32.divide(1, 60);
-
-  final List<_CompatibilityParticipant> _participants;
-  final RaceState _raceState;
-  final CarPhysics _carPhysics = CarPhysics();
-  final PlayerControlConfig _playerControlConfig = PlayerControlConfig();
+  final RaceSession _session;
   int _simulationTick = 0;
   PlayerInput _lastPlayerInput = PlayerInput.none;
 
@@ -89,35 +73,30 @@ final class _CompatibilitySimulation implements BehaviorSimulation {
 
   @override
   CompatibilitySnapshot get snapshot {
-    final participants = List<_CompatibilityParticipant>.of(_participants)
+    final positions = _session.participantPositions;
+    final participants = List<RaceParticipant>.of(_session.participants)
       ..sort((left, right) => left.id.compareTo(right.id));
-    final snapshots = participants.map(_snapshotParticipant).toList();
-    final ranking = List<_CompatibilityParticipant>.of(participants)
-      ..sort(_compareRacePosition);
-    final finished =
-        participants.where((participant) => participant.finished).toList()
-          ..sort(_compareFinishPosition);
-    final player = _participantById(_playerId);
+    final finished = _session.finishResults;
+    final player = _session.player;
     return CompatibilitySnapshot(
       simulationTick: _simulationTick,
-      raceState: _raceStateId(_raceState.phase),
+      raceState: _raceStateId(_session.raceState.phase),
       countdown: CompatibilityCountdown(
-        state: _countdownStateId(_raceState.phase),
-        remainingSeconds: _raceState.countdownRemainingSeconds,
+        state: _countdownStateId(_session.raceState.phase),
+        remainingSeconds: _session.raceState.countdownRemainingSeconds,
       ),
-      elapsedSimulationTime: Float32.multiply(
-        _simulationTick.toDouble(),
-        fixedDeltaSeconds,
-      ),
-      currentLap: _currentLap(player),
+      elapsedSimulationTime: Float32.elapsedSimulationTime(_simulationTick),
+      currentLap: _currentLap(player.progress),
       currentProgress: CompatibilityProgress(
-        checkpoint: player.currentCheckpointIndex,
-        completedLaps: player.completedLaps,
+        checkpoint: player.progress.currentCheckpointIndex,
+        completedLaps: player.progress.completedLaps,
       ),
-      participants: snapshots,
-      ranking: ranking.map((participant) => participant.id).toList(),
+      participants: participants
+          .map((participant) => _snapshotParticipant(participant, positions))
+          .toList(),
+      ranking: _ranking(positions),
       finishedParticipants: finished
-          .map((participant) => participant.id)
+          .map((result) => result.participantId)
           .toList(),
       finishResults: finished.map(_finishResult).toList(),
     );
@@ -126,82 +105,66 @@ final class _CompatibilitySimulation implements BehaviorSimulation {
   @override
   void applyInitialStates(List<CompatibilityInitialState> states) {
     for (final state in states) {
-      _participantById(state.id).apply(state);
+      _applyInitialState(_participantById(state.id), state);
     }
+    _session.synchronizeFinishOrdering();
   }
 
   @override
   CompatibilitySnapshot start() {
-    _raceState.markReady();
-    _raceState.startCountdown();
+    _session.start();
     return snapshot;
   }
 
   @override
   CompatibilitySnapshot markReadyForLifecycle() {
-    _raceState.markReady();
+    _session.raceState.markReady();
     return snapshot;
   }
 
   @override
   CompatibilitySnapshot startCountdownForLifecycle() {
-    _raceState.startCountdown();
+    _session.raceState.startCountdown();
     return snapshot;
   }
 
   @override
   CompatibilitySnapshot advanceCountdown(double deltaSeconds) {
-    _raceState.advance(deltaSeconds);
+    _session.advance(
+      frameDeltaSeconds: deltaSeconds,
+      playerInput: PlayerInput.none,
+    );
     return snapshot;
   }
 
   @override
   CompatibilitySnapshot finishCountdown() =>
-      advanceCountdown(_raceState.countdownRemainingSeconds);
+      advanceCountdown(_session.raceState.countdownRemainingSeconds);
 
   @override
   CompatibilitySnapshot advance({
-    required DriverInput input,
+    required PlayerInput input,
     required double deltaSeconds,
   }) {
     final narrowedDelta = Float32.narrow(deltaSeconds);
-    if (narrowedDelta != fixedDeltaSeconds) {
+    if (narrowedDelta != CarPhysics.fixedDeltaSeconds) {
       throw ArgumentError.value(
         deltaSeconds,
         'deltaSeconds',
         'must equal the compatibility fixed timestep of 1 / 60 second',
       );
     }
-    final racingSeconds = _raceState.advance(narrowedDelta);
-    if (racingSeconds == 0) {
-      return snapshot;
-    }
-    _lastPlayerInput = _playerControlConfig.applyTo(input.normalized());
-    final player = _participantById(_playerId);
-    _carPhysics.update(
-      state: player.carState,
-      config: player.carConfig,
-      input: _lastPlayerInput,
-      deltaSeconds: narrowedDelta,
+    _lastPlayerInput = input;
+    final result = _session.advance(
+      frameDeltaSeconds: narrowedDelta,
+      playerInput: input,
     );
-    _simulationTick += 1;
-    _advanceRaceTimers();
+    _simulationTick += result.physicalSteps;
     return snapshot;
   }
 
-  void _advanceRaceTimers() {
-    for (final participant in _participants) {
-      if (!participant.finished) {
-        participant.totalRaceTime = Float32.add(
-          participant.totalRaceTime,
-          fixedDeltaSeconds,
-        );
-      }
-    }
-  }
-
-  _CompatibilityParticipant _participantById(String id) =>
-      _participants.firstWhere(
+  RaceParticipant _participantById(String id) =>
+      _session.participants.firstWhere(
         (participant) => participant.id == id,
         orElse: () => throw ArgumentError.value(
           id,
@@ -210,66 +173,116 @@ final class _CompatibilitySimulation implements BehaviorSimulation {
         ),
       );
 
+  void _applyInitialState(
+    RaceParticipant participant,
+    CompatibilityInitialState initial,
+  ) {
+    final state = participant.carState;
+    state.x = initial.x ?? state.x;
+    state.y = initial.y ?? state.y;
+    state.rotationDegrees = initial.rotationDeg ?? state.rotationDegrees;
+    state.longitudinalSpeed = initial.speed ?? state.longitudinalSpeed;
+    state.velocityX = initial.velocityX ?? state.velocityX;
+    state.velocityY = initial.velocityY ?? state.velocityY;
+    state.angularVelocity = initial.angularVelocity ?? state.angularVelocity;
+    state.lateralSpeed = initial.lateralSpeed ?? state.lateralSpeed;
+    state.driftAmount = initial.driftAmount ?? state.driftAmount;
+    participant.surfaceSpeedState.speedMultiplier =
+        initial.surfaceSpeedMultiplier ??
+        participant.surfaceSpeedState.speedMultiplier;
+    final progress = participant.progress;
+    progress.currentCheckpointIndex =
+        initial.currentCheckpointIndex ?? progress.currentCheckpointIndex;
+    progress.completedLaps = initial.completedLaps ?? progress.completedLaps;
+    progress.lapStartTime = initial.lapStartTime ?? progress.lapStartTime;
+    progress.totalRaceTime = initial.totalRaceTime ?? progress.totalRaceTime;
+    progress.bestLapTime = initial.bestLapTime ?? progress.bestLapTime;
+    progress.finished = initial.finished ?? progress.finished;
+    progress.finishPosition = initial.finishPosition ?? progress.finishPosition;
+  }
+
   CompatibilityParticipantSnapshot _snapshotParticipant(
-    _CompatibilityParticipant participant,
+    RaceParticipant participant,
+    Map<String, int> positions,
   ) => CompatibilityParticipantSnapshot(
     id: participant.id,
-    surface: participant.surface,
+    surface: _surfaceId(
+      _session.track.surfaceAtCoordinates(
+        participant.carState.x,
+        participant.carState.y,
+      ),
+    ),
     x: participant.carState.x,
     y: participant.carState.y,
-    rotation: _normalizeRotation(participant.carState.rotationDegrees),
+    rotation: Float32.normalizeRotationDegrees(
+      participant.carState.rotationDegrees,
+    ),
     velocityX: participant.carState.velocityX,
     velocityY: participant.carState.velocityY,
     angularVelocity: participant.carState.angularVelocity,
     longitudinalSpeed: participant.carState.longitudinalSpeed,
     lateralSpeed: participant.carState.lateralSpeed,
     driftAmount: participant.carState.driftAmount,
-    checkpoint: participant.currentCheckpointIndex,
-    lap: participant.completedLaps,
-    racePosition: participant.racePosition,
-    finished: participant.finished,
+    checkpoint: participant.progress.currentCheckpointIndex,
+    lap: participant.progress.completedLaps,
+    racePosition: positions[participant.id]!,
+    finished: participant.progress.finished,
   );
 
-  CompatibilityFinishResult _finishResult(
-    _CompatibilityParticipant participant,
-  ) => CompatibilityFinishResult(
-    participantId: participant.id,
-    finishPosition: participant.finishPosition!,
-    elapsedSimulationTime: participant.totalRaceTime,
-    bestLapTime: participant.bestLapTime,
-  );
+  List<String> _ranking(Map<String, int> positions) {
+    final participants = positions.keys.toList()
+      ..sort((left, right) {
+        final order = positions[left]!.compareTo(positions[right]!);
+        return order != 0 ? order : left.compareTo(right);
+      });
+    return participants;
+  }
 
-  int _currentLap(_CompatibilityParticipant participant) =>
-      (participant.completedLaps + 1).clamp(1, _requiredLaps);
+  CompatibilityFinishResult _finishResult(ParticipantRaceResult result) =>
+      CompatibilityFinishResult(
+        participantId: result.participantId,
+        finishPosition: result.result.finishPosition,
+        elapsedSimulationTime: result.result.totalRaceTime,
+        bestLapTime: result.result.bestLapTime,
+      );
 
-  static List<_CompatibilityParticipant> _createParticipants(
+  int _currentLap(RaceProgress progress) =>
+      (progress.completedLaps + 1).clamp(1, _session.requiredLaps);
+
+  static List<RaceParticipant> _createParticipants(
+    Track track,
     CompatibilityScenario scenario,
-  ) => <_CompatibilityParticipant>[
-    for (var index = 0; index < _aiCount; index++)
-      _CompatibilityParticipant(id: 'ai-$index', racePosition: index + 2),
-    _CompatibilityParticipant(
-      id: _playerId,
-      racePosition: 1,
-      carConfig: CarModel.fromScenarioId(scenario.playerCar).performance
-          .applyTo(),
-    ),
-  ];
-
-  static int _compareRacePosition(
-    _CompatibilityParticipant left,
-    _CompatibilityParticipant right,
   ) {
-    final position = left.racePosition.compareTo(right.racePosition);
-    return position != 0 ? position : left.id.compareTo(right.id);
+    final playerModel = CarModel.fromScenarioId(scenario.playerCar);
+    final opponentModels = <CarModel>[
+      ...CarModel.values.where((model) => model != playerModel),
+      CarModel.values.firstWhere((model) => model != playerModel),
+    ];
+    if (track.startGrid.length != opponentModels.length + 1) {
+      throw ArgumentError(
+        'Start grid must contain one position for every race participant',
+      );
+    }
+    return <RaceParticipant>[
+      RaceParticipant(
+        id: _playerId,
+        carState: _stateAt(track.startGrid.first),
+        carConfig: playerModel.performance.applyTo(),
+      ),
+      for (var index = 0; index < opponentModels.length; index++)
+        RaceParticipant(
+          id: 'ai-$index',
+          carState: _stateAt(track.startGrid[index + 1]),
+          carConfig: opponentModels[index].performance.applyTo(),
+        ),
+    ];
   }
 
-  static int _compareFinishPosition(
-    _CompatibilityParticipant left,
-    _CompatibilityParticipant right,
-  ) {
-    final position = left.finishPosition!.compareTo(right.finishPosition!);
-    return position != 0 ? position : left.id.compareTo(right.id);
-  }
+  static CarState _stateAt(StartGridPosition start) => CarState(
+    x: start.position.x,
+    y: start.position.y,
+    rotationDegrees: start.rotationDegrees,
+  );
 
   static String _raceStateId(RacePhase phase) => switch (phase) {
     RacePhase.loading => 'loading',
@@ -286,67 +299,14 @@ final class _CompatibilitySimulation implements BehaviorSimulation {
     RacePhase.racing || RacePhase.paused || RacePhase.finished => 'complete',
   };
 
-  static double _normalizeRotation(double rotation) {
-    final wrapped = Float32.narrow(rotation % _degreesPerTurn);
-    final normalized = wrapped < 0
-        ? Float32.add(wrapped, _degreesPerTurn)
-        : wrapped;
-    return normalized >= _degreesPerTurn || normalized == 0 ? 0 : normalized;
-  }
+  static String _surfaceId(SurfaceType surface) => switch (surface) {
+    SurfaceType.asphalt => 'asphalt',
+    SurfaceType.parquet => 'parquet',
+    SurfaceType.tile => 'tile',
+    SurfaceType.grass => 'grass',
+    SurfaceType.boost => 'boost',
+    SurfaceType.oil => 'oil',
+  };
 
-  static const int _aiCount = 5;
-  static const int _requiredLaps = 3;
   static const String _playerId = 'player';
-  static const double _degreesPerTurn = 360;
-}
-
-/// Mutable participant state observed by the compatibility trace adapter.
-final class _CompatibilityParticipant {
-  _CompatibilityParticipant({
-    required this.id,
-    required this.racePosition,
-    CarConfig? carConfig,
-  }) : carState = CarState(),
-       carConfig = carConfig ?? CarConfig(),
-       surfaceSpeedState = SurfaceSpeedState();
-
-  final String id;
-  final CarState carState;
-  final CarConfig carConfig;
-  final SurfaceSpeedState surfaceSpeedState;
-  String surface = 'asphalt';
-  int currentCheckpointIndex = 0;
-  int completedLaps = 0;
-  int racePosition;
-  double lapStartTime = 0;
-  double totalRaceTime = 0;
-  double? bestLapTime;
-  bool finished = false;
-  int? finishPosition;
-
-  void apply(CompatibilityInitialState initial) {
-    carState.x = initial.x ?? carState.x;
-    carState.y = initial.y ?? carState.y;
-    carState.rotationDegrees = initial.rotationDeg ?? carState.rotationDegrees;
-    carState.longitudinalSpeed = initial.speed ?? carState.longitudinalSpeed;
-    carState.velocityX = initial.velocityX ?? carState.velocityX;
-    carState.velocityY = initial.velocityY ?? carState.velocityY;
-    carState.angularVelocity =
-        initial.angularVelocity ?? carState.angularVelocity;
-    carState.lateralSpeed = initial.lateralSpeed ?? carState.lateralSpeed;
-    carState.driftAmount = initial.driftAmount ?? carState.driftAmount;
-    surfaceSpeedState.speedMultiplier =
-        initial.surfaceSpeedMultiplier ?? surfaceSpeedState.speedMultiplier;
-    currentCheckpointIndex =
-        initial.currentCheckpointIndex ?? currentCheckpointIndex;
-    completedLaps = initial.completedLaps ?? completedLaps;
-    lapStartTime = initial.lapStartTime ?? lapStartTime;
-    totalRaceTime = initial.totalRaceTime ?? totalRaceTime;
-    bestLapTime = initial.bestLapTime ?? bestLapTime;
-    finished = initial.finished ?? finished;
-    finishPosition = initial.finishPosition ?? finishPosition;
-    if (finishPosition != null) {
-      racePosition = finishPosition!;
-    }
-  }
 }

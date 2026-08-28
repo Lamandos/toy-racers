@@ -9,12 +9,14 @@ final double fixedBehaviorTimestep = Float32.divide(1, 60);
 final class BehaviorRunner {
   BehaviorRunner({
     CompatibilityScenarioParser? parser,
-    BehaviorSimulationFactory? simulationFactory,
+    this.simulationFactory,
+    TmxSource? tmxSource,
   }) : _parser = parser ?? const CompatibilityScenarioParser(),
-       _simulationFactory = simulationFactory ?? createCompatibilitySimulation;
+       _tmxSource = tmxSource ?? _readTmx;
 
   final CompatibilityScenarioParser _parser;
-  final BehaviorSimulationFactory _simulationFactory;
+  final BehaviorSimulationFactory? simulationFactory;
+  final TmxSource _tmxSource;
 
   /// Parses, replays, and returns exactly one scenario from [scenarioFile].
   CompatibilityTrace run(File scenarioFile) {
@@ -32,7 +34,12 @@ final class BehaviorRunner {
 
   /// Replays a parsed scenario through the configured pure-Dart simulation.
   CompatibilityTrace replay(CompatibilityScenario scenario) {
-    final simulation = _simulationFactory(scenario);
+    final simulation =
+        simulationFactory?.call(scenario) ??
+        createCompatibilitySimulation(
+          scenario,
+          track: TrackLoader(_tmxSource).loadById(scenario.trackId),
+        );
     simulation.applyInitialStates(scenario.initialStates);
     final samples = <CompatibilityTraceSample>[];
     _addStartSamples(simulation, scenario, samples);
@@ -50,6 +57,9 @@ final class BehaviorRunner {
     );
     return script.readAsStringSync();
   }
+
+  static String _readTmx(String assetPath) =>
+      File(assetPath).readAsStringSync();
 
   void _addStartSamples(
     BehaviorSimulation simulation,
