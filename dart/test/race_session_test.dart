@@ -82,6 +82,7 @@ void main() {
       final session = RaceSession(
         track: _track(),
         participants: <RaceParticipant>[opponent, player],
+        playerId: 'player',
       );
 
       expect(
@@ -90,6 +91,21 @@ void main() {
       );
     },
   );
+
+  test('infers the first participant as player when playerId is omitted', () {
+    final human = _participant('human', 10, 50);
+    final opponent = _participant('ai-0', 10, 60);
+    final session = RaceSession(
+      track: _track(),
+      participants: <RaceParticipant>[human, opponent],
+    );
+
+    expect(session.player, same(human));
+    expect(
+      session.participants,
+      orderedEquals(<RaceParticipant>[human, opponent]),
+    );
+  });
 
   test('rejects duplicate IDs after reordering the participants', () {
     expect(
@@ -285,6 +301,7 @@ void main() {
       track: _track(),
       participants: <RaceParticipant>[finishedOpponent, player],
       requiredLaps: 1,
+      playerId: 'player',
     );
 
     _startRacing(session);

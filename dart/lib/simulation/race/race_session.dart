@@ -105,10 +105,12 @@ final class RaceStepResult {
 ///
 /// It owns the same participant order as the Kotlin reference: the player,
 /// followed by each supplied AI participant. Presentation must only observe
-/// this state and may not substitute a frame loop or collision system.
+/// this state and may not substitute a frame loop or collision system. When
+/// [playerId] is omitted, the first supplied participant is treated as the
+/// player for compatibility with legacy sessions.
 final class RaceSession {
-  RaceSession({
-    required this.track,
+  factory RaceSession({
+    required Track track,
     required Iterable<RaceParticipant> participants,
     RaceState? raceState,
     int requiredLaps = RaceRules.defaultLapCount,
@@ -117,26 +119,47 @@ final class RaceSession {
     SurfaceSpeedSystem? surfaceSpeedSystem,
     PlayerControlConfig? playerControlConfig,
     RaceSessionConfig? sessionConfig,
-    String playerId = _defaultPlayerId,
-  }) : participants = List<RaceParticipant>.unmodifiable(
-         _playerFirstParticipants(participants, playerId),
-       ),
-       raceState = raceState ?? RaceState(),
-       _carPhysics = carPhysics ?? CarPhysics(),
-       _collisionSystem = collisionSystem ?? CollisionSystem(),
-       _surfaceSpeedSystem = surfaceSpeedSystem ?? SurfaceSpeedSystem(),
-       _playerControlConfig = playerControlConfig ?? PlayerControlConfig(),
-       _sessionConfig = sessionConfig ?? RaceSessionConfig(),
-       _playerId = playerId,
-       _raceRules = RaceRules(track, requiredLaps: requiredLaps),
-       _positionTracker = PositionTracker(track) {
-    if (this.participants.isEmpty) {
+    String? playerId,
+  }) {
+    final suppliedParticipants = participants.toList(growable: false);
+    if (suppliedParticipants.isEmpty) {
       throw ArgumentError.value(
         participants,
         'participants',
         'must not be empty',
       );
     }
+    return RaceSession._(
+      track,
+      suppliedParticipants,
+      raceState ?? RaceState(),
+      requiredLaps,
+      carPhysics ?? CarPhysics(),
+      collisionSystem ?? CollisionSystem(),
+      surfaceSpeedSystem ?? SurfaceSpeedSystem(),
+      playerControlConfig ?? PlayerControlConfig(),
+      sessionConfig ?? RaceSessionConfig(),
+      playerId ?? suppliedParticipants.first.id,
+    );
+  }
+
+  RaceSession._(
+    this.track,
+    Iterable<RaceParticipant> participants,
+    this.raceState,
+    int requiredLaps,
+    this._carPhysics,
+    this._collisionSystem,
+    this._surfaceSpeedSystem,
+    this._playerControlConfig,
+    this._sessionConfig,
+    String playerId,
+  ) : participants = List<RaceParticipant>.unmodifiable(
+        _playerFirstParticipants(participants, playerId),
+      ),
+      _playerId = playerId,
+      _raceRules = RaceRules(track, requiredLaps: requiredLaps),
+      _positionTracker = PositionTracker(track) {
     final participantIds = this.participants
         .map((participant) => participant.id)
         .toSet();
@@ -490,8 +513,6 @@ final class RaceSession {
       ...supplied.skip(playerIndex + 1),
     ];
   }
-
-  static const String _defaultPlayerId = 'player';
 }
 
 final class _ParticipantInput {

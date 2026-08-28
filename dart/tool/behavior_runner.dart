@@ -113,12 +113,17 @@ final class BehaviorRunner {
     List<CompatibilityTraceSample> samples,
   ) {
     var previousPlayer = _player(simulation.snapshot);
+    var raceFinished = false;
     for (var tick = 1; tick <= scenario.ticks; tick++) {
       final snapshot = simulation.advance(
         input: DriverInput.from(scenario.inputForTick(tick)),
         deltaSeconds: fixedBehaviorTimestep,
       );
-      final finishedThisTick = snapshot.raceState == _finishedState;
+      final finishedThisTick =
+          !raceFinished && snapshot.raceState == _finishedState;
+      if (finishedThisTick) {
+        raceFinished = true;
+      }
       if (_shouldSample(tick, scenario, finishedThisTick)) {
         _addSample(samples, _simulationLabel, tick, snapshot);
       }

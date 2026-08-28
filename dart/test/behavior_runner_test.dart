@@ -126,6 +126,28 @@ void main() {
       expect(result.stderr, contains('Behavior runner failed:'));
     },
   );
+
+  test('forces a simulation sample only on the first finished tick', () {
+    const parser = CompatibilityScenarioParser();
+    final scenario = parser
+        .parseScenarioDocument(
+          _finishSamplingScenario,
+          inputScriptSource: (_) => throw StateError('No script is expected.'),
+        )
+        .scenarios
+        .single;
+
+    final trace = BehaviorRunner(
+      simulationFactory: (_) => _RecordingSimulation(),
+    ).replay(scenario);
+
+    expect(
+      trace.samples
+          .where((sample) => sample.label == 'simulation')
+          .map((sample) => sample.tick),
+      <int>[1, 2, 4, 5],
+    );
+  });
 }
 
 final class _RecordingSimulation implements BehaviorSimulation {
@@ -281,4 +303,17 @@ const String _stateMachineScenario = '''
   "ticks":1,
   "snapshotIntervalTicks":1,
   "inputSegments":[{"fromTick":1,"toTick":1}]
+}]}''';
+
+const String _finishSamplingScenario = '''
+{"schemaVersion":1,"scenarios":[{
+  "id":"runner-finish-sampling",
+  "seed":0,
+  "trackId":"track-01",
+  "playerCar":"red-stripe",
+  "inputOrigin":"keyboard",
+  "tags":[],
+  "ticks":5,
+  "snapshotIntervalTicks":4,
+  "inputSegments":[{"fromTick":1,"toTick":5}]
 }]}''';
