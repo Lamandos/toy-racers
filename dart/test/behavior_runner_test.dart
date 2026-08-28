@@ -24,7 +24,6 @@ void main() {
         expect(simulation.inputs.map((input) => input.steering), <double>[
           0.75,
           1,
-          0.75,
         ]);
         expect(
           trace.samples.map((sample) => '${sample.label}:${sample.tick}'),
@@ -36,7 +35,6 @@ void main() {
             'checkpoint:2',
             'lap:2',
             'finish:2',
-            'simulation:3',
           ],
         );
         expect(CompatibilityTraceJson.encode(trace), contains('"seed":-42'));

@@ -154,6 +154,9 @@ final class RaceSession {
         'must identify a participant',
       );
     }
+    _raceRules.synchronizeFinishOrdering(
+      this.participants.map((participant) => participant.progress),
+    );
   }
 
   final Track track;
@@ -168,6 +171,7 @@ final class RaceSession {
   final RaceRules _raceRules;
   final PositionTracker _positionTracker;
   double _accumulator = 0;
+  int _simulationTick = 0;
 
   RaceParticipant get player =>
       participants.firstWhere((participant) => participant.id == _playerId);
@@ -216,12 +220,12 @@ final class RaceSession {
   RaceResult? get playerResult =>
       player.progress.finished ? _resultFor(player) : null;
 
-  /// Exposes the initial deterministic lifecycle state without advancing time.
+  /// Exposes the current deterministic lifecycle state without advancing time.
   SimulationSnapshot get snapshot => SimulationSnapshot(
-    simulationTick: 0,
+    simulationTick: _simulationTick,
     racePhase: raceState.phase,
     countdownRemainingSeconds: raceState.countdownRemainingSeconds,
-    elapsedSimulationTime: 0,
+    elapsedSimulationTime: Float32.elapsedSimulationTime(_simulationTick),
   );
 
   void start() {
@@ -271,6 +275,7 @@ final class RaceSession {
       }
       maxImpactSpeed = math.max(maxImpactSpeed, _resolveCarCollisions());
       physicalSteps++;
+      _simulationTick++;
       _accumulator = Float32.subtract(
         _accumulator,
         CarPhysics.fixedDeltaSeconds,
@@ -383,8 +388,14 @@ final class RaceSession {
             )
             .isRoad ||
         participant.carState.longitudinalSpeed.abs() <
-            _sessionConfig.safeStateMinSpeed ||
-        !driver.isFacingRoute(participant.carState)) {
+            _sessionConfig.safeStateMinSpeed) {
+      return;
+    }
+    final routeAwareDriver = driver is RouteAwareAiDriver
+        ? driver as RouteAwareAiDriver
+        : null;
+    if (routeAwareDriver != null &&
+        !routeAwareDriver.isFacingRoute(participant.carState)) {
       return;
     }
     participant._saveLastSafeState();
@@ -403,6 +414,9 @@ final class RaceSession {
       ..lateralSpeed = 0
       ..driftAmount = 0;
     participant.surfaceSpeedState.speedMultiplier = 1;
+    if (participant.aiDriver case final ResettableAiDriver driver) {
+      driver.reset(TrackPoint(safe.x, safe.y));
+    }
     participant._captureStateForRendering();
   }
 

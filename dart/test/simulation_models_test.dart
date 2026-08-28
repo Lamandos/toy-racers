@@ -324,9 +324,6 @@ final class _RecordingAiDriver implements AiDriver {
   final List<AiRaceContext> contexts = <AiRaceContext>[];
 
   @override
-  bool isFacingRoute(CarState carState) => true;
-
-  @override
   AiDriverDecision update({
     required CarState carState,
     required double deltaSeconds,

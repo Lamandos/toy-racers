@@ -1,5 +1,6 @@
 import '../car/car_state.dart';
 import '../input/driver_input.dart';
+import '../track/track_point.dart';
 import 'ai_race_context.dart';
 
 /// The deterministic result of one [AiDriver] update.
@@ -22,13 +23,28 @@ final class AiDriverDecision {
 /// recovery request. They must not mutate a car directly, use wall-clock time,
 /// or depend on presentation state.
 abstract interface class AiDriver {
-  /// Whether [carState] is aligned closely enough with this driver's route to
-  /// become a valid recovery position.
-  bool isFacingRoute(CarState carState);
-
   AiDriverDecision update({
     required CarState carState,
     required double deltaSeconds,
     required AiRaceContext context,
   });
+}
+
+/// Optional route-awareness capability used when saving AI recovery states.
+///
+/// Keeping this capability separate preserves source compatibility for
+/// existing [AiDriver] implementations that only provide [AiDriver.update].
+abstract interface class RouteAwareAiDriver {
+  /// Whether [carState] is aligned closely enough with this driver's route to
+  /// become a valid recovery position.
+  bool isFacingRoute(CarState carState);
+}
+
+/// Optional state-reset capability used after an AI respawn.
+///
+/// Stateful drivers can clear recovery timers and retarget their route after
+/// the session restores the car. Stateless drivers do not need to implement
+/// this capability.
+abstract interface class ResettableAiDriver {
+  void reset(TrackPoint restoredPosition);
 }

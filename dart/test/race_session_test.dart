@@ -35,6 +35,11 @@ void main() {
     expect(racingStep.physicalSteps, 1);
     expect(session.player.carState.x, greaterThan(initialX));
     expect(session.player.progress.totalRaceTime, CarPhysics.fixedDeltaSeconds);
+    expect(session.snapshot.simulationTick, 1);
+    expect(
+      session.snapshot.elapsedSimulationTime,
+      CarPhysics.fixedDeltaSeconds,
+    );
 
     session.pause();
     final pausedX = session.player.carState.x;
@@ -115,6 +120,22 @@ void main() {
     expect(opponent.carState.x, 10);
     expect(opponent.carState.y, 60);
   });
+
+  test(
+    'keeps legacy AI drivers source-compatible without optional capabilities',
+    () {
+      final session = _session(aiCount: 1, driver: _LegacyAiDriver());
+      _startRacing(session);
+
+      expect(
+        () => session.advance(
+          frameDeltaSeconds: CarPhysics.fixedDeltaSeconds,
+          playerInput: PlayerInput.none,
+        ),
+        returnsNormally,
+      );
+    },
+  );
 
   test('reports the normalized player command used by the physics step', () {
     final session = _session();
@@ -224,6 +245,7 @@ void main() {
     expect(opponent.carState.driftAmount, 0);
     expect(opponent.surfaceSpeedState.speedMultiplier, 1);
     expect(opponent.progress.currentCheckpointIndex, 0);
+    expect(driver.resetPositions.last, TrackPoint(40, 40));
   });
 
   test('AI driving against its route does not overwrite its safe state', () {
@@ -247,6 +269,31 @@ void main() {
     );
 
     expect(opponent.lastSafeState, safeState);
+  });
+
+  test('synchronizes injected finish order during construction', () {
+    final player = _participant('player', 50.9, 50);
+    player.progress.currentCheckpointIndex = 2;
+    player.carState
+      ..longitudinalSpeed = 24
+      ..velocityX = 24;
+    final finishedOpponent = _participant('ai-0', 10, 60);
+    finishedOpponent.progress
+      ..finished = true
+      ..finishPosition = 2;
+    final session = RaceSession(
+      track: _track(),
+      participants: <RaceParticipant>[finishedOpponent, player],
+      requiredLaps: 1,
+    );
+
+    _startRacing(session);
+    session.advance(
+      frameDeltaSeconds: CarPhysics.fixedDeltaSeconds,
+      playerInput: PlayerInput.none,
+    );
+
+    expect(session.playerResult!.finishPosition, 3);
   });
 
   test('position tracker keeps finish order ahead of running progress', () {
@@ -349,15 +396,22 @@ Track _track() {
   );
 }
 
-final class _RecordingAiDriver implements AiDriver {
+final class _RecordingAiDriver
+    implements AiDriver, ResettableAiDriver, RouteAwareAiDriver {
   _RecordingAiDriver({required this.requestRespawn, this.facingRoute = true});
 
   final bool requestRespawn;
   final bool facingRoute;
   final List<AiRaceContext> contexts = <AiRaceContext>[];
+  final List<TrackPoint> resetPositions = <TrackPoint>[];
 
   @override
   bool isFacingRoute(CarState carState) => facingRoute;
+
+  @override
+  void reset(TrackPoint restoredPosition) {
+    resetPositions.add(restoredPosition);
+  }
 
   @override
   AiDriverDecision update({
@@ -371,4 +425,13 @@ final class _RecordingAiDriver implements AiDriver {
       requestRespawn: requestRespawn,
     );
   }
+}
+
+final class _LegacyAiDriver implements AiDriver {
+  @override
+  AiDriverDecision update({
+    required CarState carState,
+    required double deltaSeconds,
+    required AiRaceContext context,
+  }) => AiDriverDecision(input: PlayerInput.none);
 }
