@@ -70,6 +70,73 @@ void main() {
   });
 
   test(
+    'keeps the player first when participants are supplied out of order',
+    () {
+      final player = _participant('player', 10, 50);
+      final opponent = _participant('ai-0', 10, 60);
+      final session = RaceSession(
+        track: _track(),
+        participants: <RaceParticipant>[opponent, player],
+      );
+
+      expect(
+        session.participants,
+        orderedEquals(<RaceParticipant>[player, opponent]),
+      );
+    },
+  );
+
+  test('rejects duplicate IDs after reordering the participants', () {
+    expect(
+      () => RaceSession(
+        track: _track(),
+        participants: <RaceParticipant>[
+          _participant('ai-0', 10, 60),
+          _participant('player', 10, 50),
+          _participant('player', 10, 70),
+        ],
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('does not apply player commands to driverless opponents', () {
+    final session = _session(aiCount: 1);
+    _startRacing(session);
+    final opponent = session.opponents.single;
+
+    session.advance(
+      frameDeltaSeconds: CarPhysics.fixedDeltaSeconds,
+      playerInput: PlayerInput(throttle: 1, steering: 1),
+    );
+
+    expect(session.player.carState.longitudinalSpeed, greaterThan(0));
+    expect(opponent.carState.longitudinalSpeed, 0);
+    expect(opponent.carState.x, 10);
+    expect(opponent.carState.y, 60);
+  });
+
+  test('reports the normalized player command used by the physics step', () {
+    final session = _session();
+    final beforeRacing = session.advance(
+      frameDeltaSeconds: CarPhysics.fixedDeltaSeconds,
+      playerInput: PlayerInput(steering: 1),
+    );
+    _startRacing(session);
+
+    final result = session.advance(
+      frameDeltaSeconds: CarPhysics.fixedDeltaSeconds,
+      playerInput: PlayerInput(throttle: 2, brake: -1, steering: 1),
+    );
+
+    expect(
+      result.appliedPlayerInput,
+      PlayerInput(throttle: 1, brake: 0, steering: 0.85),
+    );
+    expect(beforeRacing.appliedPlayerInput, isNull);
+  });
+
+  test(
     'near-simultaneous finishes keep participant order, ranking, and results',
     () {
       final session = _session(requiredLaps: 1, aiCount: 2);
@@ -156,6 +223,30 @@ void main() {
     expect(opponent.carState.lateralSpeed, 0);
     expect(opponent.carState.driftAmount, 0);
     expect(opponent.surfaceSpeedState.speedMultiplier, 1);
+    expect(opponent.progress.currentCheckpointIndex, 0);
+  });
+
+  test('AI driving against its route does not overwrite its safe state', () {
+    final driver = _RecordingAiDriver(
+      requestRespawn: false,
+      facingRoute: false,
+    );
+    final session = _session(aiCount: 1, driver: driver);
+    _startRacing(session);
+    final opponent = session.opponents.single;
+    final safeState = opponent.lastSafeState;
+    opponent.carState
+      ..x = 40
+      ..y = 40
+      ..longitudinalSpeed = 4
+      ..velocityX = 4;
+
+    session.advance(
+      frameDeltaSeconds: CarPhysics.fixedDeltaSeconds,
+      playerInput: PlayerInput.none,
+    );
+
+    expect(opponent.lastSafeState, safeState);
   });
 
   test('position tracker keeps finish order ahead of running progress', () {
@@ -259,10 +350,14 @@ Track _track() {
 }
 
 final class _RecordingAiDriver implements AiDriver {
-  _RecordingAiDriver({required this.requestRespawn});
+  _RecordingAiDriver({required this.requestRespawn, this.facingRoute = true});
 
   final bool requestRespawn;
+  final bool facingRoute;
   final List<AiRaceContext> contexts = <AiRaceContext>[];
+
+  @override
+  bool isFacingRoute(CarState carState) => facingRoute;
 
   @override
   AiDriverDecision update({

@@ -86,12 +86,16 @@ final class RaceSessionConfig {
 final class RaceStepResult {
   const RaceStepResult({
     required this.phaseBeforeAdvance,
+    this.appliedPlayerInput,
     required this.playerCheckpointPassed,
     required this.maxImpactSpeed,
     required this.physicalSteps,
   });
 
   final RacePhase phaseBeforeAdvance;
+
+  /// The player command consumed by physics, or `null` when no step ran.
+  final PlayerInput? appliedPlayerInput;
   final bool playerCheckpointPassed;
   final double maxImpactSpeed;
   final int physicalSteps;
@@ -114,7 +118,9 @@ final class RaceSession {
     PlayerControlConfig? playerControlConfig,
     RaceSessionConfig? sessionConfig,
     String playerId = _defaultPlayerId,
-  }) : participants = List<RaceParticipant>.unmodifiable(participants),
+  }) : participants = List<RaceParticipant>.unmodifiable(
+         _playerFirstParticipants(participants, playerId),
+       ),
        raceState = raceState ?? RaceState(),
        _carPhysics = carPhysics ?? CarPhysics(),
        _collisionSystem = collisionSystem ?? CollisionSystem(),
@@ -244,6 +250,9 @@ final class RaceSession {
     }
 
     _accumulator = Float32.add(_accumulator, simulationDelta);
+    final appliedPlayerInput = _playerControlConfig.applyTo(
+      playerInput.normalized(),
+    );
     var playerCheckpointPassed = false;
     var maxImpactSpeed = 0.0;
     var physicalSteps = 0;
@@ -253,7 +262,7 @@ final class RaceSession {
       }
       for (final participant in participants) {
         _updateLastSafeState(participant);
-        final result = _updateParticipant(participant, playerInput);
+        final result = _updateParticipant(participant, appliedPlayerInput);
         if (participant.id == _playerId) {
           maxImpactSpeed = math.max(maxImpactSpeed, result.impactSpeed);
           playerCheckpointPassed =
@@ -277,6 +286,7 @@ final class RaceSession {
     }
     return RaceStepResult(
       phaseBeforeAdvance: phaseBeforeAdvance,
+      appliedPlayerInput: physicalSteps > 0 ? appliedPlayerInput : null,
       playerCheckpointPassed: playerCheckpointPassed,
       maxImpactSpeed: Float32.narrow(maxImpactSpeed),
       physicalSteps: physicalSteps,
@@ -285,17 +295,17 @@ final class RaceSession {
 
   _ParticipantStepResult _updateParticipant(
     RaceParticipant participant,
-    PlayerInput playerInput,
+    PlayerInput appliedPlayerInput,
   ) {
     final previousPosition = TrackPoint(
       participant.carState.x,
       participant.carState.y,
     );
-    final input = _inputFor(participant, playerInput);
+    final participantInput = _inputFor(participant, appliedPlayerInput);
     _carPhysics.update(
       state: participant.carState,
       config: participant.carConfig,
-      input: input,
+      input: participantInput.input,
       deltaSeconds: CarPhysics.fixedDeltaSeconds,
     );
     final collision = _collisionSystem.resolveTrackCollision(
@@ -322,6 +332,7 @@ final class RaceSession {
         participant.carState.y,
       ),
       deltaSeconds: CarPhysics.fixedDeltaSeconds,
+      allowProgress: !participantInput.respawned,
     );
     return _ParticipantStepResult(
       checkpointPassed:
@@ -330,10 +341,16 @@ final class RaceSession {
     );
   }
 
-  PlayerInput _inputFor(RaceParticipant participant, PlayerInput playerInput) {
+  _ParticipantInput _inputFor(
+    RaceParticipant participant,
+    PlayerInput appliedPlayerInput,
+  ) {
+    if (participant.id == _playerId) {
+      return _ParticipantInput(input: appliedPlayerInput);
+    }
     final driver = participant.aiDriver;
     if (driver == null) {
-      return _playerControlConfig.applyTo(playerInput);
+      return _ParticipantInput(input: PlayerInput.none);
     }
     final decision = driver.update(
       carState: participant.carState,
@@ -351,13 +368,14 @@ final class RaceSession {
     );
     if (decision.requestRespawn) {
       _restoreLastSafeState(participant);
-      return PlayerInput.none;
+      return _ParticipantInput(input: PlayerInput.none, respawned: true);
     }
-    return decision.input;
+    return _ParticipantInput(input: decision.input);
   }
 
   void _updateLastSafeState(RaceParticipant participant) {
-    if (participant.aiDriver == null ||
+    final driver = participant.aiDriver;
+    if (driver == null ||
         !track
             .surfaceAtCoordinates(
               participant.carState.x,
@@ -365,7 +383,8 @@ final class RaceSession {
             )
             .isRoad ||
         participant.carState.longitudinalSpeed.abs() <
-            _sessionConfig.safeStateMinSpeed) {
+            _sessionConfig.safeStateMinSpeed ||
+        !driver.isFacingRoute(participant.carState)) {
       return;
     }
     participant._saveLastSafeState();
@@ -440,7 +459,32 @@ final class RaceSession {
     physicalSteps: 0,
   );
 
+  static List<RaceParticipant> _playerFirstParticipants(
+    Iterable<RaceParticipant> participants,
+    String playerId,
+  ) {
+    final supplied = participants.toList(growable: false);
+    final playerIndex = supplied.indexWhere(
+      (participant) => participant.id == playerId,
+    );
+    if (playerIndex < 0) {
+      return supplied;
+    }
+    return <RaceParticipant>[
+      supplied[playerIndex],
+      ...supplied.take(playerIndex),
+      ...supplied.skip(playerIndex + 1),
+    ];
+  }
+
   static const String _defaultPlayerId = 'player';
+}
+
+final class _ParticipantInput {
+  const _ParticipantInput({required this.input, this.respawned = false});
+
+  final PlayerInput input;
+  final bool respawned;
 }
 
 final class _ParticipantStepResult {

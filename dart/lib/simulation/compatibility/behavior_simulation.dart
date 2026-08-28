@@ -154,11 +154,13 @@ final class _CompatibilitySimulation implements BehaviorSimulation {
         'must equal the compatibility fixed timestep of 1 / 60 second',
       );
     }
-    _lastPlayerInput = input;
     final result = _session.advance(
       frameDeltaSeconds: narrowedDelta,
       playerInput: input,
     );
+    if (result.physicalSteps > 0) {
+      _lastPlayerInput = result.appliedPlayerInput!;
+    }
     _simulationTick += result.physicalSteps;
     return snapshot;
   }

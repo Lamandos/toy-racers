@@ -22,6 +22,10 @@ final class AiDriverDecision {
 /// recovery request. They must not mutate a car directly, use wall-clock time,
 /// or depend on presentation state.
 abstract interface class AiDriver {
+  /// Whether [carState] is aligned closely enough with this driver's route to
+  /// become a valid recovery position.
+  bool isFacingRoute(CarState carState);
+
   AiDriverDecision update({
     required CarState carState,
     required double deltaSeconds,
