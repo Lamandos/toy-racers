@@ -131,6 +131,27 @@ tasks.register('runBehaviorScenario', JavaExec) {
   }
 }
 
+tasks.register('compareBehaviorTraces', JavaExec) {
+  group = 'verification'
+  description = 'Compares two complete normalized behavior traces using the shared contract.'
+  dependsOn classes
+  classpath = sourceSets.main.runtimeClasspath
+  mainClass.set('com.example.toyracers.compat.BehaviorTraceComparisonCliKt')
+  workingDir = rootProject.projectDir
+  def expectedProperty = providers.gradleProperty('expected')
+  def actualProperty = providers.gradleProperty('actual')
+  doFirst {
+    def expected = expectedProperty.orNull
+    def actual = actualProperty.orNull
+    if (expected == null || actual == null) {
+      throw new GradleException(
+        'compareBehaviorTraces requires -Pexpected=<file> and -Pactual=<file>',
+      )
+    }
+    args '--expected', expected, '--actual', actual
+  }
+}
+
 tasks.register('generateDifferentialFuzzScenario', JavaExec) {
   group = 'application'
   description = 'Generates one self-contained deterministic differential fuzz scenario.'
