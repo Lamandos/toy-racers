@@ -2,6 +2,26 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:toy_racers/simulation.dart';
 
 void main() {
+  test('keeps the factory source-compatible without an explicit track', () {
+    final simulation = createCompatibilitySimulation(_scenario());
+
+    expect(simulation.snapshot.participants, hasLength(6));
+  });
+
+  test('clamps countdown overshoot without advancing physical simulation', () {
+    final simulation = createCompatibilitySimulation(
+      _scenario(),
+      track: _track(),
+    );
+
+    simulation.start();
+    final snapshot = simulation.advanceCountdown(4);
+
+    expect(snapshot.raceState, 'racing');
+    expect(snapshot.simulationTick, 0);
+    expect(snapshot.elapsedSimulationTime, 0);
+  });
+
   test('compatibility reports the player command applied by the session', () {
     final simulation = createCompatibilitySimulation(
       _scenario(),

@@ -125,9 +125,6 @@ final class BehaviorRunner {
       if (scenario.tags.contains(_eventSnapshotsTag)) {
         _addEventSamples(samples, tick, previousPlayer, snapshot);
       }
-      if (finishedThisTick) {
-        break;
-      }
       previousPlayer = _player(snapshot);
     }
   }

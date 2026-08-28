@@ -9,8 +9,11 @@ import '../race/race_progress.dart';
 import '../race/race_result.dart';
 import '../race/race_session.dart';
 import '../surface/surface_type.dart';
+import '../track/checkpoint.dart';
 import '../track/track.dart';
+import '../track/track_geometry.dart';
 import '../track/start_grid_position.dart';
+import '../track/track_point.dart';
 import 'compatibility_models.dart';
 
 /// A headless simulation boundary used by the compatibility behavior runner.
@@ -51,10 +54,15 @@ abstract interface class BehaviorSimulation {
 }
 
 /// Creates the pure-Dart simulation used by the compatibility behavior runner.
+///
+/// [track] remains optional for source compatibility with pre-Task 12 callers;
+/// those calls use a deterministic in-memory fallback. The behavior runner
+/// supplies the scenario's loaded track explicitly.
 BehaviorSimulation createCompatibilitySimulation(
   CompatibilityScenario scenario, {
-  required Track track,
-}) => _CompatibilitySimulation(scenario, track);
+  Track? track,
+}) =>
+    _CompatibilitySimulation(scenario, track ?? _compatibilityFallbackTrack());
 
 /// Adapts [RaceSession] state to the versioned compatibility trace contract.
 final class _CompatibilitySimulation implements BehaviorSimulation {
@@ -130,10 +138,12 @@ final class _CompatibilitySimulation implements BehaviorSimulation {
 
   @override
   CompatibilitySnapshot advanceCountdown(double deltaSeconds) {
-    _session.advance(
-      frameDeltaSeconds: deltaSeconds,
-      playerInput: PlayerInput.none,
-    );
+    final narrowedDelta = Float32.narrow(deltaSeconds);
+    final remainingSeconds = _session.raceState.countdownRemainingSeconds;
+    final countdownDelta = narrowedDelta > remainingSeconds
+        ? remainingSeconds
+        : narrowedDelta;
+    _session.raceState.advance(countdownDelta);
     return snapshot;
   }
 
@@ -311,4 +321,42 @@ final class _CompatibilitySimulation implements BehaviorSimulation {
   };
 
   static const String _playerId = 'player';
+}
+
+/// Supplies a deterministic in-memory track for legacy factory callers.
+Track _compatibilityFallbackTrack() {
+  final bounds = TrackRectangle(0, 0, 100, 100);
+  return Track.fromDefinition(
+    id: 'compatibility-default',
+    name: 'COMPATIBILITY DEFAULT',
+    worldBounds: bounds,
+    cameraBounds: bounds,
+    outerBoundary: bounds,
+    backgroundSurface: SurfaceType.asphalt,
+    startLine: StartLine(
+      bounds: TrackRectangle(50, 40, 2, 20),
+      forwardX: 1,
+      forwardY: 0,
+    ),
+    checkpoints: <Checkpoint>[
+      Checkpoint(
+        order: 0,
+        gate: TrackSegment(TrackPoint(20, 40), TrackPoint(20, 60)),
+        forwardX: 1,
+        forwardY: 0,
+      ),
+    ],
+    startGrid: List<StartGridPosition>.generate(
+      6,
+      (index) => StartGridPosition(
+        position: TrackPoint(10, 10 + index * 10),
+        rotationDegrees: 0,
+      ),
+    ),
+    racingLine: <TrackPoint>[
+      TrackPoint(10, 10),
+      TrackPoint(20, 10),
+      TrackPoint(50, 10),
+    ],
+  );
 }
