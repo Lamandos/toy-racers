@@ -8,6 +8,8 @@ import 'collision_config.dart';
 import 'collision_geometry.dart';
 import 'collision_result.dart';
 
+export 'collision_result.dart';
+
 /// Resolves ordered contacts in the pure-Dart simulation layer.
 ///
 /// Collision geometry and response deliberately mirror the Kotlin oracle.
