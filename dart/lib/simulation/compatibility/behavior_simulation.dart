@@ -1,6 +1,8 @@
 import '../car/car_model.dart';
 import '../car/car_physics.dart';
 import '../car/car_state.dart';
+import '../ai/ai_config.dart';
+import '../ai/reference_ai_driver.dart';
 import '../input/driver_input.dart';
 import '../input/player_input.dart';
 import '../math/float32.dart';
@@ -286,6 +288,13 @@ final class _CompatibilitySimulation implements BehaviorSimulation {
           id: 'ai-$index',
           carState: _stateAt(track.startGrid[index + 1]),
           carConfig: opponentModels[index].performance.applyTo(),
+          aiDriver: ReferenceAiDriver(
+            racingLine: track.racingLine,
+            initialPosition: track.startGrid[index + 1].position,
+            config: AiConfig(waypointRadius: track.racingLineWaypointRadius),
+            racingLineBias: _opponentRacingLineBias(index),
+            track: track,
+          ),
         ),
     ];
   }
@@ -295,6 +304,9 @@ final class _CompatibilitySimulation implements BehaviorSimulation {
     y: start.position.y,
     rotationDegrees: start.rotationDegrees,
   );
+
+  static double _opponentRacingLineBias(int index) =>
+      _opponentRacingLineBiases[index % _opponentRacingLineBiases.length];
 
   static String _raceStateId(RacePhase phase) => switch (phase) {
     RacePhase.loading => 'loading',
@@ -321,6 +333,11 @@ final class _CompatibilitySimulation implements BehaviorSimulation {
   };
 
   static const String _playerId = 'player';
+  static const List<double> _opponentRacingLineBiases = <double>[
+    -0.65,
+    0,
+    0.65,
+  ];
 }
 
 /// Supplies a deterministic in-memory track for legacy factory callers.

@@ -130,6 +130,11 @@ final class Float32 {
   /// Reports whether [value] is IEEE-754 negative zero.
   static bool isNegativeZero(double value) => value == 0 && value.isNegative;
 
+  /// Returns the IEEE-754 binary32 bit pattern used by Kotlin's `Float.toBits`.
+  static int bits(double value) =>
+      ByteData.sublistView(Float32List.fromList(<double>[narrow(value)]))
+          .getUint32(0, Endian.host);
+
   static final double _degreesPerTurn = narrow(360);
   static final double _halfTurnDegrees = narrow(180);
 
