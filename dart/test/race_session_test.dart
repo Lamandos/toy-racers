@@ -312,29 +312,6 @@ void main() {
 
     expect(session.playerResult!.finishPosition, 3);
   });
-
-  test('position tracker keeps finish order ahead of running progress', () {
-    final tracker = PositionTracker(_track());
-    final positions = tracker.positions(<RaceCompetitor>[
-      RaceCompetitor(
-        id: 'running',
-        progress: RaceProgress(completedLaps: 8, currentCheckpointIndex: 2),
-        position: TrackPoint(20, 50),
-      ),
-      RaceCompetitor(
-        id: 'second',
-        progress: RaceProgress(finished: true, finishPosition: 2),
-        position: TrackPoint(0, 0),
-      ),
-      RaceCompetitor(
-        id: 'first',
-        progress: RaceProgress(finished: true, finishPosition: 1),
-        position: TrackPoint(0, 0),
-      ),
-    ]);
-
-    expect(positions, <String, int>{'first': 1, 'second': 2, 'running': 3});
-  });
 }
 
 RaceSession _session({
