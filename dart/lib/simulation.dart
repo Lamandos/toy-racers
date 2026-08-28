@@ -5,7 +5,12 @@
 // than implementing gameplay rules of its own.
 
 export 'simulation/ai/ai_driver.dart';
+export 'simulation/ai/ai_config.dart';
+export 'simulation/ai/ai_obstacle_detector.dart';
+export 'simulation/ai/ai_path_follower.dart';
 export 'simulation/ai/ai_race_context.dart';
+export 'simulation/ai/ai_recovery_controller.dart';
+export 'simulation/ai/reference_ai_driver.dart';
 export 'simulation/car/car_config.dart';
 export 'simulation/car/car_model.dart';
 export 'simulation/car/car_physics.dart';
