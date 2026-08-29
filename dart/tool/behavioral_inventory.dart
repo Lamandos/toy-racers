@@ -15,7 +15,9 @@ final class BehavioralInventory {
   ) {
     final legacy = _legacyFixtures(repositoryRoot, expectedOutput);
     final files = _fileFixtures(repositoryRoot);
-    return BehavioralInventory._(<BehavioralFixture>[...legacy, ...files]);
+    final fixtures = <BehavioralFixture>[...legacy, ...files];
+    _validateUniqueScenarioIds(fixtures);
+    return BehavioralInventory._(fixtures);
   }
 
   static List<BehavioralFixture> _legacyFixtures(
@@ -126,11 +128,35 @@ final class BehavioralInventory {
 
   static Map<String, Object?> _legacyTraces(File file) {
     final root = _jsonObject(file);
+    final schemaVersion = root['schemaVersion'];
+    if (schemaVersion is! int ||
+        schemaVersion != CompatibilityTrace.schemaVersion) {
+      throw StateError(
+        'Unsupported golden schema version: $schemaVersion.',
+      );
+    }
     final value = root['traces'];
     if (value is! Map<String, dynamic>) {
       throw StateError('Legacy golden document must contain a traces object.');
     }
     return Map<String, Object?>.from(value);
+  }
+
+  static void _validateUniqueScenarioIds(List<BehavioralFixture> fixtures) {
+    final seen = <String>{};
+    final duplicates = <String>{};
+    for (final fixture in fixtures) {
+      if (!seen.add(fixture.scenario.id)) {
+        duplicates.add(fixture.scenario.id);
+      }
+    }
+    if (duplicates.isNotEmpty) {
+      final ids = duplicates.toList()..sort();
+      throw StateError(
+        'Scenario IDs must be unique across the compatibility inventory: '
+        '${ids.join(', ')}.',
+      );
+    }
   }
 
   static File _writeLegacyGolden(

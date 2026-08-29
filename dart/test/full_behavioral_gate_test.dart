@@ -71,6 +71,55 @@ full_race PASS.''');
       expectedOutput.deleteSync(recursive: true);
     }
   });
+
+  test('rejects duplicate scenario IDs across file categories', () {
+    final repositoryRoot = _createRepositoryFixture();
+    final expectedOutput = Directory.systemTemp.createTempSync(
+      'toy-racers-duplicate-id-test-',
+    );
+    try {
+      _writeScenario(repositoryRoot, 'car/first.json', 'duplicate-id');
+      _writeScenario(repositoryRoot, 'collision/second.json', 'duplicate-id');
+
+      expect(
+        () => BehavioralInventory.load(repositoryRoot, expectedOutput),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.toString(),
+            'message',
+            contains('duplicate-id'),
+          ),
+        ),
+      );
+    } finally {
+      repositoryRoot.deleteSync(recursive: true);
+      expectedOutput.deleteSync(recursive: true);
+    }
+  });
+
+  test('rejects an unsupported legacy golden schema version', () {
+    final repositoryRoot = _createRepositoryFixture(
+      legacyGoldenSchemaVersion: 2,
+    );
+    final expectedOutput = Directory.systemTemp.createTempSync(
+      'toy-racers-golden-schema-test-',
+    );
+    try {
+      expect(
+        () => BehavioralInventory.load(repositoryRoot, expectedOutput),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.toString(),
+            'message',
+            contains('Unsupported golden schema version'),
+          ),
+        ),
+      );
+    } finally {
+      repositoryRoot.deleteSync(recursive: true);
+      expectedOutput.deleteSync(recursive: true);
+    }
+  });
 }
 
 Map<String, int> _categoryCounts(BehavioralInventory inventory) {
@@ -83,3 +132,40 @@ Map<String, int> _categoryCounts(BehavioralInventory inventory) {
   }
   return counts;
 }
+
+Directory _createRepositoryFixture({int legacyGoldenSchemaVersion = 3}) {
+  final root = Directory.systemTemp.createTempSync(
+    'toy-racers-inventory-fixture-',
+  );
+  Directory('${root.path}/compatibility/scenarios').createSync(recursive: true);
+  Directory('${root.path}/compatibility/golden').createSync(recursive: true);
+  final legacyDirectory = Directory(
+    '${root.path}/core/src/test/resources/compat',
+  )..createSync(recursive: true);
+  File('${legacyDirectory.path}/scenarios.json').writeAsStringSync(
+    _scenarioDocument('legacy-example'),
+  );
+  File('${legacyDirectory.path}/goldens.json').writeAsStringSync(
+    '{"schemaVersion":$legacyGoldenSchemaVersion,"traces":{'
+    '"legacy-example":{}}}',
+  );
+  return root;
+}
+
+void _writeScenario(Directory repositoryRoot, String path, String id) {
+  final scenario = File(
+    '${repositoryRoot.path}/compatibility/scenarios/$path',
+  )..createSync(recursive: true);
+  scenario.writeAsStringSync(_scenarioDocument(id));
+  final golden = File(
+    '${repositoryRoot.path}/compatibility/golden/$path',
+  )..createSync(recursive: true);
+  golden.writeAsStringSync('{}');
+}
+
+String _scenarioDocument(String id) =>
+    '{"schemaVersion":1,"scenarios":[{"id":"$id",'
+    '"seed":42,"trackId":"track-01","playerCar":"red-stripe",'
+    '"inputOrigin":"keyboard","tags":["car"],"ticks":1,'
+    '"snapshotIntervalTicks":1,"inputSegments":['
+    '{"fromTick":1,"toTick":1}]}]}';

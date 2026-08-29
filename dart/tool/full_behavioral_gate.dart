@@ -112,7 +112,8 @@ final class FullBehavioralGate {
     File expected,
     File actual,
   ) {
-    final wrapper = File.fromUri(repositoryRoot.uri.resolve('gradlew'));
+    final wrapperName = Platform.isWindows ? 'gradlew.bat' : 'gradlew';
+    final wrapper = File.fromUri(repositoryRoot.uri.resolve(wrapperName));
     final result = Process.runSync(wrapper.path, <String>[
       ':core:compareBehaviorTraces',
       '-Pexpected=${expected.absolute.path}',
