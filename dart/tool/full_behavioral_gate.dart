@@ -194,7 +194,12 @@ final class BehavioralGateReport {
 
   bool _categoryPassed(String category) {
     final categoryResults = results
-        .where((result) => result.fixture.category == category)
+        .where(
+          (result) =>
+              result.fixture.category == category ||
+              result.fixture.category == BehavioralInventory.legacyCategory &&
+                  result.fixture.scenario.tags.contains(category),
+        )
         .toList();
     return categoryResults.isNotEmpty &&
         categoryResults.every((result) => result.passed);

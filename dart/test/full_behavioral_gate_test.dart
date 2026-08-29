@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:toy_racers/simulation.dart';
 
 import '../tool/full_behavioral_gate.dart';
 
@@ -120,6 +121,92 @@ full_race PASS.''');
       expectedOutput.deleteSync(recursive: true);
     }
   });
+
+  test('rejects scenario filenames outside the snake_case contract', () {
+    final repositoryRoot = _createRepositoryFixture();
+    final expectedOutput = Directory.systemTemp.createTempSync(
+      'toy-racers-scenario-filename-test-',
+    );
+    try {
+      _writeScenario(
+        repositoryRoot,
+        'car/straight-acceleration.json',
+        'valid-scenario-id',
+      );
+
+      expect(
+        () => BehavioralInventory.load(repositoryRoot, expectedOutput),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.toString(),
+            'message',
+            contains('snake_case'),
+          ),
+        ),
+      );
+    } finally {
+      repositoryRoot.deleteSync(recursive: true);
+      expectedOutput.deleteSync(recursive: true);
+    }
+  });
+
+  test('rejects duplicate fields in legacy golden documents', () {
+    final repositoryRoot = _createRepositoryFixture();
+    final expectedOutput = Directory.systemTemp.createTempSync(
+      'toy-racers-duplicate-field-test-',
+    );
+    try {
+      File('${repositoryRoot.path}/core/src/test/resources/compat/goldens.json')
+          .writeAsStringSync(
+            '{"schemaVersion":3,"traces":{"legacy-example":'
+            '{"samples":[],"samples":[]}}}',
+          );
+
+      expect(
+        () => BehavioralInventory.load(repositoryRoot, expectedOutput),
+        throwsA(
+          isA<CompatibilityFormatException>().having(
+            (error) => error.toString(),
+            'message',
+            contains('Duplicate object key'),
+          ),
+        ),
+      );
+    } finally {
+      repositoryRoot.deleteSync(recursive: true);
+      expectedOutput.deleteSync(recursive: true);
+    }
+  });
+
+  test('includes legacy fixtures in tagged subsystem status', () {
+    final expectedOutput = Directory.systemTemp.createTempSync(
+      'toy-racers-legacy-status-test-',
+    );
+    try {
+      final fixtures = BehavioralInventory.load(
+        Directory('..').absolute,
+        expectedOutput,
+      ).fixtures;
+      final results = fixtures.map((fixture) {
+        final isLegacyCollision =
+            fixture.category == BehavioralInventory.legacyCategory &&
+            fixture.scenario.tags.contains('collision');
+        return BehavioralFixtureResult(
+          fixture: fixture,
+          failure: isLegacyCollision ? 'synthetic collision failure' : null,
+        );
+      }).toList();
+      final report = BehavioralGateReport(
+        results: results,
+        unexpectedGoldenChanges: const <String>[],
+      );
+
+      expect(report.passedAll, isFalse);
+      expect(report.format(), contains('collision FAIL.'));
+    } finally {
+      expectedOutput.deleteSync(recursive: true);
+    }
+  });
 }
 
 Map<String, int> _categoryCounts(BehavioralInventory inventory) {
@@ -142,9 +229,8 @@ Directory _createRepositoryFixture({int legacyGoldenSchemaVersion = 3}) {
   final legacyDirectory = Directory(
     '${root.path}/core/src/test/resources/compat',
   )..createSync(recursive: true);
-  File('${legacyDirectory.path}/scenarios.json').writeAsStringSync(
-    _scenarioDocument('legacy-example'),
-  );
+  File('${legacyDirectory.path}/scenarios.json')
+      .writeAsStringSync(_scenarioDocument('legacy-example'));
   File('${legacyDirectory.path}/goldens.json').writeAsStringSync(
     '{"schemaVersion":$legacyGoldenSchemaVersion,"traces":{'
     '"legacy-example":{}}}',
@@ -153,13 +239,11 @@ Directory _createRepositoryFixture({int legacyGoldenSchemaVersion = 3}) {
 }
 
 void _writeScenario(Directory repositoryRoot, String path, String id) {
-  final scenario = File(
-    '${repositoryRoot.path}/compatibility/scenarios/$path',
-  )..createSync(recursive: true);
+  final scenario = File('${repositoryRoot.path}/compatibility/scenarios/$path')
+    ..createSync(recursive: true);
   scenario.writeAsStringSync(_scenarioDocument(id));
-  final golden = File(
-    '${repositoryRoot.path}/compatibility/golden/$path',
-  )..createSync(recursive: true);
+  final golden = File('${repositoryRoot.path}/compatibility/golden/$path')
+    ..createSync(recursive: true);
   golden.writeAsStringSync('{}');
 }
 

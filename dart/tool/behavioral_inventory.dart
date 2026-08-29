@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:toy_racers/simulation.dart';
+import 'package:toy_racers/simulation/compatibility/strict_json_reader.dart';
 
 /// A reusable full inventory discovered from checked-in scenario sources.
 final class BehavioralInventory {
@@ -107,6 +108,7 @@ final class BehavioralInventory {
     Directory goldenDirectory,
   ) {
     final relativePath = _relativePath(scenarioDirectory, file);
+    _validateScenarioFilename(relativePath);
     final document = _parseFileScenario(file);
     if (document.scenarios.length != 1) {
       throw StateError('$relativePath must contain exactly one scenario.');
@@ -127,13 +129,12 @@ final class BehavioralInventory {
   }
 
   static Map<String, Object?> _legacyTraces(File file) {
+    readCompatibilityJson(file.readAsStringSync());
     final root = _jsonObject(file);
     final schemaVersion = root['schemaVersion'];
     if (schemaVersion is! int ||
         schemaVersion != CompatibilityTrace.schemaVersion) {
-      throw StateError(
-        'Unsupported golden schema version: $schemaVersion.',
-      );
+      throw StateError('Unsupported golden schema version: $schemaVersion.');
     }
     final value = root['traces'];
     if (value is! Map<String, dynamic>) {
@@ -252,6 +253,15 @@ final class BehavioralInventory {
   }
 
   static String _category(String relativePath) => relativePath.split('/').first;
+
+  static void _validateScenarioFilename(String relativePath) {
+    final filename = relativePath.split('/').last;
+    if (!RegExp(r'^[a-z0-9]+(?:_[a-z0-9]+)*\.json$').hasMatch(filename)) {
+      throw StateError(
+        'Scenario filenames must use snake_case: $relativePath.',
+      );
+    }
+  }
 
   static const String _inputScriptField = 'inputScript';
   static const String legacyCategory = 'legacy';
