@@ -194,15 +194,22 @@ final class BehavioralGateReport {
 
   bool _categoryPassed(String category) {
     final categoryResults = results
-        .where(
-          (result) =>
-              result.fixture.category == category ||
-              result.fixture.category == BehavioralInventory.legacyCategory &&
-                  result.fixture.scenario.tags.contains(category),
-        )
+        .where((result) => _fixtureBelongsToCategory(result.fixture, category))
         .toList();
     return categoryResults.isNotEmpty &&
         categoryResults.every((result) => result.passed);
+  }
+
+  bool _fixtureBelongsToCategory(BehavioralFixture fixture, String category) {
+    if (fixture.category == category) {
+      return true;
+    }
+    if (fixture.category != BehavioralInventory.legacyCategory) {
+      return false;
+    }
+    return category == 'full_race'
+        ? fixture.scenario.fullRace
+        : fixture.scenario.tags.contains(category);
   }
 
   static String _displayCategory(String category) =>

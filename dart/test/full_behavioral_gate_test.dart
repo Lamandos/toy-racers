@@ -207,6 +207,36 @@ full_race PASS.''');
       expectedOutput.deleteSync(recursive: true);
     }
   });
+
+  test('includes legacy full-race fixtures in full-race status', () {
+    final expectedOutput = Directory.systemTemp.createTempSync(
+      'toy-racers-legacy-full-race-status-test-',
+    );
+    try {
+      final fixtures = BehavioralInventory.load(
+        Directory('..').absolute,
+        expectedOutput,
+      ).fixtures;
+      final results = fixtures.map((fixture) {
+        final isLegacyFullRace =
+            fixture.category == BehavioralInventory.legacyCategory &&
+            fixture.scenario.fullRace;
+        return BehavioralFixtureResult(
+          fixture: fixture,
+          failure: isLegacyFullRace ? 'synthetic full-race failure' : null,
+        );
+      }).toList();
+      final report = BehavioralGateReport(
+        results: results,
+        unexpectedGoldenChanges: const <String>[],
+      );
+
+      expect(report.passedAll, isFalse);
+      expect(report.format(), contains('full_race FAIL.'));
+    } finally {
+      expectedOutput.deleteSync(recursive: true);
+    }
+  });
 }
 
 Map<String, int> _categoryCounts(BehavioralInventory inventory) {
