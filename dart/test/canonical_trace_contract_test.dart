@@ -2,6 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:toy_racers/simulation.dart';
 
 void main() {
+  _registerSnapshotContractTest();
+  _registerOrderingContractTests();
+  _registerInvalidValueContractTest();
+}
+
+void _registerSnapshotContractTest() {
   test('generates canonical snapshot arrays, numbers, and rotations', () {
     final simulation = createCompatibilitySimulation(_scenario());
     simulation.applyInitialStates(<CompatibilityInitialState>[
@@ -49,7 +55,9 @@ void main() {
     expect(encoded, contains('"rotation":0.000000'));
     _expectSixDecimalNumbers(encoded);
   });
+}
 
+void _registerOrderingContractTests() {
   test('accepts canonical lifecycle, simulation, and event ordering', () {
     final trace = CompatibilityTrace(
       scenarioId: 'canonical-order',
@@ -132,7 +140,9 @@ void main() {
       throwsA(isA<CompatibilityFormatException>()),
     );
   });
+}
 
+void _registerInvalidValueContractTest() {
   test('rejects every non-finite value before canonical serialization', () {
     for (final value in <double>[
       double.nan,
