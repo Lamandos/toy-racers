@@ -7,6 +7,14 @@ import 'package:toy_racers/simulation.dart';
 import '../tool/behavior_runner.dart';
 
 void main() {
+  _registerReplayTest();
+  _registerCommandTest();
+  _registerLifecycleTest();
+  _registerInvalidOptionTest();
+  _registerFinishSamplingTests();
+}
+
+void _registerReplayTest() {
   test(
     'replays script input, samples events, and emits canonical trace JSON',
     () {
@@ -45,7 +53,9 @@ void main() {
       }
     },
   );
+}
 
+void _registerCommandTest() {
   test('runs the command through Dart without a Flutter engine', () async {
     final fixture = Directory.systemTemp.createTempSync(
       'toy-racers-runner-cli-',
@@ -74,7 +84,9 @@ void main() {
       fixture.deleteSync(recursive: true);
     }
   });
+}
 
+void _registerLifecycleTest() {
   test(
     'emits the required state-machine lifecycle samples at trace tick zero',
     () {
@@ -111,7 +123,9 @@ void main() {
       );
     },
   );
+}
 
+void _registerInvalidOptionTest() {
   test(
     'returns a non-zero exit code for invalid command-line options',
     () async {
@@ -126,7 +140,9 @@ void main() {
       expect(result.stderr, contains('Behavior runner failed:'));
     },
   );
+}
 
+void _registerFinishSamplingTests() {
   test('forces a simulation sample only on the first finished tick', () {
     const parser = CompatibilityScenarioParser();
     final scenario = parser
@@ -146,6 +162,29 @@ void main() {
           .where((sample) => sample.label == 'simulation')
           .map((sample) => sample.tick),
       <int>[1, 2, 4, 5],
+    );
+  });
+
+  test('stops legacy traces on the first finished tick', () {
+    const parser = CompatibilityScenarioParser();
+    final scenario = parser
+        .parseScenarioDocument(
+          _finishSamplingScenario,
+          inputScriptSource: (_) => throw StateError('No script is expected.'),
+        )
+        .scenarios
+        .single;
+
+    final trace = BehaviorRunner(
+      simulationFactory: (_) => _RecordingSimulation(),
+      continueAfterFinish: false,
+    ).replay(scenario);
+
+    expect(
+      trace.samples
+          .where((sample) => sample.label == 'simulation')
+          .map((sample) => sample.tick),
+      <int>[1, 2],
     );
   });
 }

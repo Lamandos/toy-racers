@@ -91,6 +91,23 @@ flutter test --coverage
 The coverage output is `coverage/lcov.info` and is intentionally ignored by
 Git. The repository CI runs analysis and the coverage-producing test command.
 
+## Full behavioral gate
+
+After subsystem scenarios pass, replay the complete current compatibility
+inventory against its checked-in Kotlin goldens:
+
+```sh
+dart run tool/full_behavioral_gate.dart
+```
+
+The gate dynamically includes every legacy fixture plus every file-based
+scenario with a matching golden, while excluding referenced input scripts. It
+prints the total passed inventory and `PASS` or `FAIL` for car, collision,
+race, track, surface, AI, and full-race scenarios. It does not regenerate or
+modify golden masters, invokes the shared Kotlin trace comparator, and returns
+a non-zero status for any deterministic mismatch. Do not begin Flame
+integration until this command reports no failures.
+
 ## Build targets
 
 ```sh

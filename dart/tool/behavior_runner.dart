@@ -11,12 +11,16 @@ final class BehaviorRunner {
     CompatibilityScenarioParser? parser,
     this.simulationFactory,
     TmxSource? tmxSource,
+    this.continueAfterFinish = true,
   }) : _parser = parser ?? const CompatibilityScenarioParser(),
        _tmxSource = tmxSource ?? _readTmx;
 
   final CompatibilityScenarioParser _parser;
   final BehaviorSimulationFactory? simulationFactory;
   final TmxSource _tmxSource;
+
+  /// Whether sampling continues through the requested final tick after a finish.
+  final bool continueAfterFinish;
 
   /// Parses, replays, and returns exactly one scenario from [scenarioFile].
   CompatibilityTrace run(File scenarioFile) {
@@ -131,6 +135,9 @@ final class BehaviorRunner {
         _addEventSamples(samples, tick, previousPlayer, snapshot);
       }
       previousPlayer = _player(snapshot);
+      if (raceFinished && !continueAfterFinish) {
+        break;
+      }
     }
   }
 
