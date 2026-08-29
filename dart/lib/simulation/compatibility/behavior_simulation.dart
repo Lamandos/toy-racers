@@ -86,7 +86,15 @@ final class _CompatibilitySimulation implements BehaviorSimulation {
     final positions = _session.participantPositions;
     final participants = List<RaceParticipant>.of(_session.participants)
       ..sort((left, right) => left.id.compareTo(right.id));
-    final finished = _session.finishResults;
+    final finished = List<ParticipantRaceResult>.of(_session.finishResults)
+      ..sort((left, right) {
+        final positionOrder = left.result.finishPosition.compareTo(
+          right.result.finishPosition,
+        );
+        return positionOrder != 0
+            ? positionOrder
+            : left.participantId.compareTo(right.participantId);
+      });
     final player = _session.player;
     return CompatibilitySnapshot(
       simulationTick: _simulationTick,

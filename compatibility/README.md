@@ -333,12 +333,20 @@ compare \
   actual-dart.json
 ```
 
+The repository exposes that comparator through the Kotlin reference task:
+
+```sh
+./gradlew :core:compareBehaviorTraces \
+  -Pexpected=compatibility/golden/...json \
+  -Pactual=actual-dart.json
+```
+
 The golden path must have the same relative category and basename as the input scenario. `compare`
-is a contract for the common comparator CLI: its implementation may be Kotlin, Dart, or another
-small portable tool, but it must validate both complete trace documents against the trace/snapshot
-schemas before comparison. Its ordered-array rules, exact fields, approximate field list, angle
-handling, and `0.0001` tolerance must be the rules in this document. It must not silently normalize
-malformed output into a passing result.
+is a contract for the common comparator CLI. The Kotlin task is its current implementation; another
+small portable implementation may be added later, but it must validate both complete trace documents
+against the trace/snapshot schemas before comparison. Its ordered-array rules, exact fields,
+approximate field list, angle handling, and `0.0001` tolerance must be the rules in this document.
+It must not silently normalize malformed output into a passing result.
 
 When the contract changes, update the affected JSON Schema, this README, the Kotlin reference
 encoder/comparator tests, and the Dart adapter together. A behavior change that alters a golden

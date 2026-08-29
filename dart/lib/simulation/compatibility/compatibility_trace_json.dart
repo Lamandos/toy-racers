@@ -223,9 +223,10 @@ final class CompatibilityTraceJson {
       _fail(r'$.samples', 'must contain at least one sample');
     }
     var previousTick = -1;
+    var previousLabelOrder = -1;
     for (var index = 0; index < trace.samples.length; index++) {
       final sample = trace.samples[index];
-      final path = r'$.samples[$index]';
+      final path = '\$.samples[$index]';
       if (!_sampleLabels.contains(sample.label)) {
         _fail('$path.label', 'has an unsupported value: ${sample.label}');
       }
@@ -235,8 +236,29 @@ final class CompatibilityTraceJson {
       if (sample.tick < previousTick) {
         _fail('$path.tick', 'must not move backwards in replay order');
       }
+      final labelOrder = _sampleOrder[sample.label]!;
+      _validateSampleTick(sample, path);
+      if (sample.tick == previousTick && labelOrder < previousLabelOrder) {
+        _fail(
+          '$path.label',
+          'must follow the canonical event order at a shared tick',
+        );
+      }
       previousTick = sample.tick;
+      previousLabelOrder = labelOrder;
       _validateSnapshot(sample.snapshot, '$path.snapshot');
+    }
+  }
+
+  static void _validateSampleTick(
+    CompatibilityTraceSample sample,
+    String path,
+  ) {
+    if (_lifecycleLabels.contains(sample.label) && sample.tick != 0) {
+      _fail('$path.tick', 'must be zero for lifecycle samples');
+    }
+    if (!_lifecycleLabels.contains(sample.label) && sample.tick == 0) {
+      _fail('$path.tick', 'must be positive for simulation and event samples');
     }
   }
 
@@ -523,6 +545,22 @@ final class CompatibilityTraceJson {
     'checkpoint',
     'lap',
     'finish',
+  };
+  static const Set<String> _lifecycleLabels = <String>{
+    'loading',
+    'ready',
+    'countdown',
+    'racing',
+  };
+  static const Map<String, int> _sampleOrder = <String, int>{
+    'loading': 0,
+    'ready': 1,
+    'countdown': 2,
+    'racing': 3,
+    'simulation': 4,
+    'checkpoint': 5,
+    'lap': 6,
+    'finish': 7,
   };
   static const Set<String> _surfaces = <String>{
     'asphalt',
