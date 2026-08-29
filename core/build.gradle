@@ -177,13 +177,22 @@ tasks.register('generateDifferentialFuzzScenario', JavaExec) {
   }
 }
 
-tasks.register('differentialFuzzSmokeTest', Test) {
+tasks.register('differentialFuzzSmokeTest', JavaExec) {
   group = 'verification'
-  description = 'Runs 100 fixed-seed generated scenarios through the headless simulation.'
-  dependsOn testClasses
-  testClassesDirs = sourceSets.test.output.classesDirs
-  classpath = sourceSets.test.runtimeClasspath
-  filter.includeTestsMatching 'com.example.toyracers.compat.DifferentialFuzzSmokeTest'
+  description = 'Runs 100 fixed-seed Kotlin-versus-Dart differential fuzz scenarios.'
+  dependsOn classes
+  classpath = sourceSets.main.runtimeClasspath + files(rootProject.file('assets'))
+  mainClass.set('com.example.toyracers.compat.DifferentialFuzzSmokeCliKt')
+  workingDir = rootProject.projectDir
+  def dartExecutable = providers.gradleProperty('dartExecutable').orElse('dart')
+  doFirst {
+    args(
+      '--output', layout.buildDirectory.dir('differential-fuzz').get().asFile.absolutePath,
+      '--dart-working-directory', rootProject.file('dart').absolutePath,
+      '--dart-executable', dartExecutable.get(),
+    )
+  }
+  outputs.upToDateWhen { false }
 }
 
 tasks.register('compatibilityGoldenTest', Test) {

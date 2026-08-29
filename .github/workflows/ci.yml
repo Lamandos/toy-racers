@@ -289,7 +289,7 @@ jobs:
           retention-days: 7
 
   fuzz-smoke:
-    name: Optional fuzz smoke
+    name: Optional Kotlin-versus-Dart fuzz smoke
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_fuzz_smoke }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -310,6 +310,16 @@ jobs:
           cache-provider: basic
           validate-wrappers: true
 
+      - name: Set up Flutter stable
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve Dart dependencies
+        working-directory: dart
+        run: flutter pub get --enforce-lockfile
+
       - name: Run fixed-seed differential fuzz smoke suite
         run: ./gradlew fuzzSmokeTest --no-daemon
 
@@ -319,8 +329,7 @@ jobs:
         with:
           name: fuzz-smoke-report
           path: |
-            core/build/reports/tests/differentialFuzzSmokeTest/**
-            core/build/test-results/differentialFuzzSmokeTest/**
+            core/build/differential-fuzz/**
           if-no-files-found: warn
           retention-days: 7
 

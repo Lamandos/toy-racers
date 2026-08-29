@@ -7,7 +7,7 @@ Passing: 113
 Failing: 0
 Long-running stress fixtures: 2 additional fixtures (1,000 and 5,000 physical ticks; excluded from the 63-scenario count)
 Full-race scenarios: 11 (one legacy plus ten file-per-scenario three-lap races)
-Fuzz scenarios: 100 generated scenarios, 120 ticks each, fixed seeds
+Fuzz scenarios: 100 generated 120-tick fixed-seed scenarios, each compared from the Kotlin oracle to Dart with the shared trace comparator
 Determinism runs: 20 repeated normalized-trace runs of the 5,000-tick scenario; the complete 115-fixture inventory has a dedicated 20-run sequential release gate
 Flaky tests: 0 observed; no retries or quarantines were used
 Line coverage: 97.50% (2,028 / 2,080)
@@ -63,7 +63,6 @@ are additional resources under `core/src/test/resources/compat/stress`.
 
 The following cannot currently be checked reliably by the automated headless behavioral suite:
 
-- No Kotlin-versus-Dart/Flame differential run exists yet; fuzz currently exercises only the Kotlin reference simulation and verifies scenario ID and seed propagation, the final tick, and normalized generated controls. It does not validate physics outputs or other simulation invariants.
 - Exact rendering and pixel output are not covered. GPU drivers, OpenGL implementations, fonts, window systems, and display scaling can change screenshots; screenshot goldens are intentionally not enabled.
 - Real-device touch behavior, Android lifecycle behavior, frame pacing, memory use, and input timing still require a physical-device check.
 - Audio playback, the audio fade before results navigation, and audio-device-specific behavior are outside the headless trace.
