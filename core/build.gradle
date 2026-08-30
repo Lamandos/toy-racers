@@ -195,6 +195,25 @@ tasks.register('differentialFuzzSmokeTest', JavaExec) {
   outputs.upToDateWhen { false }
 }
 
+tasks.register('dartStressDeterminismTest', JavaExec) {
+  group = 'verification'
+  description = 'Runs Dart long-running stress fixtures and compares them with Kotlin.'
+  dependsOn classes
+  classpath = sourceSets.main.runtimeClasspath + files(rootProject.file('assets'))
+  mainClass.set('com.example.toyracers.compat.DartStressDeterminismCliKt')
+  workingDir = rootProject.projectDir
+  def dartExecutable = providers.gradleProperty('dartExecutable').orElse('dart')
+  doFirst {
+    args(
+      '--output', layout.buildDirectory.dir('dart-stress').get().asFile.absolutePath,
+      '--stress-fixtures', rootProject.file('core/src/test/resources/compat/stress').absolutePath,
+      '--dart-working-directory', rootProject.file('dart').absolutePath,
+      '--dart-executable', dartExecutable.get(),
+    )
+  }
+  outputs.upToDateWhen { false }
+}
+
 tasks.register('compatibilityGoldenTest', Test) {
   group = 'verification'
   description = 'Verifies checked-in file-per-scenario compatibility golden masters and full-race scenarios.'

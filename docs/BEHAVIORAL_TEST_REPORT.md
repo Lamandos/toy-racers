@@ -8,7 +8,7 @@ Failing: 0
 Long-running stress fixtures: 2 additional fixtures (1,000 and 5,000 physical ticks; excluded from the 63-scenario count)
 Full-race scenarios: 11 (one legacy plus ten file-per-scenario three-lap races)
 Fuzz scenarios: 100 generated 120-tick fixed-seed scenarios, each compared from the Kotlin oracle to Dart with the shared trace comparator
-Determinism runs: 20 repeated normalized-trace runs of the 5,000-tick scenario; the complete 115-fixture inventory has a dedicated 20-run sequential release gate
+Determinism runs: Dart performs 20 repeated normalized-trace runs of the 5,000-tick scenario; both long-running Dart traces are compared to Kotlin, while the complete 115-fixture Kotlin inventory has a dedicated 20-run sequential release gate
 Flaky tests: 0 observed; no retries or quarantines were used
 Line coverage: 97.50% (2,028 / 2,080)
 Branch coverage: 85.70% (863 / 1,007)
@@ -17,7 +17,7 @@ Mutation score: 73% (395 / 542 killed) for car physics, collision response, race
 The scenario and golden-master results were collected with:
 
 ```sh
-./gradlew behavioralTest fuzzSmokeTest coverageReport mutationTest --no-daemon
+./gradlew behavioralTest fuzzSmokeTest dartStressDeterminismTest coverageReport mutationTest --no-daemon
 ```
 
 Coverage is merged JaCoCo coverage for the configured portable `core` gameplay packages, unit tests, and behavioral

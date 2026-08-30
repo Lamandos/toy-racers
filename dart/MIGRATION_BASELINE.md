@@ -22,7 +22,7 @@ All of the following completed successfully without regenerating golden files:
 - Failing: 0
 - Full races: 10 three-lap scenarios
 - Fuzz seeds: 100 fixed seeds, each run for 120 ticks: `Long.MIN_VALUE`, `-1`, `0`, `1`, `Long.MAX_VALUE`, and `104729 * n` for every integer `n` from 1 through 95
-- Stress fixtures: `core/src/test/resources/compat/stress/long_running_1000.json` (1,000 ticks) and `core/src/test/resources/compat/stress/long_running_5000.json` (5,000 ticks); the 5,000-tick trace is byte-identical across 20 normalized runs
+- Stress fixtures: `core/src/test/resources/compat/stress/long_running_1000.json` (1,000 ticks) and `core/src/test/resources/compat/stress/long_running_5000.json` (5,000 ticks); Dart replays the 5,000-tick trace 20 times, requires a byte-identical normalized FNV-1a-64 hash, and compares both traces to Kotlin through the existing comparator
 - Golden git status: clean (`git status --short compatibility/golden` produced no output and `git diff --exit-code -- compatibility/golden` passed)
 - Compatibility schema versions: scenario v1, v2, and v3; input script v1; snapshot v2; trace v3
 - Comparator tolerance: absolute `0.0001` for documented approximate floating-point fields; relative tolerance is disabled. Discrete fields, structure, and array order compare exactly.
