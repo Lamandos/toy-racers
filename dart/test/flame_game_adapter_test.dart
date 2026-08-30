@@ -21,17 +21,11 @@ void main() {
         logicalKey: LogicalKeyboardKey.keyW,
         timeStamp: Duration.zero,
       ),
-      <LogicalKeyboardKey>{
-        LogicalKeyboardKey.keyW,
-        LogicalKeyboardKey.keyA,
-      },
+      <LogicalKeyboardKey>{LogicalKeyboardKey.keyW, LogicalKeyboardKey.keyA},
     );
 
     expect(inputResult, KeyEventResult.handled);
-    expect(
-      controller.input,
-      PlayerInput(throttle: 1, steering: -1),
-    );
+    expect(controller.input, PlayerInput(throttle: 1, steering: -1));
 
     controller.handleKeyEvent(
       const KeyUpEvent(
@@ -42,6 +36,35 @@ void main() {
       <LogicalKeyboardKey>{LogicalKeyboardKey.keyW},
     );
     expect(controller.input, PlayerInput(throttle: 1));
+  });
+
+  test('keyboard controller handles documented race actions', () {
+    final actions = <KeyboardAction>[];
+    final controller = KeyboardInputController(onAction: actions.add);
+
+    final escapeResult = controller.handleKeyEvent(
+      const KeyDownEvent(
+        physicalKey: PhysicalKeyboardKey.escape,
+        logicalKey: LogicalKeyboardKey.escape,
+        timeStamp: Duration.zero,
+      ),
+      <LogicalKeyboardKey>{LogicalKeyboardKey.escape},
+    );
+    final restartResult = controller.handleKeyEvent(
+      const KeyDownEvent(
+        physicalKey: PhysicalKeyboardKey.keyR,
+        logicalKey: LogicalKeyboardKey.keyR,
+        timeStamp: Duration.zero,
+      ),
+      <LogicalKeyboardKey>{LogicalKeyboardKey.keyR},
+    );
+
+    expect(escapeResult, KeyEventResult.handled);
+    expect(restartResult, KeyEventResult.handled);
+    expect(actions, <KeyboardAction>[
+      KeyboardAction.togglePause,
+      KeyboardAction.restart,
+    ]);
   });
 
   test(
@@ -95,6 +118,58 @@ void main() {
     game.update(CarPhysics.fixedDeltaSeconds);
 
     expect(session.player.carState.x, greaterThan(50));
+  });
+
+  test('game handles pause, resume, and restart keyboard actions', () async {
+    final session = _session();
+    final game = ToyRacersGame(session: session);
+
+    await game.onLoad();
+    for (var frame = 0; frame < 70; frame++) {
+      game.update(CarPhysics.maxFrameDeltaSeconds);
+    }
+    expect(session.raceState.phase, RacePhase.racing);
+
+    game.onKeyEvent(
+      const KeyDownEvent(
+        physicalKey: PhysicalKeyboardKey.escape,
+        logicalKey: LogicalKeyboardKey.escape,
+        timeStamp: Duration.zero,
+      ),
+      <LogicalKeyboardKey>{LogicalKeyboardKey.escape},
+    );
+    expect(session.raceState.phase, RacePhase.paused);
+
+    game.onKeyEvent(
+      const KeyDownEvent(
+        physicalKey: PhysicalKeyboardKey.escape,
+        logicalKey: LogicalKeyboardKey.escape,
+        timeStamp: Duration.zero,
+      ),
+      <LogicalKeyboardKey>{LogicalKeyboardKey.escape},
+    );
+    expect(session.raceState.phase, RacePhase.racing);
+
+    game.update(CarPhysics.fixedDeltaSeconds);
+    session.player.carState.x = 80;
+    session.player.progress
+      ..completedLaps = 2
+      ..totalRaceTime = 12;
+
+    game.onKeyEvent(
+      const KeyDownEvent(
+        physicalKey: PhysicalKeyboardKey.keyR,
+        logicalKey: LogicalKeyboardKey.keyR,
+        timeStamp: Duration.zero,
+      ),
+      <LogicalKeyboardKey>{LogicalKeyboardKey.keyR},
+    );
+
+    expect(session.raceState.phase, RacePhase.countdown);
+    expect(session.snapshot.simulationTick, 0);
+    expect(session.player.carState.x, 50);
+    expect(session.player.progress.completedLaps, 0);
+    expect(session.player.progress.totalRaceTime, 0);
   });
 
   test(
@@ -155,7 +230,7 @@ void main() {
 
       await game.onLoad();
 
-      expect(game.camera.viewfinder.position.x, 13.5);
+      expect(game.camera.viewfinder.position.x, 16);
       expect(game.camera.viewfinder.position.y, 9);
     },
   );
@@ -171,6 +246,7 @@ void main() {
     expect(game.session.participants, hasLength(6));
     expect(game.world.cars, hasLength(6));
     expect(game.session.raceState.phase, RacePhase.countdown);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 }
 

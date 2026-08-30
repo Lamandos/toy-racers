@@ -33,7 +33,8 @@ final class RaceParticipant {
        surfaceSpeedState = surfaceSpeedState ?? SurfaceSpeedState(),
        progress = progress ?? RaceProgress(),
        _lastSafeState = carState.copy(),
-       _previousState = carState.copy();
+       _previousState = carState.copy(),
+       _initialState = carState.copy();
 
   final String id;
   final CarState carState;
@@ -43,6 +44,7 @@ final class RaceParticipant {
   final RaceProgress progress;
   CarState _lastSafeState;
   CarState _previousState;
+  final CarState _initialState;
 
   /// Last state that an AI recovery operation may restore.
   CarState get lastSafeState => _lastSafeState.copy();
@@ -56,6 +58,33 @@ final class RaceParticipant {
 
   void _saveLastSafeState() {
     _lastSafeState = carState.copy();
+  }
+
+  void _resetForRestart() {
+    carState
+      ..x = _initialState.x
+      ..y = _initialState.y
+      ..rotationDegrees = _initialState.rotationDegrees
+      ..longitudinalSpeed = 0
+      ..velocityX = 0
+      ..velocityY = 0
+      ..angularVelocity = 0
+      ..lateralSpeed = 0
+      ..driftAmount = 0;
+    progress
+      ..currentCheckpointIndex = 0
+      ..completedLaps = 0
+      ..lapStartTime = 0
+      ..bestLapTime = null
+      ..totalRaceTime = 0
+      ..finished = false
+      ..finishPosition = null;
+    surfaceSpeedState.speedMultiplier = 1;
+    _lastSafeState = _initialState.copy();
+    _previousState = _initialState.copy();
+    if (aiDriver case final ResettableAiDriver driver) {
+      driver.reset(TrackPoint(_initialState.x, _initialState.y));
+    }
   }
 
   static String _requireId(String id) {
@@ -259,6 +288,17 @@ final class RaceSession {
   void pause() => raceState.pause();
 
   void resume() => raceState.resume();
+
+  /// Restores every participant and counter, then starts a fresh countdown.
+  void restart() {
+    for (final participant in participants) {
+      participant._resetForRestart();
+    }
+    _raceRules.resetFinishOrdering();
+    _accumulator = 0;
+    _simulationTick = 0;
+    raceState.restart();
+  }
 
   /// Synchronizes fixture-injected finish positions before race progression.
   void synchronizeFinishOrdering() => _raceRules.synchronizeFinishOrdering(

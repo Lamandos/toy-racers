@@ -16,6 +16,7 @@ void main() {
     );
 
     expect(find.byType(SizedBox), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('shows an error when the Flame game cannot be loaded', (
@@ -29,13 +30,35 @@ void main() {
     await tester.pump();
 
     expect(find.text('Unable to load the race.'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('shows touch controls with the loaded Flame game', (tester) async {
+  testWidgets('shows and hides touch controls by configuration', (
+    tester,
+  ) async {
     final game = await ToyRacersGame.loadDefault();
-    await tester.pumpWidget(ToyRacersApplication(gameLoader: () async => game));
+    final gameFuture = Future<ToyRacersGame>.value(game);
+    await tester.pumpWidget(
+      ToyRacersApplication(
+        gameLoader: () => gameFuture,
+        showTouchControls: true,
+      ),
+    );
     await tester.pump();
 
     expect(find.byType(TouchControlsOverlay), findsOneWidget);
+    await tester.pumpWidget(
+      ToyRacersApplication(
+        gameLoader: () => gameFuture,
+        showTouchControls: false,
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(TouchControlsOverlay), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    game.pauseEngine();
+    game.dispose();
   });
 }

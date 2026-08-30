@@ -5,7 +5,7 @@ import 'package:flame/components.dart';
 /// Keeps the Flame camera centred on the rendered player car inside the track.
 final class RaceCameraController {
   RaceCameraController({
-    this.visibleWorldWidth = 27,
+    this.visibleWorldWidth = 32,
     this.visibleWorldHeight = 18,
   }) {
     if (visibleWorldWidth <= 0 || visibleWorldHeight <= 0) {

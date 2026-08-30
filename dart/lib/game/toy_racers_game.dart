@@ -31,13 +31,13 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
        _cameraController = cameraController ?? RaceCameraController(),
        super(
          world: RaceWorld(session: session),
-         camera: CameraComponent.withFixedResolution(width: 96, height: 64),
+         camera: CameraComponent.withFixedResolution(width: 1280, height: 720),
        );
 
   final RaceSession session;
   final PlayerInputProvider _playerInputProvider;
-  final KeyboardInputController _keyboardInputController =
-      KeyboardInputController();
+  late final KeyboardInputController _keyboardInputController =
+      KeyboardInputController(onAction: _handleKeyboardAction);
   final TouchInputController touchInputController = TouchInputController();
   final RaceCameraController _cameraController;
   final RaceVisualInterpolator _visualInterpolator = RaceVisualInterpolator();
@@ -95,6 +95,34 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
     KeyEvent event,
     Set<LogicalKeyboardKey> keysPressed,
   ) => _keyboardInputController.handleKeyEvent(event, keysPressed);
+
+  void _handleKeyboardAction(KeyboardAction action) {
+    switch (action) {
+      case KeyboardAction.togglePause:
+        _togglePause();
+      case KeyboardAction.restart:
+        session.restart();
+        touchInputController.clear();
+        interpolationFactor = 0;
+        world.synchronizeVisualState(interpolationFactor);
+        _followPlayerCamera();
+    }
+  }
+
+  void _togglePause() {
+    switch (session.raceState.phase) {
+      case RacePhase.racing:
+        session.pause();
+        touchInputController.clear();
+      case RacePhase.paused:
+        session.resume();
+      case RacePhase.loading ||
+          RacePhase.ready ||
+          RacePhase.countdown ||
+          RacePhase.finished:
+        return;
+    }
+  }
 
   @override
   void update(double dt) {

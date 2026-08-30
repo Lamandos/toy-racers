@@ -1,4 +1,5 @@
 import 'package:flame/game.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -18,9 +19,11 @@ class ToyRacersApplication extends StatefulWidget {
   const ToyRacersApplication({
     super.key,
     this.gameLoader = ToyRacersGame.loadDefault,
+    this.showTouchControls,
   });
 
   final Future<ToyRacersGame> Function() gameLoader;
+  final bool? showTouchControls;
 
   @override
   State<ToyRacersApplication> createState() => _ToyRacersApplicationState();
@@ -47,7 +50,8 @@ class _ToyRacersApplicationState extends State<ToyRacersApplication> {
             fit: StackFit.expand,
             children: <Widget>[
               GameWidget(game: game),
-              TouchControlsOverlay(controller: game.touchInputController),
+              if (_shouldShowTouchControls)
+                TouchControlsOverlay(controller: game.touchInputController),
             ],
           );
         }
@@ -55,4 +59,9 @@ class _ToyRacersApplicationState extends State<ToyRacersApplication> {
       },
     );
   }
+
+  bool get _shouldShowTouchControls =>
+      widget.showTouchControls ??
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
 }

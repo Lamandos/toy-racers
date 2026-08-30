@@ -53,6 +53,9 @@ final class RaceRules {
     _nextFinishPosition = math.max(_nextFinishPosition, highestPosition + 1);
   }
 
+  /// Clears finish ordering before a new race starts.
+  void resetFinishOrdering() => _nextFinishPosition = 1;
+
   /// Applies one participant's elapsed time and possible gate crossing.
   void update({
     required RaceProgress progress,
