@@ -55,6 +55,30 @@ void main() {
     expect(session.raceState.phase, RacePhase.paused);
   });
 
+  test('restart restores participants and simulation counters', () {
+    final session = _session();
+    _startRacing(session);
+    session.advance(
+      frameDeltaSeconds: CarPhysics.fixedDeltaSeconds,
+      playerInput: PlayerInput(throttle: 1),
+    );
+    session.player.carState.x = 80;
+    session.player.progress
+      ..completedLaps = 2
+      ..totalRaceTime = 12;
+
+    session.restart();
+
+    expect(session.raceState.phase, RacePhase.countdown);
+    expect(session.snapshot.simulationTick, 0);
+    expect(session.player.carState.x, 10);
+    expect(session.player.carState.longitudinalSpeed, 0);
+    expect(session.player.progress.currentCheckpointIndex, 0);
+    expect(session.player.progress.completedLaps, 0);
+    expect(session.player.progress.totalRaceTime, 0);
+    expect(session.player.progress.finished, isFalse);
+  });
+
   test('processes a checkpoint through the shared participant pipeline', () {
     final session = _session();
     _startRacing(session);

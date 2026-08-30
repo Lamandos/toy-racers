@@ -90,6 +90,20 @@ void main() {
     );
   });
 
+  test('resets finish ordering for a fresh race', () {
+    final firstRaceProgress = RaceProgress();
+    _completeLap(rules, firstRaceProgress);
+    _completeLap(rules, firstRaceProgress);
+    expect(firstRaceProgress.finishPosition, 1);
+
+    rules.resetFinishOrdering();
+
+    final nextRaceProgress = RaceProgress();
+    _completeLap(rules, nextRaceProgress);
+    _completeLap(rules, nextRaceProgress);
+    expect(nextRaceProgress.finishPosition, 1);
+  });
+
   test('requires positive laps and non-negative simulation time', () {
     expect(() => RaceRules(track, requiredLaps: 0), throwsArgumentError);
     expect(

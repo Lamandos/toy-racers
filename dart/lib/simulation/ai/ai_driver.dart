@@ -48,3 +48,12 @@ abstract interface class RouteAwareAiDriver {
 abstract interface class ResettableAiDriver {
   void reset(TrackPoint restoredPosition);
 }
+
+/// Optional full-race reset capability for drivers with persistent strategy
+/// state beyond respawn recovery.
+///
+/// This remains separate from [ResettableAiDriver] so a respawn does not alter
+/// the deterministic sequence of an in-progress race.
+abstract interface class RaceResettableAiDriver {
+  void resetForRace(TrackPoint initialPosition);
+}
