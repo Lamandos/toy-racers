@@ -2,10 +2,13 @@ import 'dart:math' as math;
 
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
+import 'package:flame/input.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:toy_racers/simulation.dart';
 
 import 'camera/race_camera_controller.dart';
+import 'input/keyboard_input_controller.dart';
 import 'race_world.dart';
 import 'rendering/race_visual_interpolator.dart';
 
@@ -18,7 +21,7 @@ typedef PlayerInputProvider = PlayerInput Function();
 /// progression, and fixed-step scheduling to [RaceSession]. It only chooses a
 /// bounded render-frame delta, reads the resulting state, and updates visual
 /// components and camera framing.
-final class ToyRacersGame extends FlameGame<RaceWorld> {
+final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
   ToyRacersGame({
     required this.session,
     PlayerInputProvider? playerInputProvider,
@@ -32,6 +35,8 @@ final class ToyRacersGame extends FlameGame<RaceWorld> {
 
   final RaceSession session;
   final PlayerInputProvider _playerInputProvider;
+  final KeyboardInputController _keyboardInputController =
+      KeyboardInputController();
   final RaceCameraController _cameraController;
   final RaceVisualInterpolator _visualInterpolator = RaceVisualInterpolator();
 
@@ -72,6 +77,12 @@ final class ToyRacersGame extends FlameGame<RaceWorld> {
   }
 
   @override
+  KeyEventResult onKeyEvent(
+    KeyEvent event,
+    Set<LogicalKeyboardKey> keysPressed,
+  ) => _keyboardInputController.handleKeyEvent(event, keysPressed);
+
+  @override
   void update(double dt) {
     final frameDelta = math.min(dt, CarPhysics.maxFrameDeltaSeconds);
     final phaseBeforeAdvance = session.raceState.phase;
@@ -79,7 +90,9 @@ final class ToyRacersGame extends FlameGame<RaceWorld> {
         session.raceState.countdownRemainingSeconds;
     final step = session.advance(
       frameDeltaSeconds: frameDelta,
-      playerInput: _playerInputProvider(),
+      playerInput: _playerInputProvider().combinedWith(
+        _keyboardInputController.input,
+      ),
     );
     interpolationFactor = _visualInterpolator.advance(
       frameDeltaSeconds: frameDelta,

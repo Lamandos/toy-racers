@@ -27,6 +27,12 @@ class _ToyRacersApplicationState extends State<ToyRacersApplication> {
     return FutureBuilder<ToyRacersGame>(
       future: _game,
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const Directionality(
+            textDirection: TextDirection.ltr,
+            child: Center(child: Text('Unable to load the race.')),
+          );
+        }
         if (snapshot.hasData) {
           return GameWidget(game: snapshot.requireData);
         }

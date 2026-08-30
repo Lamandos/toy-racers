@@ -16,4 +16,17 @@ void main() {
 
     expect(find.byType(SizedBox), findsOneWidget);
   });
+
+  testWidgets('shows an error when the Flame game cannot be loaded', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ToyRacersApplication(
+        gameLoader: () async => throw StateError('missing track'),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Unable to load the race.'), findsOneWidget);
+  });
 }

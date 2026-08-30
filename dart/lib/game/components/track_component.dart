@@ -19,26 +19,55 @@ final class TrackComponent extends Component {
       projection.rectangleFor(track.worldBounds),
       Paint()..color = _surfaceColor(track.backgroundSurface),
     );
+    final outerRoad = track.roadOuter;
+    final innerRoad = track.roadInner;
+    if (outerRoad == null || innerRoad == null) {
+      canvas.drawRect(
+        projection.rectangleFor(track.outerBoundary),
+        Paint()..color = _asphaltColor,
+      );
+      _renderSurfaceRegions(canvas);
+    } else {
+      _renderSurfaceRegions(canvas);
+      canvas.drawPath(_polygonPath(outerRoad), Paint()..color = _asphaltColor);
+      canvas.drawPath(
+        _polygonPath(innerRoad),
+        Paint()..color = _surfaceColor(track.backgroundSurface),
+      );
+    }
+    _renderObstacles(canvas);
+  }
+
+  void _renderSurfaceRegions(Canvas canvas) {
     for (final region in track.surfaceRegions) {
       canvas.drawRect(
         projection.rectangleFor(region.bounds),
         Paint()..color = _surfaceColor(region.surface),
       );
     }
-    final outerRoad = track.roadOuter;
-    final innerRoad = track.roadInner;
-    if (outerRoad != null && innerRoad != null) {
-      canvas.drawPath(_polygonPath(outerRoad), Paint()..color = _asphaltColor);
-      canvas.drawPath(
-        _polygonPath(innerRoad),
-        Paint()..color = _surfaceColor(track.backgroundSurface),
-      );
-      return;
+  }
+
+  void _renderObstacles(Canvas canvas) {
+    final obstaclePaint = Paint()..color = _obstacleColor;
+    for (final obstacle in track.innerObstacles) {
+      canvas.drawRect(projection.rectangleFor(obstacle), obstaclePaint);
     }
-    canvas.drawRect(
-      projection.rectangleFor(track.outerBoundary),
-      Paint()..color = _asphaltColor,
-    );
+    for (final shape in track.collisionShapes) {
+      switch (shape) {
+        case TrackCircle():
+          final center = projection.positionFor(
+            shape.center.x,
+            shape.center.y,
+          );
+          canvas.drawCircle(
+            Offset(center.x, center.y),
+            shape.radius,
+            obstaclePaint,
+          );
+        case TrackPolygon():
+          canvas.drawPath(_polygonPath(shape), obstaclePaint);
+      }
+    }
   }
 
   Path _polygonPath(TrackPolygon polygon) {
@@ -64,4 +93,5 @@ final class TrackComponent extends Component {
   };
 
   static const Color _asphaltColor = Color(0xff5b616a);
+  static const Color _obstacleColor = Color(0xff8c6241);
 }

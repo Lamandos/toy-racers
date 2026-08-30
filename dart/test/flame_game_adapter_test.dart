@@ -1,14 +1,72 @@
 import 'package:flame/game.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/widgets.dart';
 import 'package:toy_racers/game/components/car_component.dart';
 import 'package:toy_racers/game/components/race_objects_component.dart';
 import 'package:toy_racers/game/components/track_component.dart';
+import 'package:toy_racers/game/input/keyboard_input_controller.dart';
 import 'package:toy_racers/game/rendering/car_visual_state.dart';
 import 'package:toy_racers/game/rendering/race_world_projection.dart';
 import 'package:toy_racers/game/toy_racers_game.dart';
 import 'package:toy_racers/simulation.dart';
 
 void main() {
+  test('keyboard controller maps desktop driving keys', () {
+    final controller = KeyboardInputController();
+    final inputResult = controller.handleKeyEvent(
+      const KeyDownEvent(
+        physicalKey: PhysicalKeyboardKey.keyW,
+        logicalKey: LogicalKeyboardKey.keyW,
+        timeStamp: Duration.zero,
+      ),
+      <LogicalKeyboardKey>{
+        LogicalKeyboardKey.keyW,
+        LogicalKeyboardKey.keyA,
+      },
+    );
+
+    expect(inputResult, KeyEventResult.handled);
+    expect(
+      controller.input,
+      PlayerInput(throttle: 1, steering: -1),
+    );
+
+    controller.handleKeyEvent(
+      const KeyUpEvent(
+        physicalKey: PhysicalKeyboardKey.keyA,
+        logicalKey: LogicalKeyboardKey.keyA,
+        timeStamp: Duration.zero,
+      ),
+      <LogicalKeyboardKey>{LogicalKeyboardKey.keyW},
+    );
+    expect(controller.input, PlayerInput(throttle: 1));
+  });
+
+  test(
+    'game applies keyboard input when no external provider is supplied',
+    () async {
+      final session = _session();
+      final game = ToyRacersGame(session: session);
+
+      await game.onLoad();
+      game.onKeyEvent(
+        const KeyDownEvent(
+          physicalKey: PhysicalKeyboardKey.arrowUp,
+          logicalKey: LogicalKeyboardKey.arrowUp,
+          timeStamp: Duration.zero,
+        ),
+        <LogicalKeyboardKey>{LogicalKeyboardKey.arrowUp},
+      );
+      for (var frame = 0; frame < 12; frame++) {
+        game.update(CarPhysics.maxFrameDeltaSeconds);
+      }
+      game.update(CarPhysics.fixedDeltaSeconds);
+
+      expect(session.player.carState.x, greaterThan(50));
+    },
+  );
+
   test(
     'Flame game delegates fixed ticks to the supplied race session',
     () async {
