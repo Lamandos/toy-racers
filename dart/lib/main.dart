@@ -1,9 +1,16 @@
 import 'package:flame/game.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import 'game/input/touch_controls_overlay.dart';
 import 'game/toy_racers_game.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
   runApp(const ToyRacersApplication());
 }
 
@@ -34,7 +41,15 @@ class _ToyRacersApplicationState extends State<ToyRacersApplication> {
           );
         }
         if (snapshot.hasData) {
-          return GameWidget(game: snapshot.requireData);
+          final game = snapshot.requireData;
+          return Stack(
+            alignment: Alignment.topLeft,
+            fit: StackFit.expand,
+            children: <Widget>[
+              GameWidget(game: game),
+              TouchControlsOverlay(controller: game.touchInputController),
+            ],
+          );
         }
         return const SizedBox.shrink();
       },

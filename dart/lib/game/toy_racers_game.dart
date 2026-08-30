@@ -9,6 +9,7 @@ import 'package:toy_racers/simulation.dart';
 
 import 'camera/race_camera_controller.dart';
 import 'input/keyboard_input_controller.dart';
+import 'input/touch_input_controller.dart';
 import 'race_world.dart';
 import 'rendering/race_visual_interpolator.dart';
 
@@ -37,6 +38,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
   final PlayerInputProvider _playerInputProvider;
   final KeyboardInputController _keyboardInputController =
       KeyboardInputController();
+  final TouchInputController touchInputController = TouchInputController();
   final RaceCameraController _cameraController;
   final RaceVisualInterpolator _visualInterpolator = RaceVisualInterpolator();
 
@@ -77,6 +79,18 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
   }
 
   @override
+  void pauseEngine() {
+    touchInputController.clear();
+    super.pauseEngine();
+  }
+
+  @override
+  void onDetach() {
+    touchInputController.clear();
+    super.onDetach();
+  }
+
+  @override
   KeyEventResult onKeyEvent(
     KeyEvent event,
     Set<LogicalKeyboardKey> keysPressed,
@@ -88,11 +102,12 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
     final phaseBeforeAdvance = session.raceState.phase;
     final countdownRemainingSeconds =
         session.raceState.countdownRemainingSeconds;
+    final playerInput = _playerInputProvider()
+        .combinedWith(_keyboardInputController.input)
+        .combinedWith(touchInputController.input);
     final step = session.advance(
       frameDeltaSeconds: frameDelta,
-      playerInput: _playerInputProvider().combinedWith(
-        _keyboardInputController.input,
-      ),
+      playerInput: playerInput,
     );
     interpolationFactor = _visualInterpolator.advance(
       frameDeltaSeconds: frameDelta,

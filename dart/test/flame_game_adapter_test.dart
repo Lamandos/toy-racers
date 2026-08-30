@@ -6,6 +6,7 @@ import 'package:toy_racers/game/components/car_component.dart';
 import 'package:toy_racers/game/components/race_objects_component.dart';
 import 'package:toy_racers/game/components/track_component.dart';
 import 'package:toy_racers/game/input/keyboard_input_controller.dart';
+import 'package:toy_racers/game/input/touch_input_controller.dart';
 import 'package:toy_racers/game/rendering/car_visual_state.dart';
 import 'package:toy_racers/game/rendering/race_world_projection.dart';
 import 'package:toy_racers/game/toy_racers_game.dart';
@@ -67,6 +68,35 @@ void main() {
     },
   );
 
+  test('touch controller supports simultaneous steering and throttle', () {
+    final controller = TouchInputController()..configure(const Size(400, 200));
+
+    controller.pointerDown(1, const Offset(50, 150));
+    controller.pointerDown(2, const Offset(350, 150));
+
+    expect(controller.input, PlayerInput(throttle: 1, steering: -1));
+
+    controller.pointerUp(1);
+    expect(controller.input, PlayerInput(throttle: 1));
+    controller.clear();
+    expect(controller.input, PlayerInput.none);
+  });
+
+  test('game applies the default touch controller input', () async {
+    final session = _session();
+    final game = ToyRacersGame(session: session);
+    game.touchInputController.configure(const Size(400, 200));
+    game.touchInputController.pointerDown(1, const Offset(350, 150));
+
+    await game.onLoad();
+    for (var frame = 0; frame < 12; frame++) {
+      game.update(CarPhysics.maxFrameDeltaSeconds);
+    }
+    game.update(CarPhysics.fixedDeltaSeconds);
+
+    expect(session.player.carState.x, greaterThan(50));
+  });
+
   test(
     'Flame game delegates fixed ticks to the supplied race session',
     () async {
@@ -125,8 +155,8 @@ void main() {
 
       await game.onLoad();
 
-      expect(game.camera.viewfinder.position.x, 27);
-      expect(game.camera.viewfinder.position.y, 18);
+      expect(game.camera.viewfinder.position.x, 13.5);
+      expect(game.camera.viewfinder.position.y, 9);
     },
   );
 
