@@ -1,14 +1,37 @@
+import 'package:flame/game.dart';
 import 'package:flutter/widgets.dart';
+
+import 'game/toy_racers_game.dart';
 
 void main() {
   runApp(const ToyRacersApplication());
 }
 
-class ToyRacersApplication extends StatelessWidget {
-  const ToyRacersApplication({super.key});
+class ToyRacersApplication extends StatefulWidget {
+  const ToyRacersApplication({
+    super.key,
+    this.gameLoader = ToyRacersGame.loadDefault,
+  });
+
+  final Future<ToyRacersGame> Function() gameLoader;
+
+  @override
+  State<ToyRacersApplication> createState() => _ToyRacersApplicationState();
+}
+
+class _ToyRacersApplicationState extends State<ToyRacersApplication> {
+  late final Future<ToyRacersGame> _game = widget.gameLoader();
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox.shrink();
+    return FutureBuilder<ToyRacersGame>(
+      future: _game,
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          return GameWidget(game: snapshot.requireData);
+        }
+        return const SizedBox.shrink();
+      },
+    );
   }
 }
