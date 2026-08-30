@@ -172,6 +172,12 @@ tasks.register('fuzzSmokeTest') {
   dependsOn ':core:differentialFuzzSmokeTest'
 }
 
+tasks.register('dartStressDeterminismTest') {
+  group = 'verification'
+  description = 'Runs Dart long-running determinism and Kotlin comparison stress checks.'
+  dependsOn ':core:dartStressDeterminismTest'
+}
+
 tasks.register('coverageReport') {
   group = 'verification'
   description = 'Generates and verifies the core JVM unit-test coverage report.'

@@ -118,6 +118,28 @@ The command reports `100 / 100 PASS` only after every fixed seed matches. A mism
 signed seed, first divergent tick, field, expected value, actual value, and delta. GitHub Actions
 runs it only when a workflow is manually dispatched with `run_fuzz_smoke` enabled.
 
+## Dart stress and determinism
+
+The Kotlin-versus-Dart stress gate replays the two existing exact-duration
+fixtures in `core/src/test/resources/compat/stress`: one 1,000-tick fixture and
+one 5,000-tick fixture. It rejects NaN, Infinity, serialized negative zero,
+invalid rotations, exploding velocity, corrupt race positions or ranking,
+regressing progress, inconsistent finish ordering, and impossible lifecycle
+states. The Dart runner produces the 5,000-tick normalized trace twenty times,
+requires byte-for-byte equality and an identical FNV-1a-64 hash, then compares
+the first output for each fixture against a trace newly replayed by the Kotlin
+oracle with the existing comparator and unchanged tolerance.
+
+```sh
+./gradlew dartStressDeterminismTest --no-daemon
+```
+
+The successful result includes `Dart determinism: 20 / 20 identical` and
+`Kotlin-vs-Dart stress: 2 / 2 PASS`. It is an explicitly long, manual release
+check. GitHub Actions exposes it through **Run workflow** with
+`run_dart_stress_determinism` enabled and uploads the Kotlin and Dart trace
+artifacts for diagnosis.
+
 ## Fixture contract
 
 Scenario inputs live in `core/src/test/resources/compat/scenarios.json` and have

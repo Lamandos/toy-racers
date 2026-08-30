@@ -15,6 +15,11 @@ on:
         required: false
         default: false
         type: boolean
+      run_dart_stress_determinism:
+        description: Run the optional 20-repeat Dart stress and Kotlin comparison suite.
+        required: false
+        default: false
+        type: boolean
       run_behavioral_stability:
         description: Run all behavioral fixtures twenty times in sequence (long-running).
         required: false
@@ -330,6 +335,50 @@ jobs:
           name: fuzz-smoke-report
           path: |
             core/build/differential-fuzz/**
+          if-no-files-found: warn
+          retention-days: 7
+
+  dart-stress-determinism:
+    name: Optional Dart stress determinism
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_dart_stress_determinism }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle cache and validate wrapper
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+          validate-wrappers: true
+
+      - name: Set up Flutter stable
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve Dart dependencies
+        working-directory: dart
+        run: flutter pub get --enforce-lockfile
+
+      - name: Run Dart stress determinism suite
+        run: ./gradlew dartStressDeterminismTest --no-daemon
+
+      - name: Upload Dart stress traces
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: dart-stress-traces
+          path: core/build/dart-stress/**
           if-no-files-found: warn
           retention-days: 7
 

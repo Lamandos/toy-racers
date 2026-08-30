@@ -108,6 +108,24 @@ modify golden masters, invokes the shared Kotlin trace comparator, and returns
 a non-zero status for any deterministic mismatch. Do not begin Flame
 integration until this command reports no failures.
 
+## Stress and determinism gate
+
+The separate long-running gate replays the existing 1,000- and 5,000-tick
+fixtures, validates every sampled race state, runs the Dart 5,000-tick fixture
+twenty times, and requires an identical canonical-output FNV-1a-64 hash on
+every run. It then compares both retained Dart traces with newly generated
+Kotlin oracle traces through the existing comparator contract:
+
+```sh
+./gradlew dartStressDeterminismTest --no-daemon
+```
+
+Its success output includes `Dart determinism: 20 / 20 identical` and
+`Kotlin-vs-Dart stress: 2 / 2 PASS`. The task is intentionally manual and
+available in GitHub Actions through **Run workflow** with
+`run_dart_stress_determinism` enabled; it is too long for the normal pull
+request checks. It never changes scenarios, golden masters, or tolerances.
+
 ## Build targets
 
 ```sh
