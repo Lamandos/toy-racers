@@ -8,6 +8,9 @@ import 'package:toy_racers/simulation.dart';
 final class RaceVisualInterpolator {
   double _remainderSeconds = 0;
 
+  /// Discards presentation time carried over from a previous race.
+  void reset() => _remainderSeconds = 0;
+
   double advance({
     required double frameDeltaSeconds,
     required RacePhase phaseBeforeAdvance,

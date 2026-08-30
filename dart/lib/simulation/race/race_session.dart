@@ -82,8 +82,11 @@ final class RaceParticipant {
     surfaceSpeedState.speedMultiplier = 1;
     _lastSafeState = _initialState.copy();
     _previousState = _initialState.copy();
-    if (aiDriver case final ResettableAiDriver driver) {
-      driver.reset(TrackPoint(_initialState.x, _initialState.y));
+    final initialPosition = TrackPoint(_initialState.x, _initialState.y);
+    if (aiDriver case final RaceResettableAiDriver driver) {
+      driver.resetForRace(initialPosition);
+    } else if (aiDriver case final ResettableAiDriver driver) {
+      driver.reset(initialPosition);
     }
   }
 

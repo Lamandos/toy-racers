@@ -12,7 +12,11 @@ import 'ai_recovery_controller.dart';
 
 /// Kotlin-compatible deterministic AI path following and recovery driver.
 final class ReferenceAiDriver
-    implements AiDriver, ResettableAiDriver, RouteAwareAiDriver {
+    implements
+        AiDriver,
+        ResettableAiDriver,
+        RaceResettableAiDriver,
+        RouteAwareAiDriver {
   ReferenceAiDriver({
     required Iterable<TrackPoint> racingLine,
     required TrackPoint initialPosition,
@@ -23,7 +27,12 @@ final class ReferenceAiDriver
     int? randomSeed,
   }) : racingLineBias = Float32.narrow(racingLineBias),
        _config = (config ?? AiConfig()).forDifficulty(difficulty),
-       _randomState = _initialRandomState(
+       _initialRandomState = _randomStateFor(
+         initialPosition,
+         racingLineBias,
+         randomSeed,
+       ),
+       _randomState = _randomStateFor(
          initialPosition,
          racingLineBias,
          randomSeed,
@@ -52,6 +61,7 @@ final class ReferenceAiDriver
   late final AiPathFollower _pathFollower;
   late final AiObstacleDetector _obstacleDetector;
   late final AiRecoveryController _recoveryController;
+  final int _initialRandomState;
   double _smoothedSteering = 0;
   double _mistakeCheckAccumulator = 0;
   double _mistakeTimeRemaining = 0;
@@ -76,6 +86,14 @@ final class ReferenceAiDriver
     _respawnRequested = false;
     behaviorState = AiBehaviorState.followRoute;
     debugSnapshot = null;
+  }
+
+  @override
+  void resetForRace(TrackPoint initialPosition) {
+    reset(initialPosition);
+    _mistakeCheckAccumulator = 0;
+    _mistakeTimeRemaining = 0;
+    _randomState = _initialRandomState;
   }
 
   @override
@@ -392,7 +410,7 @@ final class ReferenceAiDriver
     return AiDriverDecision(input: normalized, requestRespawn: requestRespawn);
   }
 
-  static int _initialRandomState(
+  static int _randomStateFor(
     TrackPoint initialPosition,
     double racingLineBias,
     int? randomSeed,

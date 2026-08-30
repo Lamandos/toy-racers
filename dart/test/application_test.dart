@@ -45,6 +45,7 @@ void main() {
       ),
     );
     await tester.pump();
+    await tester.pump();
 
     expect(find.byType(TouchControlsOverlay), findsOneWidget);
     await tester.pumpWidget(

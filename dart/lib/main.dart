@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import 'game/input/touch_controls_overlay.dart';
+import 'game/race_results_overlay.dart';
 import 'game/toy_racers_game.dart';
 
 Future<void> main() async {
@@ -45,14 +46,22 @@ class _ToyRacersApplicationState extends State<ToyRacersApplication> {
         }
         if (snapshot.hasData) {
           final game = snapshot.requireData;
-          return Stack(
-            alignment: Alignment.topLeft,
-            fit: StackFit.expand,
-            children: <Widget>[
-              GameWidget(game: game),
-              if (_shouldShowTouchControls)
-                TouchControlsOverlay(controller: game.touchInputController),
-            ],
+          game.configureTouchControls(_shouldShowTouchControls);
+          return GameWidget<ToyRacersGame>(
+            game: game,
+            overlayBuilderMap: <String, OverlayWidgetBuilder<ToyRacersGame>>{
+              ToyRacersGame.touchControlsOverlayId: (context, game) =>
+                  TouchControlsOverlay(
+                    controller: game.touchInputController,
+                    onPause: game.togglePause,
+                    onRestart: game.restartRace,
+                  ),
+              ToyRacersGame.resultsOverlayId: (context, game) =>
+                  RaceResultsOverlay(game: game),
+            },
+            initialActiveOverlays: _shouldShowTouchControls
+                ? <String>[ToyRacersGame.touchControlsOverlayId]
+                : null,
           );
         }
         return const SizedBox.shrink();

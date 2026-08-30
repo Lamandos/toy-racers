@@ -23,6 +23,9 @@ typedef PlayerInputProvider = PlayerInput Function();
 /// bounded render-frame delta, reads the resulting state, and updates visual
 /// components and camera framing.
 final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
+  static const String touchControlsOverlayId = 'touch-controls';
+  static const String resultsOverlayId = 'race-results';
+
   ToyRacersGame({
     required this.session,
     PlayerInputProvider? playerInputProvider,
@@ -67,6 +70,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
     if (session.raceState.phase == RacePhase.loading) {
       session.start();
     }
+    _synchronizePresentationOverlays();
     world.synchronizeVisualState(interpolationFactor);
     _followPlayerCamera();
   }
@@ -99,17 +103,14 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
   void _handleKeyboardAction(KeyboardAction action) {
     switch (action) {
       case KeyboardAction.togglePause:
-        _togglePause();
+        togglePause();
       case KeyboardAction.restart:
-        session.restart();
-        touchInputController.clear();
-        interpolationFactor = 0;
-        world.synchronizeVisualState(interpolationFactor);
-        _followPlayerCamera();
+        restartRace();
     }
   }
 
-  void _togglePause() {
+  /// Toggles the simulation pause state for keyboard and touch controls.
+  void togglePause() {
     switch (session.raceState.phase) {
       case RacePhase.racing:
         session.pause();
@@ -122,6 +123,34 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
           RacePhase.finished:
         return;
     }
+  }
+
+  /// Restarts the simulation and clears all presentation state from the prior
+  /// race.
+  void restartRace() {
+    session.restart();
+    touchInputController.clear();
+    _visualInterpolator.reset();
+    interpolationFactor = 0;
+    _synchronizePresentationOverlays();
+    if (_touchControlsEnabled &&
+        overlays.registeredOverlays.contains(touchControlsOverlayId)) {
+      overlays.add(touchControlsOverlayId);
+    }
+    world.synchronizeVisualState(interpolationFactor);
+    _followPlayerCamera();
+  }
+
+  /// Enables or disables the touch overlay for the current platform.
+  void configureTouchControls(bool enabled) {
+    _touchControlsEnabled = enabled;
+    if (!overlays.registeredOverlays.contains(touchControlsOverlayId)) {
+      return;
+    }
+    overlays.setActive(
+      touchControlsOverlayId,
+      active: enabled && session.raceState.phase != RacePhase.finished,
+    );
   }
 
   @override
@@ -137,6 +166,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
       frameDeltaSeconds: frameDelta,
       playerInput: playerInput,
     );
+    _synchronizePresentationOverlays();
     interpolationFactor = _visualInterpolator.advance(
       frameDeltaSeconds: frameDelta,
       phaseBeforeAdvance: phaseBeforeAdvance,
@@ -156,6 +186,21 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
   );
 
   static PlayerInput _neutralInput() => PlayerInput.none;
+
+  bool _touchControlsEnabled = false;
+
+  void _synchronizePresentationOverlays() {
+    final registeredOverlays = overlays.registeredOverlays;
+    if (!registeredOverlays.contains(resultsOverlayId)) {
+      return;
+    }
+    if (session.raceState.phase == RacePhase.finished) {
+      overlays.remove(ToyRacersGame.touchControlsOverlayId);
+      overlays.add(resultsOverlayId);
+      return;
+    }
+    overlays.remove(resultsOverlayId);
+  }
 
   static RaceSession _defaultSession(Track track) {
     final playerModel = CarModel.redStripe;

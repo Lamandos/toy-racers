@@ -8,9 +8,16 @@ import 'touch_input_controller.dart';
 
 /// Displays the touch controls and forwards simultaneous pointer events.
 final class TouchControlsOverlay extends StatelessWidget {
-  const TouchControlsOverlay({required this.controller, super.key});
+  const TouchControlsOverlay({
+    required this.controller,
+    this.onPause,
+    this.onRestart,
+    super.key,
+  });
 
   final TouchInputController controller;
+  final void Function()? onPause;
+  final void Function()? onRestart;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -18,14 +25,18 @@ final class TouchControlsOverlay extends StatelessWidget {
       controller.configure(constraints.biggest);
       return Listener(
         behavior: HitTestBehavior.translucent,
-        onPointerDown: (event) => _handlePointerDown(event),
+        onPointerDown: (event) =>
+            _handlePointerDown(event, constraints.biggest),
         onPointerMove: (event) => _handlePointerMove(event),
         onPointerUp: (event) => _handlePointerUp(event),
         onPointerCancel: (event) => _handlePointerUp(event),
         child: AnimatedBuilder(
           animation: controller,
           builder: (context, child) => CustomPaint(
-            painter: _TouchControlsPainter(controller.input),
+            painter: _TouchControlsPainter(
+              controller.input,
+              showActions: onPause != null || onRestart != null,
+            ),
             child: child,
           ),
           child: const SizedBox.expand(),
@@ -34,8 +45,13 @@ final class TouchControlsOverlay extends StatelessWidget {
     },
   );
 
-  void _handlePointerDown(PointerDownEvent event) {
+  void _handlePointerDown(PointerDownEvent event, Size size) {
     if (_isTouch(event)) {
+      final action = _actionAt(event.localPosition, size);
+      if (action != null) {
+        _callbackFor(action)?.call();
+        return;
+      }
       controller.pointerDown(event.pointer, event.localPosition);
     }
   }
@@ -53,12 +69,44 @@ final class TouchControlsOverlay extends StatelessWidget {
   }
 
   bool _isTouch(PointerEvent event) => event.kind == PointerDeviceKind.touch;
+
+  _TouchAction? _actionAt(Offset position, Size size) {
+    if (onPause != null &&
+        _actionBounds(size, _TouchAction.pause).contains(position)) {
+      return _TouchAction.pause;
+    }
+    if (onRestart != null &&
+        _actionBounds(size, _TouchAction.restart).contains(position)) {
+      return _TouchAction.restart;
+    }
+    return null;
+  }
+
+  void Function()? _callbackFor(_TouchAction action) => switch (action) {
+    _TouchAction.pause => onPause,
+    _TouchAction.restart => onRestart,
+  };
+
+  Rect _actionBounds(Size size, _TouchAction action) {
+    const width = 104.0;
+    const height = 48.0;
+    const margin = 16.0;
+    const gap = 8.0;
+    final restartLeft = size.width - margin - width;
+    final left = action == _TouchAction.restart
+        ? restartLeft
+        : restartLeft - gap - width;
+    return Rect.fromLTWH(left, margin, width, height);
+  }
 }
 
+enum _TouchAction { pause, restart }
+
 final class _TouchControlsPainter extends CustomPainter {
-  _TouchControlsPainter(this.input);
+  _TouchControlsPainter(this.input, {required this.showActions});
 
   final PlayerInput input;
+  final bool showActions;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -80,6 +128,36 @@ final class _TouchControlsPainter extends CustomPainter {
       );
       _drawLabel(canvas, bounds, _labelFor(index));
     }
+    if (showActions) {
+      _drawActionButton(canvas, size, _TouchAction.pause, 'PAUSE');
+      _drawActionButton(canvas, size, _TouchAction.restart, 'RESTART');
+    }
+  }
+
+  void _drawActionButton(
+    Canvas canvas,
+    Size size,
+    _TouchAction action,
+    String label,
+  ) {
+    final bounds = _actionBounds(size, action);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(bounds, const Radius.circular(10)),
+      Paint()..color = const Color(0xff303846).withValues(alpha: 0.82),
+    );
+    _drawLabel(canvas, bounds, label);
+  }
+
+  Rect _actionBounds(Size size, _TouchAction action) {
+    const width = 104.0;
+    const height = 48.0;
+    const margin = 16.0;
+    const gap = 8.0;
+    final restartLeft = size.width - margin - width;
+    final left = action == _TouchAction.restart
+        ? restartLeft
+        : restartLeft - gap - width;
+    return Rect.fromLTWH(left, margin, width, height);
   }
 
   void _drawLabel(Canvas canvas, Rect bounds, String label) {
@@ -120,5 +198,5 @@ final class _TouchControlsPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_TouchControlsPainter oldDelegate) =>
-      oldDelegate.input != input;
+      oldDelegate.input != input || oldDelegate.showActions != showActions;
 }

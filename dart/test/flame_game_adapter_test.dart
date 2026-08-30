@@ -6,9 +6,12 @@ import 'package:toy_racers/game/components/car_component.dart';
 import 'package:toy_racers/game/components/race_objects_component.dart';
 import 'package:toy_racers/game/components/track_component.dart';
 import 'package:toy_racers/game/input/keyboard_input_controller.dart';
+import 'package:toy_racers/game/input/touch_controls_overlay.dart';
 import 'package:toy_racers/game/input/touch_input_controller.dart';
 import 'package:toy_racers/game/rendering/car_visual_state.dart';
+import 'package:toy_racers/game/rendering/race_visual_interpolator.dart';
 import 'package:toy_racers/game/rendering/race_world_projection.dart';
+import 'package:toy_racers/game/race_results_overlay.dart';
 import 'package:toy_racers/game/toy_racers_game.dart';
 import 'package:toy_racers/simulation.dart';
 
@@ -105,6 +108,38 @@ void main() {
     expect(controller.input, PlayerInput.none);
   });
 
+  testWidgets('touch overlay invokes pause and restart actions', (
+    tester,
+  ) async {
+    var pauseCount = 0;
+    var restartCount = 0;
+    final controller = TouchInputController();
+
+    await tester.pumpWidget(
+      SizedBox(
+        width: 400,
+        height: 200,
+        child: TouchControlsOverlay(
+          controller: controller,
+          onPause: () => pauseCount++,
+          onRestart: () => restartCount++,
+        ),
+      ),
+    );
+
+    final overlay = find.byType(TouchControlsOverlay);
+    final origin = tester.getTopLeft(overlay);
+    final size = tester.getSize(overlay);
+    final restartLeft = size.width - 16 - 104;
+    await tester.tapAt(origin + Offset(restartLeft - 8 - 52, 40));
+    await tester.tapAt(origin + Offset(restartLeft + 52, 40));
+
+    expect(pauseCount, 1);
+    expect(restartCount, 1);
+    expect(controller.input, PlayerInput.none);
+    controller.dispose();
+  });
+
   test('game applies the default touch controller input', () async {
     final session = _session();
     final game = ToyRacersGame(session: session);
@@ -170,6 +205,35 @@ void main() {
     expect(session.player.carState.x, 50);
     expect(session.player.progress.completedLaps, 0);
     expect(session.player.progress.totalRaceTime, 0);
+  });
+
+  test('visual interpolator reset discards the previous race remainder', () {
+    final interpolator = RaceVisualInterpolator();
+    final racingPhase = RacePhase.racing;
+
+    expect(
+      interpolator.advance(
+        frameDeltaSeconds: CarPhysics.fixedDeltaSeconds / 2,
+        phaseBeforeAdvance: racingPhase,
+        phaseAfterAdvance: racingPhase,
+        countdownRemainingSeconds: 0,
+        physicalSteps: 0,
+      ),
+      closeTo(0.5, 0.000001),
+    );
+
+    interpolator.reset();
+
+    expect(
+      interpolator.advance(
+        frameDeltaSeconds: 0,
+        phaseBeforeAdvance: racingPhase,
+        phaseAfterAdvance: racingPhase,
+        countdownRemainingSeconds: 0,
+        physicalSteps: 0,
+      ),
+      0,
+    );
   });
 
   test(
@@ -248,9 +312,54 @@ void main() {
     expect(game.session.raceState.phase, RacePhase.countdown);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('shows race results and restarts from the results action', (
+    tester,
+  ) async {
+    final session = _session(requiredLaps: 1);
+    final game = ToyRacersGame(session: session);
+
+    await tester.pumpWidget(
+      GameWidget<ToyRacersGame>(
+        game: game,
+        overlayBuilderMap: <String, OverlayWidgetBuilder<ToyRacersGame>>{
+          ToyRacersGame.resultsOverlayId: (context, game) =>
+              RaceResultsOverlay(game: game),
+        },
+      ),
+    );
+    await tester.pump();
+
+    for (var frame = 0; frame < 14; frame++) {
+      game.update(CarPhysics.maxFrameDeltaSeconds);
+    }
+    session.player.progress.currentCheckpointIndex = 1;
+    session.player.carState
+      ..x = 45.8
+      ..y = 50
+      ..longitudinalSpeed = 24
+      ..velocityX = 24;
+    game.update(CarPhysics.fixedDeltaSeconds);
+    await tester.pump();
+
+    expect(session.raceState.phase, RacePhase.finished);
+    expect(find.text('RACE RESULTS'), findsOneWidget);
+    expect(find.text('RESTART RACE'), findsOneWidget);
+
+    await tester.tap(find.text('RESTART RACE'));
+    await tester.pump();
+
+    expect(session.raceState.phase, RacePhase.countdown);
+    expect(find.text('RACE RESULTS'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
-RaceSession _session({double playerX = 50, double playerY = 50}) {
+RaceSession _session({
+  double playerX = 50,
+  double playerY = 50,
+  int requiredLaps = 3,
+}) {
   final track = Track.fromDefinition(
     id: 'adapter-test-track',
     name: 'Adapter test track',
@@ -292,5 +401,6 @@ RaceSession _session({double playerX = 50, double playerY = 50}) {
         carConfig: CarConfig(),
       ),
     ],
+    requiredLaps: requiredLaps,
   );
 }
