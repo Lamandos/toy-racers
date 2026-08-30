@@ -308,49 +308,86 @@ final class RaceSession {
     participants.map((value) => value.progress),
   );
 
+  /// Advances countdown or racing lifecycle time without running physics.
+  ///
+  /// Real-time adapters use this to separate their variable render cadence
+  /// from calls to [advanceFixedStep]. Compatibility callers should continue
+  /// to use [advance], which owns both operations.
+  double advanceLifecycle({required double elapsedSeconds}) =>
+      raceState.advance(elapsedSeconds);
+
+  /// Runs exactly one reference-rate physics tick while the race is active.
+  ///
+  /// This never consumes countdown time or a render delta. It is the pure-Dart
+  /// fixed-step boundary used by presentation adapters that own an accumulator.
+  RaceStepResult advanceFixedStep({required PlayerInput playerInput}) {
+    final phaseBeforeAdvance = raceState.phase;
+    if (phaseBeforeAdvance != RacePhase.racing) {
+      return _emptyStep(phaseBeforeAdvance);
+    }
+
+    final appliedPlayerInput = _playerControlConfig.applyTo(
+      playerInput.normalized(),
+    );
+    var playerCheckpointPassed = false;
+    var maxImpactSpeed = 0.0;
+    for (final participant in participants) {
+      participant._captureStateForRendering();
+    }
+    for (final participant in participants) {
+      _updateLastSafeState(participant);
+      final result = _updateParticipant(participant, appliedPlayerInput);
+      if (participant.id == _playerId) {
+        maxImpactSpeed = math.max(maxImpactSpeed, result.impactSpeed);
+        playerCheckpointPassed =
+            playerCheckpointPassed || result.checkpointPassed;
+      }
+    }
+    maxImpactSpeed = math.max(maxImpactSpeed, _resolveCarCollisions());
+    _simulationTick++;
+    if (player.progress.finished) {
+      for (final participant in participants) {
+        participant._captureStateForRendering();
+      }
+      raceState.finish();
+    }
+    return RaceStepResult(
+      phaseBeforeAdvance: phaseBeforeAdvance,
+      appliedPlayerInput: appliedPlayerInput,
+      playerCheckpointPassed: playerCheckpointPassed,
+      maxImpactSpeed: Float32.narrow(maxImpactSpeed),
+      physicalSteps: 1,
+    );
+  }
+
   /// Advances the fixed simulation pipeline using explicit frame time.
   RaceStepResult advance({
     required double frameDeltaSeconds,
     required PlayerInput playerInput,
   }) {
     final phaseBeforeAdvance = raceState.phase;
-    final simulationDelta = raceState.advance(frameDeltaSeconds);
+    final simulationDelta = advanceLifecycle(elapsedSeconds: frameDeltaSeconds);
     if (simulationDelta <= 0) {
       return _emptyStep(phaseBeforeAdvance);
     }
 
     _accumulator = Float32.add(_accumulator, simulationDelta);
-    final appliedPlayerInput = _playerControlConfig.applyTo(
-      playerInput.normalized(),
-    );
+    PlayerInput? appliedPlayerInput;
     var playerCheckpointPassed = false;
     var maxImpactSpeed = 0.0;
     var physicalSteps = 0;
     while (_accumulator >= CarPhysics.fixedDeltaSeconds) {
-      for (final participant in participants) {
-        participant._captureStateForRendering();
-      }
-      for (final participant in participants) {
-        _updateLastSafeState(participant);
-        final result = _updateParticipant(participant, appliedPlayerInput);
-        if (participant.id == _playerId) {
-          maxImpactSpeed = math.max(maxImpactSpeed, result.impactSpeed);
-          playerCheckpointPassed =
-              playerCheckpointPassed || result.checkpointPassed;
-        }
-      }
-      maxImpactSpeed = math.max(maxImpactSpeed, _resolveCarCollisions());
-      physicalSteps++;
-      _simulationTick++;
+      final result = advanceFixedStep(playerInput: playerInput);
+      appliedPlayerInput = result.appliedPlayerInput;
+      playerCheckpointPassed =
+          playerCheckpointPassed || result.playerCheckpointPassed;
+      maxImpactSpeed = math.max(maxImpactSpeed, result.maxImpactSpeed);
+      physicalSteps += result.physicalSteps;
       _accumulator = Float32.subtract(
         _accumulator,
         CarPhysics.fixedDeltaSeconds,
       );
-      if (player.progress.finished) {
-        for (final participant in participants) {
-          participant._captureStateForRendering();
-        }
-        raceState.finish();
+      if (raceState.phase == RacePhase.finished) {
         _accumulator = 0;
         break;
       }

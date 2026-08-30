@@ -5,11 +5,11 @@ import 'package:flutter/widgets.dart';
 import 'package:toy_racers/game/components/car_component.dart';
 import 'package:toy_racers/game/components/race_objects_component.dart';
 import 'package:toy_racers/game/components/track_component.dart';
+import 'package:toy_racers/game/fixed_timestep_scheduler.dart';
 import 'package:toy_racers/game/input/keyboard_input_controller.dart';
 import 'package:toy_racers/game/input/touch_controls_overlay.dart';
 import 'package:toy_racers/game/input/touch_input_controller.dart';
 import 'package:toy_racers/game/rendering/car_visual_state.dart';
-import 'package:toy_racers/game/rendering/race_visual_interpolator.dart';
 import 'package:toy_racers/game/rendering/race_world_projection.dart';
 import 'package:toy_racers/game/race_results_overlay.dart';
 import 'package:toy_racers/game/toy_racers_game.dart';
@@ -207,33 +207,72 @@ void main() {
     expect(session.player.progress.totalRaceTime, 0);
   });
 
-  test('visual interpolator reset discards the previous race remainder', () {
-    final interpolator = RaceVisualInterpolator();
-    final racingPhase = RacePhase.racing;
+  test('fixed timestep scheduler reports render interpolation remainder', () {
+    final scheduler = FixedTimestepScheduler();
+    var simulatedSteps = 0;
 
-    expect(
-      interpolator.advance(
-        frameDeltaSeconds: CarPhysics.fixedDeltaSeconds / 2,
-        phaseBeforeAdvance: racingPhase,
-        phaseAfterAdvance: racingPhase,
-        countdownRemainingSeconds: 0,
-        physicalSteps: 0,
-      ),
-      closeTo(0.5, 0.000001),
+    final frame = scheduler.advance(
+      simulationDeltaSeconds: CarPhysics.fixedDeltaSeconds / 2,
+      isSimulationActive: () => true,
+      onFixedStep: () => simulatedSteps++,
     );
 
-    interpolator.reset();
+    expect(frame.physicalSteps, 0);
+    expect(simulatedSteps, 0);
+    expect(frame.interpolationFactor, closeTo(0.5, 0.000001));
 
-    expect(
-      interpolator.advance(
-        frameDeltaSeconds: 0,
-        phaseBeforeAdvance: racingPhase,
-        phaseAfterAdvance: racingPhase,
-        countdownRemainingSeconds: 0,
-        physicalSteps: 0,
-      ),
-      0,
+    scheduler.reset();
+    final resetFrame = scheduler.advance(
+      simulationDeltaSeconds: 0,
+      isSimulationActive: () => true,
+      onFixedStep: () => simulatedSteps++,
     );
+    expect(resetFrame.interpolationFactor, 0);
+  });
+
+  test(
+    'identical tick inputs reach the same state at 30, 60, and 120 FPS',
+    () async {
+      final at30Fps = await _runRenderPattern(List<double>.filled(45, 1 / 30));
+      final at60Fps = await _runRenderPattern(List<double>.filled(90, 1 / 60));
+      final at120Fps = await _runRenderPattern(
+        List<double>.filled(180, 1 / 120),
+      );
+
+      expect(at30Fps, at60Fps);
+      expect(at120Fps, at60Fps);
+      expect(at60Fps.simulationTick, 90);
+    },
+  );
+
+  test('a bounded frame spike preserves fixed tick input order', () async {
+    final regularFrames = await _runRenderPattern(
+      List<double>.filled(15, CarPhysics.fixedDeltaSeconds),
+    );
+    final frameSpike = await _runRenderPattern(<double>[1]);
+
+    expect(frameSpike, regularFrames);
+    expect(frameSpike.simulationTick, 15);
+  });
+
+  test('pause drops accumulated render time before resuming', () async {
+    final session = _racingSession();
+    final game = ToyRacersGame(
+      session: session,
+      playerInputProvider: () => PlayerInput(throttle: 1),
+    );
+    await game.onLoad();
+
+    game.update(CarPhysics.fixedDeltaSeconds / 2);
+    game.togglePause();
+    game.update(10);
+    expect(session.snapshot.simulationTick, 0);
+
+    game.togglePause();
+    game.update(CarPhysics.fixedDeltaSeconds);
+
+    expect(session.snapshot.simulationTick, 1);
+    expect(game.interpolationFactor, 0);
   });
 
   test(
@@ -404,3 +443,69 @@ RaceSession _session({
     requiredLaps: requiredLaps,
   );
 }
+
+Future<_ObservedSimulationState> _runRenderPattern(
+  List<double> renderDeltas,
+) async {
+  final session = _racingSession();
+  final game = ToyRacersGame(
+    session: session,
+    playerInputProvider: () =>
+        _inputForSimulationTick(session.snapshot.simulationTick),
+  );
+  await game.onLoad();
+  for (final delta in renderDeltas) {
+    game.update(delta);
+  }
+  final player = session.player;
+  return (
+    simulationTick: session.snapshot.simulationTick,
+    phase: session.raceState.phase,
+    raceTime: player.progress.totalRaceTime,
+    x: player.carState.x,
+    y: player.carState.y,
+    rotationDegrees: player.carState.rotationDegrees,
+    longitudinalSpeed: player.carState.longitudinalSpeed,
+    velocityX: player.carState.velocityX,
+    velocityY: player.carState.velocityY,
+    angularVelocity: player.carState.angularVelocity,
+    lateralSpeed: player.carState.lateralSpeed,
+    driftAmount: player.carState.driftAmount,
+  );
+}
+
+RaceSession _racingSession() {
+  final session = _session();
+  session.start();
+  session.advance(
+    frameDeltaSeconds: session.raceState.countdownDurationSeconds,
+    playerInput: PlayerInput.none,
+  );
+  return session;
+}
+
+PlayerInput _inputForSimulationTick(int simulationTick) {
+  final sequenceStep = simulationTick % 24;
+  if (sequenceStep < 12) {
+    return PlayerInput(throttle: 1);
+  }
+  if (sequenceStep < 18) {
+    return PlayerInput(throttle: 1, steering: 0.6);
+  }
+  return PlayerInput(brake: 0.4, steering: -0.35);
+}
+
+typedef _ObservedSimulationState = ({
+  int simulationTick,
+  RacePhase phase,
+  double raceTime,
+  double x,
+  double y,
+  double rotationDegrees,
+  double longitudinalSpeed,
+  double velocityX,
+  double velocityY,
+  double angularVelocity,
+  double lateralSpeed,
+  double driftAmount,
+});

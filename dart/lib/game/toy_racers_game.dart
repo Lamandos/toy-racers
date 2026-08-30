@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flame/input.dart';
@@ -8,10 +6,10 @@ import 'package:flutter/widgets.dart';
 import 'package:toy_racers/simulation.dart';
 
 import 'camera/race_camera_controller.dart';
+import 'fixed_timestep_scheduler.dart';
 import 'input/keyboard_input_controller.dart';
 import 'input/touch_input_controller.dart';
 import 'race_world.dart';
-import 'rendering/race_visual_interpolator.dart';
 
 /// Supplies the latest normalized player command to the simulation adapter.
 typedef PlayerInputProvider = PlayerInput Function();
@@ -19,9 +17,8 @@ typedef PlayerInputProvider = PlayerInput Function();
 /// Flame adapter around a deterministic [RaceSession].
 ///
 /// The game delegates all vehicle physics, collision handling, AI, race
-/// progression, and fixed-step scheduling to [RaceSession]. It only chooses a
-/// bounded render-frame delta, reads the resulting state, and updates visual
-/// components and camera framing.
+/// progression to [RaceSession]. It schedules reference-rate ticks from
+/// Flame's render deltas, then updates visual components and camera framing.
 final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
   static const String touchControlsOverlayId = 'touch-controls';
   static const String resultsOverlayId = 'race-results';
@@ -43,7 +40,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
       KeyboardInputController(onAction: _handleKeyboardAction);
   final TouchInputController touchInputController = TouchInputController();
   final RaceCameraController _cameraController;
-  final RaceVisualInterpolator _visualInterpolator = RaceVisualInterpolator();
+  final FixedTimestepScheduler _fixedTimestep = FixedTimestepScheduler();
 
   double interpolationFactor = 0;
 
@@ -85,12 +82,14 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
   @override
   void pauseEngine() {
     touchInputController.clear();
+    _fixedTimestep.reset();
     super.pauseEngine();
   }
 
   @override
   void onDetach() {
     touchInputController.clear();
+    _fixedTimestep.reset();
     super.onDetach();
   }
 
@@ -115,6 +114,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
       case RacePhase.racing:
         session.pause();
         touchInputController.clear();
+        _fixedTimestep.reset();
       case RacePhase.paused:
         session.resume();
       case RacePhase.loading ||
@@ -130,7 +130,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
   void restartRace() {
     session.restart();
     touchInputController.clear();
-    _visualInterpolator.reset();
+    _fixedTimestep.reset();
     interpolationFactor = 0;
     _synchronizePresentationOverlays();
     if (_touchControlsEnabled &&
@@ -155,28 +155,27 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
 
   @override
   void update(double dt) {
-    final frameDelta = math.min(dt, CarPhysics.maxFrameDeltaSeconds);
-    final phaseBeforeAdvance = session.raceState.phase;
-    final countdownRemainingSeconds =
-        session.raceState.countdownRemainingSeconds;
-    final playerInput = _playerInputProvider()
-        .combinedWith(_keyboardInputController.input)
-        .combinedWith(touchInputController.input);
-    final step = session.advance(
-      frameDeltaSeconds: frameDelta,
-      playerInput: playerInput,
+    final frameDelta = FixedTimestepScheduler.boundedRenderDelta(dt);
+    final racingDelta = session.advanceLifecycle(elapsedSeconds: frameDelta);
+    final frame = _fixedTimestep.advance(
+      simulationDeltaSeconds: racingDelta,
+      isSimulationActive: _isRacing,
+      onFixedStep: _advanceSimulation,
     );
     _synchronizePresentationOverlays();
-    interpolationFactor = _visualInterpolator.advance(
-      frameDeltaSeconds: frameDelta,
-      phaseBeforeAdvance: phaseBeforeAdvance,
-      phaseAfterAdvance: session.raceState.phase,
-      countdownRemainingSeconds: countdownRemainingSeconds,
-      physicalSteps: step.physicalSteps,
-    );
+    interpolationFactor = frame.interpolationFactor;
     world.synchronizeVisualState(interpolationFactor);
     _followPlayerCamera();
     super.update(dt);
+  }
+
+  bool _isRacing() => session.raceState.phase == RacePhase.racing;
+
+  void _advanceSimulation() {
+    final playerInput = _playerInputProvider()
+        .combinedWith(_keyboardInputController.input)
+        .combinedWith(touchInputController.input);
+    session.advanceFixedStep(playerInput: playerInput);
   }
 
   void _followPlayerCamera() => _cameraController.follow(
