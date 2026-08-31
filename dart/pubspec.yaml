@@ -22,5 +22,45 @@ dev_dependencies:
 
 flutter:
   assets:
+    # BEGIN GENERATED FLUTTER ASSETS
+    - assets/README.md
+    - assets/assets.txt
+    - assets/attribution/SOURCES.md
+    - assets/audio/background-music.wav
+    - assets/audio/button-click.wav
+    - assets/audio/checkpoint.wav
+    - assets/audio/collision/collision_heavy_01.wav
+    - assets/audio/collision/collision_heavy_02.wav
+    - assets/audio/collision/collision_light_01.wav
+    - assets/audio/collision/collision_light_02.wav
+    - assets/audio/collision/collision_medium_01.wav
+    - assets/audio/collision/collision_medium_02.wav
+    - assets/audio/collision/collision_medium_03.wav
+    - assets/audio/engine/engine_mid_loop.wav
+    - assets/audio/finish.wav
+    - assets/audio/go.wav
+    - assets/audio/surface/gravel_hit_01.wav
+    - assets/audio/surface/gravel_hit_02.wav
+    - assets/audio/surface/gravel_hit_03.wav
+    - assets/audio/surface/offtrack_grass_loop.wav
+    - assets/audio/surface/offtrack_gravel_loop.wav
+    - assets/audio/tires/brake_hard.wav
+    - assets/audio/tires/tire_drift_loop.wav
+    - assets/audio/ui/start_countdown_3.wav
+    - assets/libgdx.png
+    - assets/sprites/cars/blue-stripe.png
+    - assets/sprites/cars/green-racer.png
+    - assets/sprites/cars/orange-truck.png
+    - assets/sprites/cars/red-stripe.png
+    - assets/sprites/cars/yellow-sport.png
+    - assets/tracks/track_01.png
     - assets/tracks/track_01.tmx
+    - assets/tracks/track_02-collision-guide.md
+    - assets/tracks/track_02.png
     - assets/tracks/track_02.tmx
+    - assets/ui/controls/brake-pedal.png
+    - assets/ui/controls/steering-wheel.png
+    - assets/ui/controls/throttle-pedal.png
+    - assets/ui-main-background.png
+    - assets/flutter_asset_manifest.json
+    # END GENERATED FLUTTER ASSETS

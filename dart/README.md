@@ -77,6 +77,39 @@ Read these contracts before adding simulation code:
 No standalone coverage package is used: `flutter test --coverage` is Flutter's
 built-in LCOV generator.
 
+## Flutter asset pipeline
+
+The repository-level [`../assets/`](../assets/) directory is the canonical
+runtime asset source for both implementations. Flutter packages assets relative
+to `pubspec.yaml`, so the committed [`assets/`](assets/) directory is a
+generated materialized mirror; never edit its contents or the generated asset
+block in `pubspec.yaml` manually.
+
+From the repository root, update the mirror after changing a canonical asset:
+
+```sh
+python3 tools/flutter_asset_pipeline.py sync
+```
+
+The pipeline maps `assets/**` to `dart/assets/**` and materializes the
+repository-level audio attribution record [`SOURCES.md`](../SOURCES.md) at
+`dart/assets/attribution/SOURCES.md`. It also regenerates
+`dart/assets/flutter_asset_manifest.json`, which records the source path and
+SHA-256 checksum for every generated file. Verify the mirror without changing
+it with:
+
+```sh
+python3 tools/flutter_asset_pipeline.py check
+```
+
+The check rejects missing, stale, or modified generated assets, checksum
+manifest changes, and a stale generated `pubspec.yaml` asset list. It runs in
+local hooks and CI. Flutter requires every nested asset directory to be
+declared in `pubspec.yaml`; generating individual entries keeps new asset
+directories automatically packageable. See Flutter's
+[asset-bundling documentation](https://docs.flutter.dev/ui/assets/assets-and-images)
+for the packaging rule.
+
 ## Verify
 
 Run these commands from this directory:
