@@ -79,6 +79,33 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     game.dispose();
   });
+
+  testWidgets('results actions remain reachable on a short viewport', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(568, 320));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    var mainMenuCount = 0;
+    final game = ToyRacersGame(session: _finishedSession(participantCount: 6));
+
+    await tester.pumpWidget(
+      _ScreenshotBoundary(
+        child: RaceResultsOverlay(
+          game: game,
+          onMainMenu: () => mainMenuCount++,
+        ),
+      ),
+    );
+
+    final mainMenu = find.byKey(const ValueKey<String>('results-main-menu'));
+    await tester.ensureVisible(mainMenu);
+    await tester.tap(mainMenu);
+
+    expect(mainMenuCount, 1);
+    expect(tester.getRect(mainMenu).bottom, lessThanOrEqualTo(320));
+    await tester.pumpWidget(const SizedBox.shrink());
+    game.dispose();
+  });
 }
 
 Future<void> _pumpApplication(WidgetTester tester, ToyRacersGame game) =>
@@ -107,7 +134,7 @@ Future<void> _capture(WidgetTester tester, String scene) async {
   image.dispose();
 }
 
-RaceSession _finishedSession() {
+RaceSession _finishedSession({int participantCount = 1}) {
   final track = Track.fromDefinition(
     id: 'results-visual-track',
     name: 'Results visual track',
@@ -129,7 +156,11 @@ RaceSession _finishedSession() {
       ),
     ],
     startGrid: <StartGridPosition>[
-      StartGridPosition(position: TrackPoint(50, 50), rotationDegrees: 0),
+      for (var index = 0; index < participantCount; index++)
+        StartGridPosition(
+          position: TrackPoint(50 - index * 3, 50),
+          rotationDegrees: 0,
+        ),
     ],
     racingLine: <TrackPoint>[
       TrackPoint(10, 10),
@@ -140,17 +171,20 @@ RaceSession _finishedSession() {
   final session = RaceSession(
     track: track,
     participants: <RaceParticipant>[
-      RaceParticipant(
-        id: 'player',
-        carState: CarState(x: 50, y: 50),
-        carConfig: CarConfig(),
-      ),
+      for (var index = 0; index < participantCount; index++)
+        RaceParticipant(
+          id: index == 0 ? 'player' : 'ai-${index - 1}',
+          carState: CarState(x: 50 - index * 3, y: 50),
+          carConfig: CarConfig(),
+        ),
     ],
   );
-  session.player.progress
-    ..finished = true
-    ..finishPosition = 1
-    ..totalRaceTime = 12.34;
+  for (var index = 0; index < participantCount; index++) {
+    session.participants[index].progress
+      ..finished = true
+      ..finishPosition = index + 1
+      ..totalRaceTime = 12.34 + index;
+  }
   session.synchronizeFinishOrdering();
   return session;
 }

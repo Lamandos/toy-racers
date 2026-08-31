@@ -84,11 +84,11 @@ final class RaceCameraController {
   void follow({
     required CameraComponent camera,
     required Vector2 visualPosition,
-    required Vector2 visualVelocity,
+    Vector2? visualVelocity,
     required Rect worldBounds,
-    required double deltaSeconds,
+    double deltaSeconds = 0,
   }) {
-    final target = _targetFor(visualPosition, visualVelocity);
+    final target = _targetFor(visualPosition, visualVelocity ?? Vector2.zero());
     final desiredCentre = _boundedPosition(target, worldBounds);
     _centre = _nextCentre(desiredCentre, deltaSeconds);
     _advanceShake(deltaSeconds);

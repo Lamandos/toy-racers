@@ -27,6 +27,7 @@ final class RaceWorld extends World {
           participant: participant,
           carModel: carModels?[participant.id] ?? CarModel.redStripe,
           projection: projection,
+          isPlayer: participant.id == session.player.id,
         ),
     };
     return RaceWorld._(

@@ -204,11 +204,20 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
   void update(double dt) {
     final frameDelta = FixedTimestepScheduler.boundedRenderDelta(dt);
     final racingDelta = session.advanceLifecycle(elapsedSeconds: frameDelta);
+    var maximumImpactSpeed = 0.0;
     final frame = _fixedTimestep.advance(
       simulationDeltaSeconds: racingDelta,
       isSimulationActive: _isRacing,
-      onFixedStep: _advanceSimulation,
+      onFixedStep: () {
+        final impactSpeed = _advanceSimulation();
+        if (impactSpeed > maximumImpactSpeed) {
+          maximumImpactSpeed = impactSpeed;
+        }
+      },
     );
+    if (maximumImpactSpeed >= _minimumShakeImpactSpeed) {
+      _cameraController.addShake(maximumImpactSpeed * _shakePerImpactSpeed);
+    }
     _synchronizePresentationOverlays();
     interpolationFactor = frame.interpolationFactor;
     world.synchronizeVisualState(interpolationFactor);
@@ -227,14 +236,12 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
     RacePhase.finished => false,
   };
 
-  void _advanceSimulation() {
+  double _advanceSimulation() {
     final playerInput = _playerInputProvider()
         .combinedWith(_keyboardInputController.input)
         .combinedWith(touchInputController.input);
     final step = session.advanceFixedStep(playerInput: playerInput);
-    if (step.maxImpactSpeed >= _minimumShakeImpactSpeed) {
-      _cameraController.addShake(step.maxImpactSpeed * _shakePerImpactSpeed);
-    }
+    return step.maxImpactSpeed;
   }
 
   void _followPlayerCamera(double deltaSeconds) => _cameraController.follow(

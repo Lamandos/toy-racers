@@ -14,6 +14,7 @@ final class CarComponent extends PositionComponent {
   CarComponent._({
     required this.participantId,
     required this.carModel,
+    required bool isPlayer,
     required this._projection,
     required CarVisualState visualState,
     required CarConfig carConfig,
@@ -23,13 +24,14 @@ final class CarComponent extends PositionComponent {
          size: Vector2(carConfig.length, carConfig.width),
          angle: visualState.angle,
          anchor: Anchor.center,
-         priority: _renderPriority(participantId, carModel),
+         priority: _renderPriority(isPlayer, carModel),
        );
 
   factory CarComponent.fromParticipant({
     required RaceParticipant participant,
     CarModel carModel = CarModel.redStripe,
     required RaceWorldProjection projection,
+    bool isPlayer = false,
   }) {
     final visualState = CarVisualState.interpolate(
       previous: participant.carState,
@@ -40,6 +42,7 @@ final class CarComponent extends PositionComponent {
     return CarComponent._(
       participantId: participant.id,
       carModel: carModel,
+      isPlayer: isPlayer,
       projection: projection,
       visualState: visualState,
       carConfig: participant.carConfig,
@@ -97,6 +100,6 @@ final class CarComponent extends PositionComponent {
     canvas.restore();
   }
 
-  static int _renderPriority(String id, CarModel model) =>
-      id == 'player' ? 30 : 20 + model.index;
+  static int _renderPriority(bool isPlayer, CarModel model) =>
+      isPlayer ? 30 : 20 + model.index;
 }
