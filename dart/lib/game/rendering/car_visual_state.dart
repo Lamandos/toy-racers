@@ -8,10 +8,20 @@ import 'race_world_projection.dart';
 /// It intentionally contains no velocity integration or race state. Flame
 /// consumes this value between deterministic [RaceSession] fixed steps.
 final class CarVisualState {
-  const CarVisualState({required this.position, required this.angle});
+  // Keep the public parameter optional for legacy callers while retaining a
+  // const constructor without sharing a mutable zero vector.
+  const CarVisualState({
+    required this.position,
+    Vector2? velocity,
+    required this.angle,
+  }) : _velocity = velocity; // ignore: prefer_initializing_formals
 
   final Vector2 position;
+  final Vector2? _velocity;
   final double angle;
+
+  /// Returns the interpolated velocity, or zero for legacy poses.
+  Vector2 get velocity => _velocity ?? Vector2.zero();
 
   factory CarVisualState.interpolate({
     required CarState previous,
@@ -29,6 +39,10 @@ final class CarVisualState {
     );
     return CarVisualState(
       position: projection.positionFor(x, y),
+      velocity: Vector2(
+        _interpolate(previous.velocityX, current.velocityX, factor),
+        -_interpolate(previous.velocityY, current.velocityY, factor),
+      ),
       angle: projection.angleForDegrees(rotation),
     );
   }

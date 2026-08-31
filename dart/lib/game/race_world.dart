@@ -16,13 +16,18 @@ final class RaceWorld extends World {
   }) : _cars = Map<String, CarComponent>.unmodifiable(cars),
        super(children: children);
 
-  factory RaceWorld({required RaceSession session}) {
+  factory RaceWorld({
+    required RaceSession session,
+    Map<String, CarModel>? carModels,
+  }) {
     final projection = RaceWorldProjection(session.track.worldBounds);
     final cars = <String, CarComponent>{
       for (final participant in session.participants)
         participant.id: CarComponent.fromParticipant(
           participant: participant,
+          carModel: carModels?[participant.id] ?? CarModel.redStripe,
           projection: projection,
+          isPlayer: participant.id == session.player.id,
         ),
     };
     return RaceWorld._(
@@ -32,7 +37,7 @@ final class RaceWorld extends World {
       children: <Component>[
         TrackComponent(track: session.track, projection: projection),
         RaceObjectsComponent(track: session.track, projection: projection),
-        ...cars.values,
+        ..._carsInRenderOrder(session, cars),
       ],
     );
   }
@@ -50,4 +55,11 @@ final class RaceWorld extends World {
       _cars[participant.id]!.synchronize(participant, interpolationFactor);
     }
   }
+
+  static List<CarComponent> _carsInRenderOrder(
+    RaceSession session,
+    Map<String, CarComponent> cars,
+  ) =>
+      session.opponents.map((participant) => cars[participant.id]!).toList()
+        ..add(cars[session.player.id]!);
 }

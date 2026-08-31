@@ -1,7 +1,9 @@
+import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
+import 'package:toy_racers/game/camera/race_camera_controller.dart';
 import 'package:toy_racers/game/components/car_component.dart';
 import 'package:toy_racers/game/components/race_objects_component.dart';
 import 'package:toy_racers/game/components/track_component.dart';
@@ -12,6 +14,7 @@ import 'package:toy_racers/game/input/touch_input_controller.dart';
 import 'package:toy_racers/game/rendering/car_visual_state.dart';
 import 'package:toy_racers/game/rendering/race_world_projection.dart';
 import 'package:toy_racers/game/race_results_overlay.dart';
+import 'package:toy_racers/game/race_world.dart';
 import 'package:toy_racers/game/toy_racers_game.dart';
 import 'package:toy_racers/simulation.dart';
 
@@ -296,10 +299,6 @@ void main() {
       expect(session.player.carState.x, greaterThan(50));
       expect(game.world.cars.keys, <String>['player']);
       expect(game.world.children.whereType<TrackComponent>(), hasLength(1));
-      expect(
-        game.world.children.whereType<RaceObjectsComponent>(),
-        hasLength(1),
-      );
       expect(game.world.children.whereType<CarComponent>(), hasLength(1));
     },
   );
@@ -319,11 +318,125 @@ void main() {
       );
 
       expect(visual.position, Vector2(12, 78));
+      expect(visual.velocity, Vector2(0, 0));
       expect(visual.angle, closeTo(0, 0.000001));
       expect(previous.rotationDegrees, 350);
       expect(current.rotationDegrees, 10);
     },
   );
+
+  test('legacy car visual state construction defaults velocity to zero', () {
+    final visual = CarVisualState(position: Vector2.zero(), angle: 0);
+
+    expect(visual.velocity, Vector2.zero());
+  });
+
+  test('camera keeps the legacy follow arguments usable', () {
+    final camera = CameraComponent.withFixedResolution(
+      width: 1280,
+      height: 720,
+    );
+
+    RaceCameraController().follow(
+      camera: camera,
+      visualPosition: Vector2(50, 50),
+      worldBounds: const Rect.fromLTWH(0, 0, 100, 100),
+    );
+
+    expect(camera.viewfinder.position, Vector2(50, 50));
+  });
+
+  test('world maps car sprites and keeps the player above opponents', () {
+    final session = _session(participantCount: 3);
+    final game = ToyRacersGame(
+      session: session,
+      playerCarModel: CarModel.yellowSport,
+      opponentCarModels: <CarModel>[CarModel.greenRacer, CarModel.blueStripe],
+    );
+    final player = game.world.cars['player']!;
+    final firstOpponent = game.world.cars['ai-0']!;
+
+    expect(player.carModel, CarModel.yellowSport);
+    expect(firstOpponent.carModel, CarModel.greenRacer);
+    expect(player.size, Vector2(3.4, 1.8));
+    expect(player.priority, greaterThan(firstOpponent.priority));
+    expect(game.world.children.last, same(player));
+  });
+
+  test('world uses the session player identity for layering', () {
+    final session = _session(participantCount: 3, playerId: 'human');
+    final world = RaceWorld(session: session);
+
+    expect(world.playerCar.participantId, 'human');
+    expect(world.playerCar.priority, greaterThan(world.cars['ai-0']!.priority));
+  });
+
+  test('world preserves the legacy constructor defaults', () {
+    final world = RaceWorld(session: _session());
+    final participant = _session().player;
+    final component = CarComponent.fromParticipant(
+      participant: participant,
+      projection: RaceWorldProjection(TrackRectangle(0, 0, 100, 100)),
+    );
+
+    expect(world.playerCar.carModel, CarModel.redStripe);
+    expect(world.children.whereType<RaceObjectsComponent>(), hasLength(1));
+    expect(component.carModel, CarModel.redStripe);
+  });
+
+  test('camera rejects invalid tuning values', () {
+    expect(() => RaceCameraController(followSpeed: 0), throwsArgumentError);
+    expect(
+      () => RaceCameraController(followSpeed: double.nan),
+      throwsArgumentError,
+    );
+    expect(
+      () => RaceCameraController(lookAheadDistance: -1),
+      throwsArgumentError,
+    );
+    expect(
+      () => RaceCameraController(lookAheadDistance: double.infinity),
+      throwsArgumentError,
+    );
+    expect(() => RaceCameraController(shakeDecaySpeed: 0), throwsArgumentError);
+    expect(
+      () => RaceCameraController(shakeDecaySpeed: double.nan),
+      throwsArgumentError,
+    );
+  });
+
+  test('restart clears camera shake and snaps to the player', () async {
+    final cameraController = RaceCameraController();
+    final game = ToyRacersGame(
+      session: _session(),
+      cameraController: cameraController,
+    );
+
+    await game.onLoad();
+    cameraController.addShake(1);
+    game.update(0);
+    expect(game.camera.viewfinder.position.y, closeTo(51, 0.000001));
+
+    game.restartRace();
+
+    expect(game.camera.viewfinder.position, Vector2(50, 50));
+  });
+
+  test('camera shake uses one strongest impact per render frame', () async {
+    final session = _session(collisionSystem: _FixedImpactCollisionSystem(10));
+    final game = ToyRacersGame(
+      session: session,
+      cameraController: RaceCameraController(lookAheadDistance: 0),
+    );
+
+    await game.onLoad();
+    session.advanceLifecycle(
+      elapsedSeconds: session.raceState.countdownDurationSeconds,
+    );
+    game.update(CarPhysics.maxFrameDeltaSeconds);
+
+    expect((game.camera.viewfinder.position.y - 50).abs(), lessThan(0.02));
+  });
 
   test(
     'camera follows the projected player position inside track bounds',
@@ -333,8 +446,8 @@ void main() {
 
       await game.onLoad();
 
-      expect(game.camera.viewfinder.position.x, 16);
-      expect(game.camera.viewfinder.position.y, 9);
+      expect(game.camera.viewfinder.position.x, 12);
+      expect(game.camera.viewfinder.position.y, 6.75);
     },
   );
 
@@ -398,6 +511,9 @@ RaceSession _session({
   double playerX = 50,
   double playerY = 50,
   int requiredLaps = 3,
+  int participantCount = 1,
+  String playerId = 'player',
+  CollisionSystem? collisionSystem,
 }) {
   final track = Track.fromDefinition(
     id: 'adapter-test-track',
@@ -420,10 +536,11 @@ RaceSession _session({
       ),
     ],
     startGrid: <StartGridPosition>[
-      StartGridPosition(
-        position: TrackPoint(playerX, playerY),
-        rotationDegrees: 0,
-      ),
+      for (var index = 0; index < participantCount; index++)
+        StartGridPosition(
+          position: TrackPoint(playerX - index * 3, playerY),
+          rotationDegrees: 0,
+        ),
     ],
     racingLine: <TrackPoint>[
       TrackPoint(10, 10),
@@ -434,14 +551,38 @@ RaceSession _session({
   return RaceSession(
     track: track,
     participants: <RaceParticipant>[
-      RaceParticipant(
-        id: 'player',
-        carState: CarState(x: playerX, y: playerY),
-        carConfig: CarConfig(),
-      ),
+      for (var index = 0; index < participantCount; index++)
+        RaceParticipant(
+          id: index == 0 ? playerId : 'ai-${index - 1}',
+          carState: CarState(x: playerX - index * 3, y: playerY),
+          carConfig: CarConfig(),
+        ),
     ],
     requiredLaps: requiredLaps,
+    collisionSystem: collisionSystem,
+    playerId: playerId,
   );
+}
+
+final class _FixedImpactCollisionSystem implements CollisionSystem {
+  _FixedImpactCollisionSystem(this.impactSpeed);
+
+  final double impactSpeed;
+
+  @override
+  CollisionResult resolveTrackCollision({
+    required CarState state,
+    required CarConfig config,
+    required Track track,
+  }) => CollisionResult(maxImpactSpeed: impactSpeed);
+
+  @override
+  CollisionResult resolveCarCollision({
+    required CarState firstState,
+    required CarConfig firstConfig,
+    required CarState secondState,
+    required CarConfig secondConfig,
+  }) => CollisionResult.none;
 }
 
 Future<_ObservedSimulationState> _runRenderPattern(

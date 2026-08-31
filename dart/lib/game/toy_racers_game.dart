@@ -9,6 +9,7 @@ import 'camera/race_camera_controller.dart';
 import 'fixed_timestep_scheduler.dart';
 import 'input/keyboard_input_controller.dart';
 import 'input/touch_input_controller.dart';
+import 'rendering/race_car_models.dart';
 import 'race_world.dart';
 
 /// Supplies the latest normalized player command to the simulation adapter.
@@ -21,35 +22,66 @@ typedef PlayerInputProvider = PlayerInput Function();
 /// Flame's render deltas, then updates visual components and camera framing.
 final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
   static const String touchControlsOverlayId = 'touch-controls';
+  static const String raceHudOverlayId = 'race-hud';
+  static const String countdownOverlayId = 'race-countdown';
+  static const String pauseOverlayId = 'race-pause';
   static const String resultsOverlayId = 'race-results';
 
   ToyRacersGame({
     required this.session,
+    CarModel playerCarModel = CarModel.redStripe,
+    List<CarModel>? opponentCarModels,
     PlayerInputProvider? playerInputProvider,
     RaceCameraController? cameraController,
-  }) : _playerInputProvider = playerInputProvider ?? _neutralInput,
+  }) : playerCarModel = playerCarModel,
+       opponentCarModels = List<CarModel>.unmodifiable(
+         opponentCarModels ?? RaceCarModels.opponentsFor(playerCarModel),
+       ),
+       _playerInputProvider = playerInputProvider ?? _neutralInput,
        _cameraController = cameraController ?? RaceCameraController(),
        super(
-         world: RaceWorld(session: session),
+         world: RaceWorld(
+           session: session,
+           carModels: RaceCarModels.forSession(
+             session: session,
+             playerCarModel: playerCarModel,
+             opponentCarModels:
+                 opponentCarModels ??
+                 RaceCarModels.opponentsFor(playerCarModel),
+           ),
+         ),
          camera: CameraComponent.withFixedResolution(width: 1280, height: 720),
        );
 
   final RaceSession session;
+  final CarModel playerCarModel;
+  final List<CarModel> opponentCarModels;
   final PlayerInputProvider _playerInputProvider;
   late final KeyboardInputController _keyboardInputController =
       KeyboardInputController(onAction: _handleKeyboardAction);
   final TouchInputController touchInputController = TouchInputController();
   final RaceCameraController _cameraController;
   final FixedTimestepScheduler _fixedTimestep = FixedTimestepScheduler();
+  final ValueNotifier<int> presentationFrame = ValueNotifier<int>(0);
 
   double interpolationFactor = 0;
 
   /// Creates the first playable session from bundled canonical TMX sources.
   static Future<ToyRacersGame> loadDefault({
     Future<String> Function(String assetPath)? assetTextLoader,
+  }) => loadRace(
+    trackId: TrackId.livingRoom,
+    playerCarModel: CarModel.redStripe,
+    assetTextLoader: assetTextLoader,
+  );
+
+  /// Creates one playable race with sprite choices kept out of simulation.
+  static Future<ToyRacersGame> loadRace({
+    required TrackId trackId,
+    required CarModel playerCarModel,
+    Future<String> Function(String assetPath)? assetTextLoader,
   }) async {
     final loadText = assetTextLoader ?? rootBundle.loadString;
-    final trackId = TrackId.livingRoom;
     final assetPath = TrackLoader.tmxPath(trackId);
     final assetText = await loadText(assetPath);
     final track = TrackLoader((requestedPath) {
@@ -58,7 +90,16 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
       }
       return assetText;
     }).load(trackId);
-    return ToyRacersGame(session: _defaultSession(track));
+    final opponents = RaceCarModels.opponentsFor(playerCarModel);
+    return ToyRacersGame(
+      session: _defaultSession(
+        track: track,
+        playerCarModel: playerCarModel,
+        opponentModels: opponents,
+      ),
+      playerCarModel: playerCarModel,
+      opponentCarModels: opponents,
+    );
   }
 
   @override
@@ -69,14 +110,15 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
     }
     _synchronizePresentationOverlays();
     world.synchronizeVisualState(interpolationFactor);
-    _followPlayerCamera();
+    _followPlayerCamera(0);
+    _publishPresentationFrame();
   }
 
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
     _cameraController.configure(camera);
-    _followPlayerCamera();
+    _followPlayerCamera(0);
   }
 
   @override
@@ -115,8 +157,12 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
         session.pause();
         touchInputController.clear();
         _fixedTimestep.reset();
+        _synchronizePresentationOverlays();
+        _publishPresentationFrame();
       case RacePhase.paused:
         session.resume();
+        _synchronizePresentationOverlays();
+        _publishPresentationFrame();
       case RacePhase.loading ||
           RacePhase.ready ||
           RacePhase.countdown ||
@@ -138,7 +184,8 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
       overlays.add(touchControlsOverlayId);
     }
     world.synchronizeVisualState(interpolationFactor);
-    _followPlayerCamera();
+    _resetPlayerCamera();
+    _publishPresentationFrame();
   }
 
   /// Enables or disables the touch overlay for the current platform.
@@ -149,7 +196,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
     }
     overlays.setActive(
       touchControlsOverlayId,
-      active: enabled && session.raceState.phase != RacePhase.finished,
+      active: enabled && _isTouchControlsVisible(),
     );
   }
 
@@ -157,30 +204,58 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
   void update(double dt) {
     final frameDelta = FixedTimestepScheduler.boundedRenderDelta(dt);
     final racingDelta = session.advanceLifecycle(elapsedSeconds: frameDelta);
+    var maximumImpactSpeed = 0.0;
     final frame = _fixedTimestep.advance(
       simulationDeltaSeconds: racingDelta,
       isSimulationActive: _isRacing,
-      onFixedStep: _advanceSimulation,
+      onFixedStep: () {
+        final impactSpeed = _advanceSimulation();
+        if (impactSpeed > maximumImpactSpeed) {
+          maximumImpactSpeed = impactSpeed;
+        }
+      },
     );
+    if (maximumImpactSpeed >= _minimumShakeImpactSpeed) {
+      _cameraController.addShake(maximumImpactSpeed * _shakePerImpactSpeed);
+    }
     _synchronizePresentationOverlays();
     interpolationFactor = frame.interpolationFactor;
     world.synchronizeVisualState(interpolationFactor);
-    _followPlayerCamera();
+    _followPlayerCamera(frameDelta);
     super.update(dt);
+    _publishPresentationFrame();
   }
 
   bool _isRacing() => session.raceState.phase == RacePhase.racing;
 
-  void _advanceSimulation() {
+  bool _isTouchControlsVisible() => switch (session.raceState.phase) {
+    RacePhase.countdown || RacePhase.racing => true,
+    RacePhase.loading ||
+    RacePhase.ready ||
+    RacePhase.paused ||
+    RacePhase.finished => false,
+  };
+
+  double _advanceSimulation() {
     final playerInput = _playerInputProvider()
         .combinedWith(_keyboardInputController.input)
         .combinedWith(touchInputController.input);
-    session.advanceFixedStep(playerInput: playerInput);
+    final step = session.advanceFixedStep(playerInput: playerInput);
+    return step.maxImpactSpeed;
   }
 
-  void _followPlayerCamera() => _cameraController.follow(
+  void _followPlayerCamera(double deltaSeconds) => _cameraController.follow(
     camera: camera,
     visualPosition: world.playerCar.visualState.position,
+    visualVelocity: world.playerCar.visualState.velocity,
+    worldBounds: world.projection.rectangleFor(session.track.cameraBounds),
+    deltaSeconds: deltaSeconds,
+  );
+
+  void _resetPlayerCamera() => _cameraController.reset(
+    camera: camera,
+    visualPosition: world.playerCar.visualState.position,
+    visualVelocity: world.playerCar.visualState.velocity,
     worldBounds: world.projection.rectangleFor(session.track.cameraBounds),
   );
 
@@ -190,33 +265,52 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
 
   void _synchronizePresentationOverlays() {
     final registeredOverlays = overlays.registeredOverlays;
-    if (!registeredOverlays.contains(resultsOverlayId)) {
-      return;
-    }
-    if (session.raceState.phase == RacePhase.finished) {
-      overlays.remove(ToyRacersGame.touchControlsOverlayId);
-      overlays.add(resultsOverlayId);
-      return;
-    }
-    overlays.remove(resultsOverlayId);
+    _setOverlayActive(
+      registeredOverlays,
+      countdownOverlayId,
+      session.raceState.phase == RacePhase.countdown,
+    );
+    _setOverlayActive(
+      registeredOverlays,
+      pauseOverlayId,
+      session.raceState.phase == RacePhase.paused,
+    );
+    _setOverlayActive(
+      registeredOverlays,
+      resultsOverlayId,
+      session.raceState.phase == RacePhase.finished,
+    );
+    _setOverlayActive(
+      registeredOverlays,
+      touchControlsOverlayId,
+      _touchControlsEnabled && _isTouchControlsVisible(),
+    );
   }
 
-  static RaceSession _defaultSession(Track track) {
-    final playerModel = CarModel.redStripe;
-    final opponentModels = <CarModel>[
-      CarModel.blueStripe,
-      CarModel.yellowSport,
-      CarModel.greenRacer,
-      CarModel.orangeTruck,
-      CarModel.blueStripe,
-    ];
+  void _setOverlayActive(
+    Iterable<String> registeredOverlays,
+    String id,
+    bool active,
+  ) {
+    if (registeredOverlays.contains(id)) {
+      overlays.setActive(id, active: active);
+    }
+  }
+
+  void _publishPresentationFrame() => presentationFrame.value++;
+
+  static RaceSession _defaultSession({
+    required Track track,
+    required CarModel playerCarModel,
+    required List<CarModel> opponentModels,
+  }) {
     return RaceSession(
       track: track,
       participants: <RaceParticipant>[
         RaceParticipant(
           id: 'player',
           carState: _stateAt(track.startGrid.first),
-          carConfig: playerModel.performance.applyTo(),
+          carConfig: playerCarModel.performance.applyTo(),
         ),
         for (var index = 0; index < opponentModels.length; index++)
           RaceParticipant(
@@ -248,4 +342,6 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
     0.39,
     -0.28,
   ];
+  static const double _minimumShakeImpactSpeed = 3;
+  static const double _shakePerImpactSpeed = 0.025;
 }
