@@ -7,9 +7,11 @@ import argparse
 import hashlib
 import json
 import shutil
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
+from tempfile import TemporaryDirectory
 
 ASSET_BLOCK_START = "    # BEGIN GENERATED FLUTTER ASSETS"
 ASSET_BLOCK_END = "    # END GENERATED FLUTTER ASSETS"
@@ -48,6 +50,7 @@ class FlutterAssetPipeline:
         expected_paths = {entry.destination for entry in entries}
         expected_paths.add(PurePosixPath(CHECKSUM_MANIFEST))
         self._remove_stale_files(expected_paths)
+        self._remove_empty_directories()
         for entry in entries:
             self._copy_if_needed(entry)
         self._write_if_changed(
@@ -62,6 +65,34 @@ class FlutterAssetPipeline:
         """Return whether the generated mirror and pubspec match their sources."""
         entries = self.asset_entries()
         problems = self.parity_problems(entries)
+        return self._report_check_result(entries, problems)
+
+    def check_staged(self) -> bool:
+        """Check the repository snapshot currently stored in the Git index."""
+        with TemporaryDirectory(prefix="flutter-asset-staged-") as directory:
+            snapshot = Path(directory)
+            try:
+                subprocess.run(
+                    [
+                        "git",
+                        "checkout-index",
+                        "--all",
+                        "--force",
+                        f"--prefix={snapshot.as_posix()}/",
+                    ],
+                    cwd=self.repository_root,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+            except (OSError, subprocess.CalledProcessError) as error:
+                raise AssetPipelineError(
+                    "could not materialize the staged repository"
+                ) from error
+            return FlutterAssetPipeline(snapshot).check()
+
+    @staticmethod
+    def _report_check_result(entries: list[AssetEntry], problems: list[str]) -> bool:
         if problems:
             print("Flutter asset parity check failed:")
             for problem in problems:
@@ -110,7 +141,8 @@ class FlutterAssetPipeline:
         actual_paths = {
             PurePosixPath(path.relative_to(self.flutter_assets).as_posix()): path
             for path in actual_files
-            if path.name != CHECKSUM_MANIFEST
+            if PurePosixPath(path.relative_to(self.flutter_assets).as_posix())
+            != PurePosixPath(CHECKSUM_MANIFEST)
         }
         problems = [
             f"missing Flutter asset: {path.as_posix()}"
@@ -176,10 +208,10 @@ class FlutterAssetPipeline:
             [
                 ASSET_BLOCK_START,
                 *[
-                    f"    - assets/{entry.destination.as_posix()}"
+                    f"    - {self._quoted_asset_path(entry.destination)}"
                     for entry in entries
                 ],
-                f"    - assets/{CHECKSUM_MANIFEST}",
+                f"    - {self._quoted_asset_path(PurePosixPath(CHECKSUM_MANIFEST))}",
                 ASSET_BLOCK_END,
                 "",
             ]
@@ -200,7 +232,9 @@ class FlutterAssetPipeline:
         if destination.is_symlink():
             destination.unlink()
         if destination.is_dir():
-            raise AssetPipelineError(f"generated asset path is a directory: {destination}")
+            if any(destination.iterdir()):
+                raise AssetPipelineError(f"generated asset path is a directory: {destination}")
+            destination.rmdir()
         destination.parent.mkdir(parents=True, exist_ok=True)
         if not destination.is_file() or self.sha256(entry.source) != self.sha256(destination):
             shutil.copyfile(entry.source, destination)
@@ -221,6 +255,10 @@ class FlutterAssetPipeline:
         for directory in sorted(directories, key=lambda path: len(path.parts), reverse=True):
             if not any(directory.iterdir()):
                 directory.rmdir()
+
+    @staticmethod
+    def _quoted_asset_path(path: PurePosixPath) -> str:
+        return json.dumps(f"assets/{path.as_posix()}", ensure_ascii=False)
 
     @staticmethod
     def _files_in(directory: Path, missing_is_empty: bool = False) -> list[Path]:
@@ -248,6 +286,11 @@ class FlutterAssetPipeline:
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("sync", "check"))
+    parser.add_argument(
+        "--staged",
+        action="store_true",
+        help="check the staged Git index snapshot instead of the working tree",
+    )
     return parser.parse_args()
 
 
@@ -257,9 +300,12 @@ def main() -> int:
     pipeline = FlutterAssetPipeline(repository_root)
     try:
         if arguments.command == "sync":
+            if arguments.staged:
+                raise AssetPipelineError("--staged is only valid with check")
             pipeline.sync()
             return 0
-        return 0 if pipeline.check() else 1
+        result = pipeline.check_staged() if arguments.staged else pipeline.check()
+        return 0 if result else 1
     except AssetPipelineError as error:
         print(f"Flutter asset pipeline error: {error}", file=sys.stderr)
         return 1

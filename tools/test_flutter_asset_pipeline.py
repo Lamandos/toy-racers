@@ -2,6 +2,7 @@
 """Tests for the deterministic Flutter asset pipeline."""
 
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -32,6 +33,10 @@ class FlutterAssetPipelineTest(unittest.TestCase):
                 (flutter_assets / "attribution" / "SOURCES.md").read_text(),
                 "audio attribution\n",
             )
+            self.assertEqual(
+                (flutter_assets / "metadata" / CHECKSUM_MANIFEST).read_bytes(),
+                b"nested manifest",
+            )
             manifest = json.loads((flutter_assets / CHECKSUM_MANIFEST).read_text())
             self.assertEqual(manifest["schemaVersion"], 1)
             self.assertEqual(
@@ -49,6 +54,64 @@ class FlutterAssetPipelineTest(unittest.TestCase):
             pipeline.sync()
             self.assertEqual(pipeline.parity_problems(), [])
 
+    def test_sync_replaces_empty_directory_conflict(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository_root = Path(temporary_directory)
+            self._write_sources(repository_root)
+            source = repository_root / "assets" / "ui" / "icon"
+            source.parent.mkdir()
+            source.write_bytes(b"icon")
+
+            conflicting_directory = repository_root / "dart" / "assets" / "ui" / "icon"
+            conflicting_directory.mkdir(parents=True)
+            (conflicting_directory / "old.png").write_bytes(b"stale")
+
+            pipeline = FlutterAssetPipeline(repository_root)
+            pipeline.sync()
+
+            self.assertEqual((conflicting_directory).read_bytes(), b"icon")
+            self.assertFalse((conflicting_directory / "old.png").exists())
+            self.assertEqual(pipeline.parity_problems(), [])
+
+    def test_expected_pubspec_quotes_yaml_significant_asset_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository_root = Path(temporary_directory)
+            self._write_sources(repository_root)
+            assets = repository_root / "assets"
+            (assets / "player #1.png").write_bytes(b"hash")
+            (assets / "player: one.png").write_bytes(b"mapping")
+            (assets / 'player "one".png').write_bytes(b"quoted")
+
+            pipeline = FlutterAssetPipeline(repository_root)
+            pipeline.sync()
+            pubspec = (repository_root / "dart" / "pubspec.yaml").read_text()
+
+            self.assertIn('    - "assets/player #1.png"', pubspec)
+            self.assertIn('    - "assets/player: one.png"', pubspec)
+            self.assertIn('    - "assets/player \\"one\\".png"', pubspec)
+            self.assertEqual(pipeline.parity_problems(), [])
+
+    def test_check_staged_detects_partially_staged_asset_pipeline(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository_root = Path(temporary_directory)
+            self._write_sources(repository_root)
+            pipeline = FlutterAssetPipeline(repository_root)
+            pipeline.sync()
+
+            subprocess.run(["git", "init"], cwd=repository_root, check=True, capture_output=True)
+            subprocess.run(["git", "add", "-A"], cwd=repository_root, check=True)
+            source = repository_root / "assets" / "sprites" / "cars" / "red.png"
+            source.write_bytes(b"staged source differs")
+            pipeline.sync()
+            subprocess.run(
+                ["git", "add", "assets/sprites/cars/red.png"],
+                cwd=repository_root,
+                check=True,
+            )
+
+            self.assertTrue(pipeline.check())
+            self.assertFalse(pipeline.check_staged())
+
     @staticmethod
     def _write_sources(repository_root: Path) -> None:
         assets = repository_root / "assets"
@@ -57,6 +120,9 @@ class FlutterAssetPipelineTest(unittest.TestCase):
         car.write_bytes(b"red-car")
         (assets / "tracks").mkdir()
         (assets / "tracks" / "track_01.tmx").write_text("<map />\n")
+        nested_manifest = assets / "metadata" / CHECKSUM_MANIFEST
+        nested_manifest.parent.mkdir()
+        nested_manifest.write_bytes(b"nested manifest")
         (repository_root / "SOURCES.md").write_text("audio attribution\n")
         dart = repository_root / "dart"
         dart.mkdir()
