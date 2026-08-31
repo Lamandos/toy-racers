@@ -137,6 +137,11 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Verify generated Flutter assets
+        run: |-
+          python3 tools/test_flutter_asset_pipeline.py
+          python3 tools/flutter_asset_pipeline.py check
+
       - name: Verify Dart dependencies and quality
         working-directory: dart
         run: |-

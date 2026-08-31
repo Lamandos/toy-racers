@@ -13,12 +13,13 @@ Run this once after cloning:
 ./scripts/install-git-hooks.sh
 ```
 
-The script is idempotent and sets `core.hooksPath` to `.githooks`. The pre-commit hook runs Kotlin style checks,
-detekt, the 500-line source-file gate, JVM unit tests, the desktop UI smoke flow, plus Flutter analysis and tests.
-The pre-push hook runs the complete `qualityCheck`, including behavioral compatibility fixtures, deterministic repeat
+The script is idempotent and sets `core.hooksPath` to `.githooks`. The pre-commit hook runs the Flutter asset pipeline
+unit tests and staged SHA-256 parity check, Kotlin style checks, detekt, the 500-line source-file gate, JVM unit tests,
+the desktop UI smoke flow, plus Flutter analysis and tests. The pre-push hook runs the same asset pipeline tests and
+parity check, then the complete `qualityCheck`, including behavioral compatibility fixtures, deterministic repeat
 tests, Android debug unit tests, the core coverage gate, mutation testing, and Flutter analysis plus LCOV-producing
-tests. Flutter stable must be available on `PATH`. The fixed-seed fuzz smoke and the 20-run full behavioral stability
-suite are intentionally opt-in.
+tests. Flutter stable must be available on `PATH`.
+The fixed-seed fuzz smoke and the 20-run full behavioral stability suite are intentionally opt-in.
 
 On headless Linux, both hooks automatically use `xvfb-run --auto-servernum` for the desktop UI smoke flow. Install
 Xvfb before committing or pushing from that environment.
@@ -38,6 +39,7 @@ Xvfb before committing or pushing from that environment.
 ./gradlew detekt
 ./gradlew test
 ./gradlew lwjgl3:uiSmokeTest
+python3 tools/flutter_asset_pipeline.py check
 
 cd dart
 flutter pub get --enforce-lockfile
@@ -79,6 +81,11 @@ Formatting is checked without modifying files. To apply safe formatting fixes ex
 
 Flutter analysis is also read-only. Its configured rules are in `dart/analysis_options.yaml`; the
 coverage command writes ignored output to `dart/coverage/lcov.info`.
+
+`tools/flutter_asset_pipeline.py check` validates that `dart/assets/` is the exact generated SHA-256 mirror of
+the canonical `assets/` tree and the repository-level `SOURCES.md` attribution record. It also validates the
+generated Flutter asset declarations in `dart/pubspec.yaml`. After changing a canonical asset, run
+`python3 tools/flutter_asset_pipeline.py sync`, review the generated mirror, then run the check again.
 
 ## Diagnose failures
 

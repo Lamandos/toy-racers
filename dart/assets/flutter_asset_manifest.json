@@ -1,0 +1,201 @@
+{
+  "schemaVersion": 1,
+  "generatedBy": "tools/flutter_asset_pipeline.py",
+  "files": [
+    {
+      "path": "README.md",
+      "source": "assets/README.md",
+      "sha256": "6f8c473e054fdcc4055ac10e49f76689543afe2ec0a0bc65c0741c4bc4fb0d00"
+    },
+    {
+      "path": "assets.txt",
+      "source": "assets/assets.txt",
+      "sha256": "4436952638c5573f14d703e81fb252ea850b30cfa69a406565889a0349df2937"
+    },
+    {
+      "path": "attribution/SOURCES.md",
+      "source": "SOURCES.md",
+      "sha256": "6f7dc22eb6b64fad536af102226aed93e45cedf072ec028c9cdb814b22d6c070"
+    },
+    {
+      "path": "audio/background-music.wav",
+      "source": "assets/audio/background-music.wav",
+      "sha256": "6b6a7d105cb71e0ec683b9c314c0ccc416e94d9e7f7f1da46ef92a9e5ae5db17"
+    },
+    {
+      "path": "audio/button-click.wav",
+      "source": "assets/audio/button-click.wav",
+      "sha256": "b29b81cf414249c4fc4bc91a751118845626d65619f145d99fc4a1b9bc4c8835"
+    },
+    {
+      "path": "audio/checkpoint.wav",
+      "source": "assets/audio/checkpoint.wav",
+      "sha256": "4413e1fbccd0774b62309b9901d270bba9439290f30298b5f46445efa6a41d89"
+    },
+    {
+      "path": "audio/collision/collision_heavy_01.wav",
+      "source": "assets/audio/collision/collision_heavy_01.wav",
+      "sha256": "7571bece2dab552b378bc16f6906b5b2135501aaf3080eaf2cac5300614146d0"
+    },
+    {
+      "path": "audio/collision/collision_heavy_02.wav",
+      "source": "assets/audio/collision/collision_heavy_02.wav",
+      "sha256": "08eeb9a707542d136b5a1413756b5d28fa610db3c89805e6d6e9a00cc2bca1cd"
+    },
+    {
+      "path": "audio/collision/collision_light_01.wav",
+      "source": "assets/audio/collision/collision_light_01.wav",
+      "sha256": "f3d81da2437202812429d723963817a18cccf4b04ed9a6cd1ee32dcacca0236e"
+    },
+    {
+      "path": "audio/collision/collision_light_02.wav",
+      "source": "assets/audio/collision/collision_light_02.wav",
+      "sha256": "cd66673b16cad0cb9696e3e0943d89cc57ebf0472e455a2e2ea92c5d4e45c2bb"
+    },
+    {
+      "path": "audio/collision/collision_medium_01.wav",
+      "source": "assets/audio/collision/collision_medium_01.wav",
+      "sha256": "7e3d4eae385bf37fad5dafedd1de08c5aa26c32dd063ec6c2c2236c150da1769"
+    },
+    {
+      "path": "audio/collision/collision_medium_02.wav",
+      "source": "assets/audio/collision/collision_medium_02.wav",
+      "sha256": "2c2cfc46ac2eadeee22c50db781d255dd50583c32941be1a0f3bb508108adb52"
+    },
+    {
+      "path": "audio/collision/collision_medium_03.wav",
+      "source": "assets/audio/collision/collision_medium_03.wav",
+      "sha256": "3afe8538b7da121a7651143a6e2f5ed7532addca2dba24a9c38aeba9d7d2c61a"
+    },
+    {
+      "path": "audio/engine/engine_mid_loop.wav",
+      "source": "assets/audio/engine/engine_mid_loop.wav",
+      "sha256": "387c56305f2d5386ec3eafac61cb1b1209007dbe54316dedf137a0ee0f2c4d99"
+    },
+    {
+      "path": "audio/finish.wav",
+      "source": "assets/audio/finish.wav",
+      "sha256": "cd6ad60ec048237ad5f6c122bead7232ddc6a058143ef554783561a258fb03c7"
+    },
+    {
+      "path": "audio/go.wav",
+      "source": "assets/audio/go.wav",
+      "sha256": "0e920ed4c860b3b8aadfc369581c4c75f53c1a767eb307e4dcff2b540e5a8571"
+    },
+    {
+      "path": "audio/surface/gravel_hit_01.wav",
+      "source": "assets/audio/surface/gravel_hit_01.wav",
+      "sha256": "c2440d6b6143ee42e687fdf725ea46039229bc8e3c55d55cd2d9ae1d45d66e31"
+    },
+    {
+      "path": "audio/surface/gravel_hit_02.wav",
+      "source": "assets/audio/surface/gravel_hit_02.wav",
+      "sha256": "80b123c6efe405c7656e35e4c20bec83ec7627cad8b4f1fc8bac6f029f6c881d"
+    },
+    {
+      "path": "audio/surface/gravel_hit_03.wav",
+      "source": "assets/audio/surface/gravel_hit_03.wav",
+      "sha256": "e2986523e1b57588e449951ae9a0a84951c3ef0be3401590462eb2e01f3c8ebe"
+    },
+    {
+      "path": "audio/surface/offtrack_grass_loop.wav",
+      "source": "assets/audio/surface/offtrack_grass_loop.wav",
+      "sha256": "8a1e8c1a385e5f262d19e051ad4d0fd05e2539e495a9cc9548e58e3b156c0743"
+    },
+    {
+      "path": "audio/surface/offtrack_gravel_loop.wav",
+      "source": "assets/audio/surface/offtrack_gravel_loop.wav",
+      "sha256": "f2383deb6b7e3988d8706b87a8779d07a0edf13955169e81657e3a5fef4b2e08"
+    },
+    {
+      "path": "audio/tires/brake_hard.wav",
+      "source": "assets/audio/tires/brake_hard.wav",
+      "sha256": "9f74932705a2d85354f4725c976064d5fb5fe083eaadaa1d65a3f83e2fb655de"
+    },
+    {
+      "path": "audio/tires/tire_drift_loop.wav",
+      "source": "assets/audio/tires/tire_drift_loop.wav",
+      "sha256": "d353254545101f919433235850e397fb89c005be5f3dc68063a41bd062599dd1"
+    },
+    {
+      "path": "audio/ui/start_countdown_3.wav",
+      "source": "assets/audio/ui/start_countdown_3.wav",
+      "sha256": "fcc05034305dd89cc6940ff31e6e32ced093480825e33ccad317741c6cd44e3e"
+    },
+    {
+      "path": "libgdx.png",
+      "source": "assets/libgdx.png",
+      "sha256": "e71a5f3bda8e7daf2df6d32f6189d2d118100f3b62f4dfc13ec8691859923fd1"
+    },
+    {
+      "path": "sprites/cars/blue-stripe.png",
+      "source": "assets/sprites/cars/blue-stripe.png",
+      "sha256": "aedd3f659396f1f3682d9c73da2d3cd217e692fdf536ec12a1907efebcf1c0ad"
+    },
+    {
+      "path": "sprites/cars/green-racer.png",
+      "source": "assets/sprites/cars/green-racer.png",
+      "sha256": "394b66db31093e3307b6efc94b7f98d1ab851d6659c59af6119c089851ff03bd"
+    },
+    {
+      "path": "sprites/cars/orange-truck.png",
+      "source": "assets/sprites/cars/orange-truck.png",
+      "sha256": "785141636b3a2b433c84deb246c2cc9a97138e21c4d905b3b05b8afaf5d1a6e7"
+    },
+    {
+      "path": "sprites/cars/red-stripe.png",
+      "source": "assets/sprites/cars/red-stripe.png",
+      "sha256": "f69c3d8668e614a43bddef1b9c8ab63f5c2a6d675c12af98a9f8b1257b8a7619"
+    },
+    {
+      "path": "sprites/cars/yellow-sport.png",
+      "source": "assets/sprites/cars/yellow-sport.png",
+      "sha256": "daa17db3dc158368fa22a5af6ac0755ce69cd7d052a3ccdd5cea749749c07eaf"
+    },
+    {
+      "path": "tracks/track_01.png",
+      "source": "assets/tracks/track_01.png",
+      "sha256": "f00346093bebb843bb09260ff17aaf51b6d222499c427d7a668fd9173b671af3"
+    },
+    {
+      "path": "tracks/track_01.tmx",
+      "source": "assets/tracks/track_01.tmx",
+      "sha256": "60aa13f15e7c0018398709a74a3c83943fee7aaa837c4b185141c22cad1a54f4"
+    },
+    {
+      "path": "tracks/track_02-collision-guide.md",
+      "source": "assets/tracks/track_02-collision-guide.md",
+      "sha256": "322f3154379f476752d60d414ec0c9d32bd1f54df0b456e74c835e41f9b2c2a4"
+    },
+    {
+      "path": "tracks/track_02.png",
+      "source": "assets/tracks/track_02.png",
+      "sha256": "12f746b8d5f3af74ed7267d2240bff5f941195036cbefbe89119daa6abe6dafa"
+    },
+    {
+      "path": "tracks/track_02.tmx",
+      "source": "assets/tracks/track_02.tmx",
+      "sha256": "c4d8ffb05e070937cf6e6938545787b4405b27581db1a5fe56b42250de3da021"
+    },
+    {
+      "path": "ui/controls/brake-pedal.png",
+      "source": "assets/ui/controls/brake-pedal.png",
+      "sha256": "022e6c828b52a5bc0fd6921922a87bdc9b26b09e7fa9faa9de1a2ac1e4c2a3cb"
+    },
+    {
+      "path": "ui/controls/steering-wheel.png",
+      "source": "assets/ui/controls/steering-wheel.png",
+      "sha256": "72210721e6b4afdd7a6aa5a442236f7a125633fc5e0c1c50f081ce824b8a3302"
+    },
+    {
+      "path": "ui/controls/throttle-pedal.png",
+      "source": "assets/ui/controls/throttle-pedal.png",
+      "sha256": "600f8ec44209baae8380650b54dcf1b4f320ba78ffc8cf8ff45eca2e4d8839fb"
+    },
+    {
+      "path": "ui-main-background.png",
+      "source": "assets/ui-main-background.png",
+      "sha256": "fac65e48430297e3e81720dd19fead1f7583ab02fd64e6ce512e7779aa843c51"
+    }
+  ]
+}
