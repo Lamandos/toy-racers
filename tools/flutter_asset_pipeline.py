@@ -126,12 +126,27 @@ class FlutterAssetPipeline:
             )
         )
         entries.sort(key=lambda entry: entry.destination)
-        destinations = [entry.destination for entry in entries]
-        if len(destinations) != len(set(destinations)):
-            raise AssetPipelineError("two canonical files map to the same Flutter asset path")
-        if PurePosixPath(CHECKSUM_MANIFEST) in destinations:
-            raise AssetPipelineError(f"{CHECKSUM_MANIFEST} is reserved for generated checksums")
+        generated_destinations = [entry.destination for entry in entries]
+        generated_destinations.append(PurePosixPath(CHECKSUM_MANIFEST))
+        self._validate_destination_collisions(generated_destinations)
         return entries
+
+    @staticmethod
+    def _validate_destination_collisions(destinations: list[PurePosixPath]) -> None:
+        """Reject generated paths that cannot coexist in one filesystem tree."""
+        ordered_destinations = sorted(destinations)
+        for index, destination in enumerate(ordered_destinations):
+            for other in ordered_destinations[index + 1 :]:
+                if (
+                    destination != other
+                    and destination not in other.parents
+                    and other not in destination.parents
+                ):
+                    continue
+                raise AssetPipelineError(
+                    "generated asset paths collide: "
+                    f"{destination.as_posix()} and {other.as_posix()}"
+                )
 
     def parity_problems(self, entries: list[AssetEntry] | None = None) -> list[str]:
         """Return a deterministic list of source-to-Flutter mirror differences."""

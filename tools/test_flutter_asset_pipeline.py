@@ -11,6 +11,7 @@ from flutter_asset_pipeline import (
     ASSET_BLOCK_END,
     ASSET_BLOCK_START,
     CHECKSUM_MANIFEST,
+    AssetPipelineError,
     FlutterAssetPipeline,
 )
 
@@ -111,6 +112,28 @@ class FlutterAssetPipelineTest(unittest.TestCase):
 
             self.assertTrue(pipeline.check())
             self.assertFalse(pipeline.check_staged())
+
+    def test_sync_rejects_file_prefix_of_attribution_destination(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository_root = Path(temporary_directory)
+            self._write_sources(repository_root)
+            (repository_root / "assets" / "attribution").write_bytes(b"conflict")
+
+            with self.assertRaisesRegex(AssetPipelineError, "generated asset paths collide"):
+                FlutterAssetPipeline(repository_root).sync()
+
+    def test_sync_rejects_manifest_directory_prefix(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repository_root = Path(temporary_directory)
+            self._write_sources(repository_root)
+            conflicting_asset = (
+                repository_root / "assets" / CHECKSUM_MANIFEST / "nested.bin"
+            )
+            conflicting_asset.parent.mkdir(parents=True)
+            conflicting_asset.write_bytes(b"conflict")
+
+            with self.assertRaisesRegex(AssetPipelineError, "generated asset paths collide"):
+                FlutterAssetPipeline(repository_root).sync()
 
     @staticmethod
     def _write_sources(repository_root: Path) -> None:
