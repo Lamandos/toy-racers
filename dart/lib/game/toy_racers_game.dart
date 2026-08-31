@@ -8,6 +8,7 @@ import 'package:toy_racers/simulation.dart';
 import 'camera/race_camera_controller.dart';
 import 'fixed_timestep_scheduler.dart';
 import 'input/keyboard_input_controller.dart';
+import 'input/player_input_adapter.dart';
 import 'input/touch_input_controller.dart';
 import 'rendering/race_car_models.dart';
 import 'race_world.dart';
@@ -57,9 +58,16 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
   final CarModel playerCarModel;
   final List<CarModel> opponentCarModels;
   final PlayerInputProvider _playerInputProvider;
-  late final KeyboardInputController _keyboardInputController =
-      KeyboardInputController(onAction: _handleKeyboardAction);
-  final TouchInputController touchInputController = TouchInputController();
+  late final DesktopKeyboardInputAdapter _keyboardInputAdapter =
+      DesktopKeyboardInputAdapter(onAction: _handleKeyboardAction);
+  final MobileTouchInputAdapter touchInputController =
+      MobileTouchInputAdapter();
+  late final PlayerInputAdapter _playerInputAdapter =
+      CombinedPlayerInputAdapter(<PlayerInputAdapter>[
+        CallbackPlayerInputAdapter(_playerInputProvider),
+        _keyboardInputAdapter,
+        touchInputController,
+      ]);
   final RaceCameraController _cameraController;
   final FixedTimestepScheduler _fixedTimestep = FixedTimestepScheduler();
   final ValueNotifier<int> presentationFrame = ValueNotifier<int>(0);
@@ -139,7 +147,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
   KeyEventResult onKeyEvent(
     KeyEvent event,
     Set<LogicalKeyboardKey> keysPressed,
-  ) => _keyboardInputController.handleKeyEvent(event, keysPressed);
+  ) => _keyboardInputAdapter.handleKeyEvent(event, keysPressed);
 
   void _handleKeyboardAction(KeyboardAction action) {
     switch (action) {
@@ -237,10 +245,9 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
   };
 
   double _advanceSimulation() {
-    final playerInput = _playerInputProvider()
-        .combinedWith(_keyboardInputController.input)
-        .combinedWith(touchInputController.input);
-    final step = session.advanceFixedStep(playerInput: playerInput);
+    final step = session.advanceFixedStep(
+      playerInput: _playerInputAdapter.readInput(),
+    );
     return step.maxImpactSpeed;
   }
 

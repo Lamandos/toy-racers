@@ -15,7 +15,7 @@ final class TouchControlsOverlay extends StatelessWidget {
     super.key,
   });
 
-  final TouchInputController controller;
+  final MobileTouchInputAdapter controller;
   final void Function()? onPause;
   final void Function()? onRestart;
 
@@ -34,7 +34,7 @@ final class TouchControlsOverlay extends StatelessWidget {
           animation: controller,
           builder: (context, child) => CustomPaint(
             painter: _TouchControlsPainter(
-              controller.input,
+              controller.readInput(),
               showActions: onPause != null || onRestart != null,
             ),
             child: child,

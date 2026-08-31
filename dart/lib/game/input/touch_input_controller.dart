@@ -3,20 +3,27 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:toy_racers/simulation.dart';
 
+import 'player_input_adapter.dart';
+
 /// Translates simultaneous touch control presses into a player command.
 ///
 /// The controller keeps pointer IDs separate so that steering and either pedal
 /// can be held at the same time. The bottom 42% of the overlay is divided into
 /// four controls: steer left, steer right, brake/reverse, and throttle.
-final class TouchInputController extends ChangeNotifier {
+final class MobileTouchInputAdapter extends ChangeNotifier
+    implements PlayerInputAdapter {
   Size _surfaceSize = Size.zero;
   final Map<int, _TouchControl> _activePointers = <int, _TouchControl>{};
 
-  PlayerInput get input => PlayerInput(
+  /// Retained for the control widget to paint the current driving command.
+  PlayerInput get input => readInput();
+
+  @override
+  PlayerInput readInput() => PlayerInput(
     throttle: _hasControl(_TouchControl.throttle) ? 1 : 0,
     brake: _hasControl(_TouchControl.brake) ? 1 : 0,
     steering: _steeringInput,
-  );
+  ).normalized();
 
   /// Updates the overlay dimensions used to classify new touches.
   void configure(Size size) {
@@ -94,5 +101,8 @@ final class TouchInputController extends ChangeNotifier {
     return _TouchControl.throttle;
   }
 }
+
+/// Backwards-compatible name for the mobile platform adapter.
+typedef TouchInputController = MobileTouchInputAdapter;
 
 enum _TouchControl { none, steerLeft, steerRight, brake, throttle }
