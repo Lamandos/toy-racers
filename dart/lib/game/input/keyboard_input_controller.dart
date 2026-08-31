@@ -2,15 +2,21 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:toy_racers/simulation.dart';
 
+import 'player_input_adapter.dart';
+
 /// Translates the desktop driving keys into the portable player command.
-final class KeyboardInputController {
-  KeyboardInputController({this.onAction});
+final class DesktopKeyboardInputAdapter implements PlayerInputAdapter {
+  DesktopKeyboardInputAdapter({this.onAction});
 
   final void Function(KeyboardAction action)? onAction;
 
   PlayerInput _input = PlayerInput.none;
 
-  PlayerInput get input => _input;
+  /// Retained for widgets that need to display the current driving command.
+  PlayerInput get input => readInput();
+
+  @override
+  PlayerInput readInput() => _input;
 
   KeyEventResult handleKeyEvent(
     KeyEvent event,
@@ -62,7 +68,7 @@ final class KeyboardInputController {
           : left
           ? -1
           : 1,
-    );
+    ).normalized();
   }
 
   bool _isPressed(
@@ -93,5 +99,8 @@ final class KeyboardInputController {
     LogicalKeyboardKey.keyR,
   ];
 }
+
+/// Backwards-compatible name for the desktop platform adapter.
+typedef KeyboardInputController = DesktopKeyboardInputAdapter;
 
 enum KeyboardAction { togglePause, restart }

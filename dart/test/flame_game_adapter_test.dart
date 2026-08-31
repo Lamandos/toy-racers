@@ -20,7 +20,7 @@ import 'package:toy_racers/simulation.dart';
 
 void main() {
   test('keyboard controller maps desktop driving keys', () {
-    final controller = KeyboardInputController();
+    final controller = DesktopKeyboardInputAdapter();
     final inputResult = controller.handleKeyEvent(
       const KeyDownEvent(
         physicalKey: PhysicalKeyboardKey.keyW,
@@ -46,7 +46,7 @@ void main() {
 
   test('keyboard controller handles documented race actions', () {
     final actions = <KeyboardAction>[];
-    final controller = KeyboardInputController(onAction: actions.add);
+    final controller = DesktopKeyboardInputAdapter(onAction: actions.add);
 
     final escapeResult = controller.handleKeyEvent(
       const KeyDownEvent(
@@ -98,7 +98,8 @@ void main() {
   );
 
   test('touch controller supports simultaneous steering and throttle', () {
-    final controller = TouchInputController()..configure(const Size(400, 200));
+    final controller = MobileTouchInputAdapter()
+      ..configure(const Size(400, 200));
 
     controller.pointerDown(1, const Offset(50, 150));
     controller.pointerDown(2, const Offset(350, 150));
@@ -116,7 +117,7 @@ void main() {
   ) async {
     var pauseCount = 0;
     var restartCount = 0;
-    final controller = TouchInputController();
+    final controller = MobileTouchInputAdapter();
 
     await tester.pumpWidget(
       SizedBox(
