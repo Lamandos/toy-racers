@@ -72,61 +72,56 @@ final class CarSelectionView extends StatelessWidget {
 
   Widget _carCard(CarModel model, double width) {
     final isSelected = model == selected;
-    return Semantics(
-      button: true,
+    return GameActionTarget(
+      key: ValueKey<String>('car-${model.scenarioId}'),
+      semanticLabel: model.displayName,
       selected: isSelected,
-      label: model.displayName,
-      child: GestureDetector(
-        key: ValueKey<String>('car-${model.scenarioId}'),
-        onTap: () => onSelected(model),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
+      onPressed: () => onSelected(model),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xff174b78) : const Color(0xff172331),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
             color: isSelected
-                ? const Color(0xff174b78)
-                : const Color(0xff172331),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: isSelected
-                  ? const Color(0xff8ed4ff)
-                  : const Color(0xff43566b),
-              width: isSelected ? 2 : 1,
-            ),
+                ? const Color(0xff8ed4ff)
+                : const Color(0xff43566b),
+            width: isSelected ? 2 : 1,
           ),
-          child: SizedBox(
-            width: width,
-            height: width * 1.48,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: <Widget>[
-                  Expanded(
-                    child: Image.asset(model.spriteAsset, fit: BoxFit.contain),
+        ),
+        child: SizedBox(
+          width: width,
+          height: width * 1.48,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: <Widget>[
+                Expanded(
+                  child: Image.asset(model.spriteAsset, fit: BoxFit.contain),
+                ),
+                Text(
+                  model.displayName,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xfff7f4e8),
+                    fontWeight: FontWeight.w800,
                   ),
-                  Text(
-                    model.displayName,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Color(0xfff7f4e8),
-                      fontWeight: FontWeight.w800,
-                    ),
+                ),
+                const SizedBox(height: 8),
+                _performance('ACCEL', model.performance.acceleration),
+                _performance('SPEED', model.performance.maxSpeed),
+                _performance('HANDLE', model.performance.handling),
+                const SizedBox(height: 6),
+                Text(
+                  isSelected ? 'SELECTED' : 'SELECT',
+                  style: TextStyle(
+                    color: isSelected
+                        ? const Color(0xff8ed4ff)
+                        : const Color(0xffc5d5e2),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
                   ),
-                  const SizedBox(height: 8),
-                  _performance('ACCEL', model.performance.acceleration),
-                  _performance('SPEED', model.performance.maxSpeed),
-                  _performance('HANDLE', model.performance.handling),
-                  const SizedBox(height: 6),
-                  Text(
-                    isSelected ? 'SELECTED' : 'SELECT',
-                    style: TextStyle(
-                      color: isSelected
-                          ? const Color(0xff8ed4ff)
-                          : const Color(0xffc5d5e2),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

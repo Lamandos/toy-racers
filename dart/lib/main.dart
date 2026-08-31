@@ -31,13 +31,18 @@ Future<void> main() async {
 final class ToyRacersApplication extends StatefulWidget {
   const ToyRacersApplication({
     super.key,
-    this.gameLoader,
+    Future<ToyRacersGame> Function()? gameLoader,
     this.raceGameLoader = ToyRacersGame.loadRace,
     this.showTouchControls,
-  });
+  }) : gameLoader = gameLoader ?? ToyRacersGame.loadDefault,
+       _legacyGameLoader = gameLoader;
 
-  /// Legacy no-argument test loader, used after the player starts a race.
-  final Future<ToyRacersGame> Function()? gameLoader;
+  /// Legacy no-argument loader, retained for source compatibility.
+  ///
+  /// The selection flow uses [raceGameLoader] unless an explicit legacy
+  /// loader was supplied to the constructor.
+  final Future<ToyRacersGame> Function() gameLoader;
+  final Future<ToyRacersGame> Function()? _legacyGameLoader;
   final RaceGameLoader raceGameLoader;
   final bool? showTouchControls;
 
@@ -53,27 +58,29 @@ final class _ToyRacersApplicationState extends State<ToyRacersApplication> {
   ToyRacersGame? _activeGame;
 
   @override
-  Widget build(BuildContext context) => Directionality(
-    textDirection: TextDirection.ltr,
-    child: switch (_screen) {
-      _ToyRacersScreen.mainMenu => MainMenuView(onPlay: _showTrackSelection),
-      _ToyRacersScreen.trackSelection => TrackSelectionView(
-        onSelected: _showCarSelection,
-        onBack: _showMainMenu,
-      ),
-      _ToyRacersScreen.carSelection => CarSelectionView(
-        selected: _selectedCar,
-        onSelected: _selectCar,
-        onStart: _startRace,
-        onBack: _showTrackSelection,
-      ),
-      _ToyRacersScreen.race => _RacePresentation(
-        race: _race!,
-        showTouchControls: _shouldShowTouchControls,
-        onGameReady: _setActiveGame,
-        onExitRace: _showMainMenu,
-      ),
-    },
+  Widget build(BuildContext context) => GameNavigationScope(
+    child: Directionality(
+      textDirection: TextDirection.ltr,
+      child: switch (_screen) {
+        _ToyRacersScreen.mainMenu => MainMenuView(onPlay: _showTrackSelection),
+        _ToyRacersScreen.trackSelection => TrackSelectionView(
+          onSelected: _showCarSelection,
+          onBack: _showMainMenu,
+        ),
+        _ToyRacersScreen.carSelection => CarSelectionView(
+          selected: _selectedCar,
+          onSelected: _selectCar,
+          onStart: _startRace,
+          onBack: _showTrackSelection,
+        ),
+        _ToyRacersScreen.race => _RacePresentation(
+          race: _race!,
+          showTouchControls: _shouldShowTouchControls,
+          onGameReady: _setActiveGame,
+          onExitRace: _showMainMenu,
+        ),
+      },
+    ),
   );
 
   bool get _shouldShowTouchControls =>
@@ -108,7 +115,7 @@ final class _ToyRacersApplicationState extends State<ToyRacersApplication> {
   void _startRace() {
     final race = Future<ToyRacersGame>.sync(
       () =>
-          widget.gameLoader?.call() ??
+          widget._legacyGameLoader?.call() ??
           widget.raceGameLoader(
             trackId: _selectedTrack,
             playerCarModel: _selectedCar,

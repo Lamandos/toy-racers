@@ -46,31 +46,28 @@ final class TrackSelectionView extends StatelessWidget {
     ),
   );
 
-  Widget _trackCard(TrackId track) => Semantics(
-    button: true,
-    label: track.displayName,
-    child: GestureDetector(
-      key: ValueKey<String>('track-${track.id}'),
-      onTap: () => onSelected(track),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: const Color(0xff172331),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: const Color(0xff8ed4ff).withValues(alpha: 0.5),
-          ),
+  Widget _trackCard(TrackId track) => GameActionTarget(
+    key: ValueKey<String>('track-${track.id}'),
+    semanticLabel: track.displayName,
+    onPressed: () => onSelected(track),
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xff172331),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: const Color(0xff8ed4ff).withValues(alpha: 0.5),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            children: <Widget>[
-              Expanded(
-                child: Image.asset(_previewAsset(track), fit: BoxFit.contain),
-              ),
-              const SizedBox(height: 10),
-              gameHeading(track.displayName, size: 20),
-            ],
-          ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: <Widget>[
+            Expanded(
+              child: Image.asset(_previewAsset(track), fit: BoxFit.contain),
+            ),
+            const SizedBox(height: 10),
+            gameHeading(track.displayName, size: 20),
+          ],
         ),
       ),
     ),
