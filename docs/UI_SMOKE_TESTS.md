@@ -31,3 +31,11 @@ may be added as separate visual-regression goldens.
 Screenshot equality can prove only that a rendered frame matches its approved visual baseline. It must never be
 used as evidence that car physics, collision response, checkpoint progression, laps, AI, or race outcomes are
 correct; those remain covered by deterministic core tests and behavioral compatibility scenarios.
+
+## Flutter rendering verification
+
+The Dart/Flutter implementation keeps an independent, non-pixel-perfect visual
+verification layer in [`VISUAL_VERIFICATION.md`](VISUAL_VERIFICATION.md). Its
+widget test captures seven fixed-size screenshots and checks screen composition
+and gameplay-relevant visuals without treating rendering output as a behavioral
+golden master.

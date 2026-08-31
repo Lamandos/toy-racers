@@ -5,9 +5,10 @@ import 'toy_racers_game.dart';
 
 /// Presents the completed race standings and a touch-friendly retry action.
 final class RaceResultsOverlay extends StatelessWidget {
-  const RaceResultsOverlay({required this.game, super.key});
+  const RaceResultsOverlay({required this.game, this.onMainMenu, super.key});
 
   final ToyRacersGame game;
+  final VoidCallback? onMainMenu;
 
   @override
   Widget build(BuildContext context) {
@@ -79,6 +80,24 @@ final class RaceResultsOverlay extends StatelessWidget {
                           ),
                         ),
                       ),
+                      if (onMainMenu != null) ...<Widget>[
+                        const SizedBox(height: 10),
+                        Semantics(
+                          button: true,
+                          label: 'Main menu',
+                          child: GestureDetector(
+                            key: const ValueKey<String>('results-main-menu'),
+                            onTap: onMainMenu,
+                            child: const Text(
+                              'MAIN MENU',
+                              style: TextStyle(
+                                color: Color(0xff2463a2),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

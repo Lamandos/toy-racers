@@ -1,15 +1,19 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:toy_racers/simulation.dart';
 
 import '../rendering/car_visual_state.dart';
+import '../rendering/presentation_catalog.dart';
 import '../rendering/race_world_projection.dart';
+import '../rendering/raster_asset_loader.dart';
 
 /// Draws one car from a [RaceParticipant] state owned by [RaceSession].
 final class CarComponent extends PositionComponent {
   CarComponent._({
     required this.participantId,
+    required this.carModel,
     required this._projection,
     required CarVisualState visualState,
     required CarConfig carConfig,
@@ -19,11 +23,12 @@ final class CarComponent extends PositionComponent {
          size: Vector2(carConfig.length, carConfig.width),
          angle: visualState.angle,
          anchor: Anchor.center,
-         priority: 20,
+         priority: _renderPriority(participantId, carModel),
        );
 
   factory CarComponent.fromParticipant({
     required RaceParticipant participant,
+    required CarModel carModel,
     required RaceWorldProjection projection,
   }) {
     final visualState = CarVisualState.interpolate(
@@ -34,6 +39,7 @@ final class CarComponent extends PositionComponent {
     );
     return CarComponent._(
       participantId: participant.id,
+      carModel: carModel,
       projection: projection,
       visualState: visualState,
       carConfig: participant.carConfig,
@@ -41,10 +47,18 @@ final class CarComponent extends PositionComponent {
   }
 
   final String participantId;
+  final CarModel carModel;
   final RaceWorldProjection _projection;
   CarVisualState _visualState;
+  Image? _sprite;
 
   CarVisualState get visualState => _visualState;
+
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+    _sprite = await RasterAssetLoader.load(carModel.spriteAsset);
+  }
 
   /// Updates only the visible pose; it never writes to [participant].
   void synchronize(RaceParticipant participant, double interpolationFactor) {
@@ -60,35 +74,22 @@ final class CarComponent extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
-    final body = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0, 0, size.x, size.y),
-      const Radius.circular(0.35),
+    final sprite = _sprite;
+    if (sprite == null) {
+      return;
+    }
+    canvas.save();
+    canvas.translate(size.x / 2, size.y / 2);
+    canvas.rotate(math.pi / 2);
+    canvas.drawImageRect(
+      sprite,
+      Rect.fromLTWH(0, 0, sprite.width.toDouble(), sprite.height.toDouble()),
+      Rect.fromCenter(center: Offset.zero, width: size.y, height: size.x),
+      Paint()..filterQuality = FilterQuality.high,
     );
-    canvas.drawRRect(body, Paint()..color = _bodyColor(participantId));
-    canvas.drawRRect(
-      body,
-      Paint()
-        ..color = const Color(0xff181a1f)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.12,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(size.x * 0.42, 0.15, size.x * 0.18, size.y - 0.3),
-      Paint()..color = const Color(0xfff5f2df),
-    );
-    canvas.drawCircle(
-      Offset(size.x * 0.78, size.y * 0.5),
-      size.y * 0.16,
-      Paint()..color = const Color(0xffd7efff),
-    );
+    canvas.restore();
   }
 
-  Color _bodyColor(String id) => switch (id) {
-    'player' => const Color(0xffdc4d4d),
-    'ai-0' => const Color(0xff4b88d5),
-    'ai-1' => const Color(0xfff2c94c),
-    'ai-2' => const Color(0xff57ae68),
-    'ai-3' => const Color(0xffe28b3c),
-    _ => const Color(0xffa568c9),
-  };
+  static int _renderPriority(String id, CarModel model) =>
+      id == 'player' ? 30 : 20 + model.index;
 }

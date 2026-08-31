@@ -1,65 +1,68 @@
 import 'dart:async';
 
-import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:toy_racers/game/input/touch_controls_overlay.dart';
+import 'package:flutter/widgets.dart';
 import 'package:toy_racers/game/toy_racers_game.dart';
 import 'package:toy_racers/main.dart';
+import 'package:toy_racers/simulation.dart';
 
 void main() {
-  testWidgets('provides an empty shell until the Flame game is loaded', (
+  testWidgets('guides the player from menu to the selected race', (
     tester,
   ) async {
     final game = Completer<ToyRacersGame>();
+    TrackId? selectedTrack;
+    CarModel? selectedCar;
     await tester.pumpWidget(
-      ToyRacersApplication(gameLoader: () => game.future),
+      ToyRacersApplication(
+        raceGameLoader: ({required trackId, required playerCarModel}) {
+          selectedTrack = trackId;
+          selectedCar = playerCarModel;
+          return game.future;
+        },
+      ),
     );
 
+    expect(find.text('TOY RACERS'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey<String>('main-menu-play')));
+    await tester.pumpAndSettle();
+    expect(find.text('SELECT TRACK'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey<String>('track-track-02')));
+    await tester.pumpAndSettle();
+    expect(find.text('SELECT CAR'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey<String>('car-yellow-sport')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey<String>('start-race')));
+    await tester.pump();
+
+    expect(selectedTrack, TrackId.bathroom);
+    expect(selectedCar, CarModel.yellowSport);
     expect(find.byType(SizedBox), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('shows an error when the Flame game cannot be loaded', (
+  testWidgets('shows a race-load error only after the player starts a race', (
     tester,
   ) async {
     await tester.pumpWidget(
       ToyRacersApplication(
-        gameLoader: () async => throw StateError('missing track'),
+        raceGameLoader: ({required trackId, required playerCarModel}) async {
+          throw StateError('missing track');
+        },
       ),
     );
+
+    await tester.tap(find.byKey(const ValueKey<String>('main-menu-play')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey<String>('track-track-01')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey<String>('start-race')));
+    await tester.pump();
     await tester.pump();
 
     expect(find.text('Unable to load the race.'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
-  });
-
-  testWidgets('shows and hides touch controls by configuration', (
-    tester,
-  ) async {
-    final game = await ToyRacersGame.loadDefault();
-    final gameFuture = Future<ToyRacersGame>.value(game);
-    await tester.pumpWidget(
-      ToyRacersApplication(
-        gameLoader: () => gameFuture,
-        showTouchControls: true,
-      ),
-    );
-    await tester.pump();
-    await tester.pump();
-
-    expect(find.byType(TouchControlsOverlay), findsOneWidget);
-    await tester.pumpWidget(
-      ToyRacersApplication(
-        gameLoader: () => gameFuture,
-        showTouchControls: false,
-      ),
-    );
-    await tester.pump();
-
-    expect(find.byType(TouchControlsOverlay), findsNothing);
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pump();
-    game.pauseEngine();
-    game.dispose();
   });
 }

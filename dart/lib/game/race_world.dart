@@ -2,7 +2,6 @@ import 'package:flame/components.dart';
 import 'package:toy_racers/simulation.dart';
 
 import 'components/car_component.dart';
-import 'components/race_objects_component.dart';
 import 'components/track_component.dart';
 import 'rendering/race_world_projection.dart';
 
@@ -16,12 +15,16 @@ final class RaceWorld extends World {
   }) : _cars = Map<String, CarComponent>.unmodifiable(cars),
        super(children: children);
 
-  factory RaceWorld({required RaceSession session}) {
+  factory RaceWorld({
+    required RaceSession session,
+    required Map<String, CarModel> carModels,
+  }) {
     final projection = RaceWorldProjection(session.track.worldBounds);
     final cars = <String, CarComponent>{
       for (final participant in session.participants)
         participant.id: CarComponent.fromParticipant(
           participant: participant,
+          carModel: carModels[participant.id] ?? CarModel.redStripe,
           projection: projection,
         ),
     };
@@ -31,8 +34,7 @@ final class RaceWorld extends World {
       cars: cars,
       children: <Component>[
         TrackComponent(track: session.track, projection: projection),
-        RaceObjectsComponent(track: session.track, projection: projection),
-        ...cars.values,
+        ..._carsInRenderOrder(session, cars),
       ],
     );
   }
@@ -50,4 +52,11 @@ final class RaceWorld extends World {
       _cars[participant.id]!.synchronize(participant, interpolationFactor);
     }
   }
+
+  static List<CarComponent> _carsInRenderOrder(
+    RaceSession session,
+    Map<String, CarComponent> cars,
+  ) =>
+      session.opponents.map((participant) => cars[participant.id]!).toList()
+        ..add(cars[session.player.id]!);
 }

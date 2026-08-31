@@ -8,9 +8,14 @@ import 'race_world_projection.dart';
 /// It intentionally contains no velocity integration or race state. Flame
 /// consumes this value between deterministic [RaceSession] fixed steps.
 final class CarVisualState {
-  const CarVisualState({required this.position, required this.angle});
+  const CarVisualState({
+    required this.position,
+    required this.velocity,
+    required this.angle,
+  });
 
   final Vector2 position;
+  final Vector2 velocity;
   final double angle;
 
   factory CarVisualState.interpolate({
@@ -29,6 +34,10 @@ final class CarVisualState {
     );
     return CarVisualState(
       position: projection.positionFor(x, y),
+      velocity: Vector2(
+        _interpolate(previous.velocityX, current.velocityX, factor),
+        -_interpolate(previous.velocityY, current.velocityY, factor),
+      ),
       angle: projection.angleForDegrees(rotation),
     );
   }

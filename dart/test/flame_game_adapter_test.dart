@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
 import 'package:toy_racers/game/components/car_component.dart';
-import 'package:toy_racers/game/components/race_objects_component.dart';
 import 'package:toy_racers/game/components/track_component.dart';
 import 'package:toy_racers/game/fixed_timestep_scheduler.dart';
 import 'package:toy_racers/game/input/keyboard_input_controller.dart';
@@ -296,10 +295,6 @@ void main() {
       expect(session.player.carState.x, greaterThan(50));
       expect(game.world.cars.keys, <String>['player']);
       expect(game.world.children.whereType<TrackComponent>(), hasLength(1));
-      expect(
-        game.world.children.whereType<RaceObjectsComponent>(),
-        hasLength(1),
-      );
       expect(game.world.children.whereType<CarComponent>(), hasLength(1));
     },
   );
@@ -319,11 +314,29 @@ void main() {
       );
 
       expect(visual.position, Vector2(12, 78));
+      expect(visual.velocity, Vector2(0, 0));
       expect(visual.angle, closeTo(0, 0.000001));
       expect(previous.rotationDegrees, 350);
       expect(current.rotationDegrees, 10);
     },
   );
+
+  test('world maps car sprites and keeps the player above opponents', () {
+    final session = _session(participantCount: 3);
+    final game = ToyRacersGame(
+      session: session,
+      playerCarModel: CarModel.yellowSport,
+      opponentCarModels: <CarModel>[CarModel.greenRacer, CarModel.blueStripe],
+    );
+    final player = game.world.cars['player']!;
+    final firstOpponent = game.world.cars['ai-0']!;
+
+    expect(player.carModel, CarModel.yellowSport);
+    expect(firstOpponent.carModel, CarModel.greenRacer);
+    expect(player.size, Vector2(3.4, 1.8));
+    expect(player.priority, greaterThan(firstOpponent.priority));
+    expect(game.world.children.last, same(player));
+  });
 
   test(
     'camera follows the projected player position inside track bounds',
@@ -333,8 +346,8 @@ void main() {
 
       await game.onLoad();
 
-      expect(game.camera.viewfinder.position.x, 16);
-      expect(game.camera.viewfinder.position.y, 9);
+      expect(game.camera.viewfinder.position.x, 12);
+      expect(game.camera.viewfinder.position.y, 6.75);
     },
   );
 
@@ -398,6 +411,7 @@ RaceSession _session({
   double playerX = 50,
   double playerY = 50,
   int requiredLaps = 3,
+  int participantCount = 1,
 }) {
   final track = Track.fromDefinition(
     id: 'adapter-test-track',
@@ -420,10 +434,11 @@ RaceSession _session({
       ),
     ],
     startGrid: <StartGridPosition>[
-      StartGridPosition(
-        position: TrackPoint(playerX, playerY),
-        rotationDegrees: 0,
-      ),
+      for (var index = 0; index < participantCount; index++)
+        StartGridPosition(
+          position: TrackPoint(playerX - index * 3, playerY),
+          rotationDegrees: 0,
+        ),
     ],
     racingLine: <TrackPoint>[
       TrackPoint(10, 10),
@@ -434,11 +449,12 @@ RaceSession _session({
   return RaceSession(
     track: track,
     participants: <RaceParticipant>[
-      RaceParticipant(
-        id: 'player',
-        carState: CarState(x: playerX, y: playerY),
-        carConfig: CarConfig(),
-      ),
+      for (var index = 0; index < participantCount; index++)
+        RaceParticipant(
+          id: index == 0 ? 'player' : 'ai-${index - 1}',
+          carState: CarState(x: playerX - index * 3, y: playerY),
+          carConfig: CarConfig(),
+        ),
     ],
     requiredLaps: requiredLaps,
   );
