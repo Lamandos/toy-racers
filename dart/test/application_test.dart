@@ -65,4 +65,38 @@ void main() {
     expect(find.text('Unable to load the race.'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('keeps selection actions reachable on a short landscape view', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(640, 360));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final race = Completer<ToyRacersGame>();
+    var started = false;
+
+    await tester.pumpWidget(
+      ToyRacersApplication(
+        raceGameLoader: ({required trackId, required playerCarModel}) {
+          started = true;
+          return race.future;
+        },
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey<String>('main-menu-play')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey<String>('track-track-01')));
+    await tester.pumpAndSettle();
+
+    final startButton = find.byKey(const ValueKey<String>('start-race'));
+    await tester.scrollUntilVisible(
+      startButton,
+      200,
+      scrollable: find.byType(Scrollable),
+    );
+    expect(startButton, findsOneWidget);
+
+    await tester.tap(startButton);
+    await tester.pump();
+    expect(started, isTrue);
+  });
 }

@@ -2,6 +2,7 @@ import 'package:flame/components.dart';
 import 'package:toy_racers/simulation.dart';
 
 import 'components/car_component.dart';
+import 'components/race_objects_component.dart';
 import 'components/track_component.dart';
 import 'rendering/race_world_projection.dart';
 
@@ -17,14 +18,14 @@ final class RaceWorld extends World {
 
   factory RaceWorld({
     required RaceSession session,
-    required Map<String, CarModel> carModels,
+    Map<String, CarModel>? carModels,
   }) {
     final projection = RaceWorldProjection(session.track.worldBounds);
     final cars = <String, CarComponent>{
       for (final participant in session.participants)
         participant.id: CarComponent.fromParticipant(
           participant: participant,
-          carModel: carModels[participant.id] ?? CarModel.redStripe,
+          carModel: carModels?[participant.id] ?? CarModel.redStripe,
           projection: projection,
         ),
     };
@@ -34,6 +35,7 @@ final class RaceWorld extends World {
       cars: cars,
       children: <Component>[
         TrackComponent(track: session.track, projection: projection),
+        RaceObjectsComponent(track: session.track, projection: projection),
         ..._carsInRenderOrder(session, cars),
       ],
     );

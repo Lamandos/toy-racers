@@ -12,8 +12,24 @@ final class RaceCameraController {
     this.lookAheadDistance = 4,
     this.shakeDecaySpeed = 12,
   }) {
-    if (visibleWorldWidth <= 0 || visibleWorldHeight <= 0) {
+    if (!visibleWorldWidth.isFinite ||
+        !visibleWorldHeight.isFinite ||
+        visibleWorldWidth <= 0 ||
+        visibleWorldHeight <= 0) {
       throw ArgumentError('Camera viewport dimensions must be positive.');
+    }
+    if (!followSpeed.isFinite || followSpeed <= 0) {
+      throw ArgumentError('Camera follow speed must be positive and finite.');
+    }
+    if (!lookAheadDistance.isFinite || lookAheadDistance < 0) {
+      throw ArgumentError(
+        'Camera look-ahead distance must be non-negative and finite.',
+      );
+    }
+    if (!shakeDecaySpeed.isFinite || shakeDecaySpeed <= 0) {
+      throw ArgumentError(
+        'Camera shake decay speed must be positive and finite.',
+      );
     }
   }
 
@@ -33,10 +49,34 @@ final class RaceCameraController {
     );
   }
 
+  /// Clears presentation state and snaps the camera to the current player.
+  void reset({
+    required CameraComponent camera,
+    required Vector2 visualPosition,
+    required Vector2 visualVelocity,
+    required Rect worldBounds,
+  }) {
+    _centre = null;
+    _shakeAmount = 0;
+    _shakeTime = 0;
+    follow(
+      camera: camera,
+      visualPosition: visualPosition,
+      visualVelocity: visualVelocity,
+      worldBounds: worldBounds,
+      deltaSeconds: 0,
+    );
+  }
+
   /// Adds a bounded camera-shake impulse in presentation world units.
   void addShake(double amount, {double maximumAmount = 1.25}) {
-    if (amount < 0 || maximumAmount < 0) {
-      throw ArgumentError('Camera shake values must not be negative.');
+    if (!amount.isFinite ||
+        !maximumAmount.isFinite ||
+        amount < 0 ||
+        maximumAmount < 0) {
+      throw ArgumentError(
+        'Camera shake values must be finite and non-negative.',
+      );
     }
     _shakeAmount = math.min(_shakeAmount + amount, maximumAmount);
   }

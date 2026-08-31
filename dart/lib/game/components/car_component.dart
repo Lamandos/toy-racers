@@ -60,6 +60,13 @@ final class CarComponent extends PositionComponent {
     _sprite = await RasterAssetLoader.load(carModel.spriteAsset);
   }
 
+  @override
+  void onRemove() {
+    _sprite?.dispose();
+    _sprite = null;
+    super.onRemove();
+  }
+
   /// Updates only the visible pose; it never writes to [participant].
   void synchronize(RaceParticipant participant, double interpolationFactor) {
     _visualState = CarVisualState.interpolate(

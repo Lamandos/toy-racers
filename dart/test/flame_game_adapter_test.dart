@@ -2,7 +2,9 @@ import 'package:flame/game.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
+import 'package:toy_racers/game/camera/race_camera_controller.dart';
 import 'package:toy_racers/game/components/car_component.dart';
+import 'package:toy_racers/game/components/race_objects_component.dart';
 import 'package:toy_racers/game/components/track_component.dart';
 import 'package:toy_racers/game/fixed_timestep_scheduler.dart';
 import 'package:toy_racers/game/input/keyboard_input_controller.dart';
@@ -11,6 +13,7 @@ import 'package:toy_racers/game/input/touch_input_controller.dart';
 import 'package:toy_racers/game/rendering/car_visual_state.dart';
 import 'package:toy_racers/game/rendering/race_world_projection.dart';
 import 'package:toy_racers/game/race_results_overlay.dart';
+import 'package:toy_racers/game/race_world.dart';
 import 'package:toy_racers/game/toy_racers_game.dart';
 import 'package:toy_racers/simulation.dart';
 
@@ -336,6 +339,51 @@ void main() {
     expect(player.size, Vector2(3.4, 1.8));
     expect(player.priority, greaterThan(firstOpponent.priority));
     expect(game.world.children.last, same(player));
+  });
+
+  test('world preserves the legacy constructor defaults', () {
+    final world = RaceWorld(session: _session());
+
+    expect(world.playerCar.carModel, CarModel.redStripe);
+    expect(world.children.whereType<RaceObjectsComponent>(), hasLength(1));
+  });
+
+  test('camera rejects invalid tuning values', () {
+    expect(() => RaceCameraController(followSpeed: 0), throwsArgumentError);
+    expect(
+      () => RaceCameraController(followSpeed: double.nan),
+      throwsArgumentError,
+    );
+    expect(
+      () => RaceCameraController(lookAheadDistance: -1),
+      throwsArgumentError,
+    );
+    expect(
+      () => RaceCameraController(lookAheadDistance: double.infinity),
+      throwsArgumentError,
+    );
+    expect(() => RaceCameraController(shakeDecaySpeed: 0), throwsArgumentError);
+    expect(
+      () => RaceCameraController(shakeDecaySpeed: double.nan),
+      throwsArgumentError,
+    );
+  });
+
+  test('restart clears camera shake and snaps to the player', () async {
+    final cameraController = RaceCameraController();
+    final game = ToyRacersGame(
+      session: _session(),
+      cameraController: cameraController,
+    );
+
+    await game.onLoad();
+    cameraController.addShake(1);
+    game.update(0);
+    expect(game.camera.viewfinder.position.y, closeTo(51, 0.000001));
+
+    game.restartRace();
+
+    expect(game.camera.viewfinder.position, Vector2(50, 50));
   });
 
   test(

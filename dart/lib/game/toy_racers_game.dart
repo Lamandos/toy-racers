@@ -184,7 +184,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
       overlays.add(touchControlsOverlayId);
     }
     world.synchronizeVisualState(interpolationFactor);
-    _followPlayerCamera(0);
+    _resetPlayerCamera();
     _publishPresentationFrame();
   }
 
@@ -243,6 +243,13 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
     visualVelocity: world.playerCar.visualState.velocity,
     worldBounds: world.projection.rectangleFor(session.track.cameraBounds),
     deltaSeconds: deltaSeconds,
+  );
+
+  void _resetPlayerCamera() => _cameraController.reset(
+    camera: camera,
+    visualPosition: world.playerCar.visualState.position,
+    visualVelocity: world.playerCar.visualState.velocity,
+    worldBounds: world.projection.rectangleFor(session.track.cameraBounds),
   );
 
   static PlayerInput _neutralInput() => PlayerInput.none;

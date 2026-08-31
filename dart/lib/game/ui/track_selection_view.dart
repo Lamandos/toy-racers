@@ -91,10 +91,22 @@ final class SelectionBackground extends StatelessWidget {
   Widget build(BuildContext context) => ColoredBox(
     color: const Color(0xff121e2e),
     child: SafeArea(
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1120),
-          child: Padding(padding: const EdgeInsets.all(24), child: child),
+      child: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: constraints.maxHeight > 48
+                  ? constraints.maxHeight - 48
+                  : 0,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1120),
+                child: child,
+              ),
+            ),
+          ),
         ),
       ),
     ),

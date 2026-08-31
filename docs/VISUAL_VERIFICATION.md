@@ -6,8 +6,10 @@ orientation, scene layering, or Flutter UI composition.
 
 `dart/test/visual/visual_verification_test.dart` is the separate Flutter
 presentation check. It renders a fixed 800×600 test canvas, captures an
-in-memory screenshot frame for each state, and verifies
-gameplay-relevant composition through semantic controls and layout bounds.
+in-memory screenshot frame for each state, and verifies gameplay-relevant
+composition through semantic controls and layout bounds. The race states are
+captured from the real `GameWidget` with the mounted Flame world, including
+the track, car components, camera, and overlays.
 
 Run it from `dart/` with:
 
@@ -29,7 +31,8 @@ It does not compare screenshot bytes to committed files or persist a raster
 baseline. GPU drivers, font rasterizers,
 Flutter engines, and libGDX/OpenGL differ across supported platforms, so a
 pixel-perfect Kotlin-to-Flutter baseline would be unstable. Instead, the test
-requires the authored track and car images, race HUD/state overlays, pause and
-results actions, selected race data, and the expected screen hierarchy. This
-makes the screenshots a focused rendering/composition gate while deterministic
-gameplay remains solely covered by the compatibility scenarios.
+requires the authored track and car images, the mounted Flame components,
+race HUD/state overlays, pause and results actions, selected race data, and
+the expected screen hierarchy. This makes the screenshots a focused
+rendering/composition gate while deterministic gameplay remains solely
+covered by the compatibility scenarios.

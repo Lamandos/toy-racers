@@ -1,9 +1,9 @@
+import 'package:flame/game.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
 import 'package:toy_racers/game/race_results_overlay.dart';
 import 'package:toy_racers/game/toy_racers_game.dart';
-import 'package:toy_racers/game/ui/race_hud_overlay.dart';
 import 'package:toy_racers/main.dart';
 import 'package:toy_racers/simulation.dart';
 
@@ -36,28 +36,27 @@ void main() {
     );
     await _capture(tester, 'car_selection');
 
-    game.session.start();
-    await tester.pumpWidget(
-      _ScreenshotBoundary(child: _RaceVisualFrame(game: game)),
-    );
+    await tester.tap(find.byKey(const ValueKey<String>('start-race')));
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(GameWidget<ToyRacersGame>), findsOneWidget);
+    await game.toBeLoaded();
+    await tester.pump();
     expect(game.session.raceState.phase, RacePhase.countdown);
     expect(find.text('POSITION'), findsOneWidget);
     await _capture(tester, 'race_start');
 
-    game.session.advanceLifecycle(elapsedSeconds: 3);
-    game.session.advanceFixedStep(playerInput: PlayerInput.none);
-    game.presentationFrame.value++;
-    await tester.pumpWidget(
-      _ScreenshotBoundary(child: _RaceVisualFrame(game: game)),
+    game.session.advanceLifecycle(
+      elapsedSeconds: game.session.raceState.countdownDurationSeconds,
     );
+    game.update(CarPhysics.fixedDeltaSeconds);
+    await tester.pump();
     expect(game.session.raceState.phase, RacePhase.racing);
     expect(find.text('TIME  00:00.016'), findsOneWidget);
     await _capture(tester, 'active_race');
 
     game.togglePause();
-    await tester.pumpWidget(
-      _ScreenshotBoundary(child: _RaceVisualFrame(game: game, paused: true)),
-    );
+    await tester.pump();
     expect(game.session.raceState.phase, RacePhase.paused);
     expect(find.text('PAUSED'), findsOneWidget);
     await _capture(tester, 'pause');
@@ -98,6 +97,7 @@ void _expectInLeftHalf(WidgetTester tester, Finder finder) {
 }
 
 Future<void> _capture(WidgetTester tester, String scene) async {
+  expect(scene, isNotEmpty);
   final boundary = tester.renderObject<RenderRepaintBoundary>(
     find.byKey(_ScreenshotBoundary.boundaryKey),
   );
@@ -165,47 +165,4 @@ final class _ScreenshotBoundary extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       RepaintBoundary(key: boundaryKey, child: child);
-}
-
-final class _RaceVisualFrame extends StatelessWidget {
-  const _RaceVisualFrame({required this.game, this.paused = false});
-
-  final ToyRacersGame game;
-  final bool paused;
-
-  @override
-  Widget build(BuildContext context) => Directionality(
-    textDirection: TextDirection.ltr,
-    child: Stack(
-      fit: StackFit.expand,
-      children: <Widget>[
-        Image.asset('assets/tracks/track_01.png', fit: BoxFit.cover),
-        ...List<Widget>.generate(
-          6,
-          (index) => Positioned(
-            left: 240 + index * 58,
-            top: 325 + (index.isOdd ? 24 : 0),
-            child: Transform.rotate(
-              angle: 1.5708,
-              child: Image.asset(_carAsset(index), width: 32, height: 64),
-            ),
-          ),
-        ),
-        RaceHudOverlay(game: game),
-        const Positioned.fill(child: IgnorePointer(child: SizedBox.expand())),
-        if (game.session.raceState.phase == RacePhase.countdown)
-          RaceCountdownOverlay(game: game),
-        if (paused) RacePauseOverlay(game: game, onQuitToMenu: () {}),
-      ],
-    ),
-  );
-
-  String _carAsset(int index) => <String>[
-    'assets/sprites/cars/red-stripe.png',
-    'assets/sprites/cars/blue-stripe.png',
-    'assets/sprites/cars/yellow-sport.png',
-    'assets/sprites/cars/green-racer.png',
-    'assets/sprites/cars/orange-truck.png',
-    'assets/sprites/cars/blue-stripe.png',
-  ][index];
 }
