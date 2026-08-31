@@ -28,7 +28,7 @@ final class CarComponent extends PositionComponent {
 
   factory CarComponent.fromParticipant({
     required RaceParticipant participant,
-    required CarModel carModel,
+    CarModel carModel = CarModel.redStripe,
     required RaceWorldProjection projection,
   }) {
     final visualState = CarVisualState.interpolate(

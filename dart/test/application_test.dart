@@ -63,6 +63,11 @@ void main() {
     await tester.pump();
 
     expect(find.text('Unable to load the race.'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const ValueKey<String>('race-load-error-back')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('TOY RACERS'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

@@ -8,6 +8,7 @@ import 'game/input/touch_controls_overlay.dart';
 import 'game/race_results_overlay.dart';
 import 'game/toy_racers_game.dart';
 import 'game/ui/car_selection_view.dart';
+import 'game/ui/game_controls.dart';
 import 'game/ui/main_menu_view.dart';
 import 'game/ui/race_hud_overlay.dart';
 import 'game/ui/track_selection_view.dart';
@@ -151,7 +152,32 @@ final class _RacePresentation extends StatelessWidget {
     future: race,
     builder: (context, snapshot) {
       if (snapshot.hasError) {
-        return const Center(child: Text('Unable to load the race.'));
+        return ColoredBox(
+          color: const Color(0xff121e2e),
+          child: Center(
+            child: GamePanel(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  const Text(
+                    'Unable to load the race.',
+                    style: TextStyle(
+                      color: Color(0xfff7f4e8),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  GameActionButton(
+                    key: const ValueKey<String>('race-load-error-back'),
+                    label: 'BACK',
+                    secondary: true,
+                    onPressed: onExitRace,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
       }
       if (!snapshot.hasData) {
         return const SizedBox.expand();

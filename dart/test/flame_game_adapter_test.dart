@@ -343,9 +343,15 @@ void main() {
 
   test('world preserves the legacy constructor defaults', () {
     final world = RaceWorld(session: _session());
+    final participant = _session().player;
+    final component = CarComponent.fromParticipant(
+      participant: participant,
+      projection: RaceWorldProjection(TrackRectangle(0, 0, 100, 100)),
+    );
 
     expect(world.playerCar.carModel, CarModel.redStripe);
     expect(world.children.whereType<RaceObjectsComponent>(), hasLength(1));
+    expect(component.carModel, CarModel.redStripe);
   });
 
   test('camera rejects invalid tuning values', () {
