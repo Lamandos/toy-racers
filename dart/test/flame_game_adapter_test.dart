@@ -16,6 +16,7 @@ import 'package:toy_racers/game/rendering/race_world_projection.dart';
 import 'package:toy_racers/game/race_results_overlay.dart';
 import 'package:toy_racers/game/race_world.dart';
 import 'package:toy_racers/game/toy_racers_game.dart';
+import 'package:toy_racers/game/ui/race_ui_controller.dart';
 import 'package:toy_racers/simulation.dart';
 
 void main() {
@@ -370,6 +371,20 @@ void main() {
 
     expect(world.playerCar.participantId, 'human');
     expect(world.playerCar.priority, greaterThan(world.cars['ai-0']!.priority));
+  });
+
+  test('race UI state preserves a custom player identity in results', () {
+    final session = _session(participantCount: 3, playerId: 'human');
+    session.player.progress
+      ..finished = true
+      ..finishPosition = 1
+      ..totalRaceTime = 12;
+    session.synchronizeFinishOrdering();
+
+    final uiState = RaceUiState.fromSession(session);
+
+    expect(uiState.playerResult!.participantId, 'human');
+    expect(uiState.standings.single.participantId, 'human');
   });
 
   test('world preserves the legacy constructor defaults', () {

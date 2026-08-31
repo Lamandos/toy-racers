@@ -4,10 +4,35 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
 import 'package:toy_racers/game/toy_racers_game.dart';
+import 'package:toy_racers/game/ui/track_selection_view.dart';
 import 'package:toy_racers/main.dart';
 import 'package:toy_racers/simulation.dart';
 
 void main() {
+  testWidgets(
+    'lays out track cards side by side at the two-column breakpoint',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: TrackSelectionView(onSelected: (_) {}, onBack: () {}),
+        ),
+      );
+
+      final livingRoom = find.byKey(const ValueKey<String>('track-track-01'));
+      final bathroom = find.byKey(const ValueKey<String>('track-track-02'));
+
+      expect(tester.getTopLeft(livingRoom).dy, tester.getTopLeft(bathroom).dy);
+      expect(
+        tester.getTopLeft(livingRoom).dx,
+        lessThan(tester.getTopLeft(bathroom).dx),
+      );
+    },
+  );
+
   testWidgets('guides the player from menu to the selected race', (
     tester,
   ) async {

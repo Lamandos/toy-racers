@@ -45,7 +45,7 @@ final class RaceUiState {
       requiredLaps: session.requiredLaps,
       totalRaceTime: player.progress.totalRaceTime,
       bestLapTime: player.progress.bestLapTime,
-      playerResult: _standingFor(session.playerResult, 'player'),
+      playerResult: _standingFor(session.playerResult, player.id),
       standings: session.finishResults
           .map((entry) => _standingFor(entry.result, entry.participantId)!)
           .toList(growable: false),
