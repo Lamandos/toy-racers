@@ -1,19 +1,25 @@
 import 'package:flutter/widgets.dart';
-import 'package:toy_racers/simulation.dart';
 
-import 'toy_racers_game.dart';
 import 'ui/game_controls.dart';
+import 'ui/race_ui_controller.dart';
 
 /// Presents the completed race standings and a touch-friendly retry action.
 final class RaceResultsOverlay extends StatelessWidget {
-  const RaceResultsOverlay({required this.game, this.onMainMenu, super.key});
+  RaceResultsOverlay({
+    RaceUiController? controller,
+    RaceUiController? game,
+    this.onMainMenu,
+    super.key,
+  }) : assert(controller != null || game != null),
+       controller = controller ?? game!;
 
-  final ToyRacersGame game;
+  final RaceUiController controller;
   final VoidCallback? onMainMenu;
 
   @override
   Widget build(BuildContext context) {
-    final playerResult = game.session.playerResult;
+    final state = controller.uiState;
+    final playerResult = state.playerResult;
     return Directionality(
       textDirection: TextDirection.ltr,
       child: ColoredBox(
@@ -61,14 +67,14 @@ final class RaceResultsOverlay extends StatelessWidget {
                                 ),
                               ),
                             const SizedBox(height: 20),
-                            ..._resultRows(game.session.finishResults),
+                            ..._resultRows(state.standings),
                             const SizedBox(height: 20),
                             GameActionTarget(
                               key: const ValueKey<String>(
                                 'restart-race-button',
                               ),
                               semanticLabel: 'Restart race',
-                              onPressed: game.restartRace,
+                              onPressed: controller.restartRace,
                               child: DecoratedBox(
                                 decoration: BoxDecoration(
                                   color: const Color(0xff2463a2),
@@ -120,7 +126,7 @@ final class RaceResultsOverlay extends StatelessWidget {
     );
   }
 
-  List<Widget> _resultRows(List<ParticipantRaceResult> results) => [
+  List<Widget> _resultRows(List<RaceStanding> results) => [
     for (final entry in results)
       Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
@@ -129,7 +135,7 @@ final class RaceResultsOverlay extends StatelessWidget {
             SizedBox(
               width: 38,
               child: Text(
-                '${entry.result.finishPosition}.',
+                '${entry.finishPosition}.',
                 style: const TextStyle(
                   color: Color(0xff18202d),
                   fontWeight: FontWeight.bold,
@@ -143,7 +149,7 @@ final class RaceResultsOverlay extends StatelessWidget {
               ),
             ),
             Text(
-              _formatTime(entry.result.totalRaceTime),
+              _formatTime(entry.totalRaceTime),
               style: const TextStyle(color: Color(0xff4c5668)),
             ),
           ],

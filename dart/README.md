@@ -53,6 +53,22 @@ modules may not import Flutter, Flame, or `dart:ui`; they may not use wall-clock
 time or a render loop. Flutter and Flame belong only in the later presentation
 layer after the deterministic simulation gate passes.
 
+## Flutter UI command boundary
+
+Flutter UI follows this presentation-only flow:
+
+```text
+Main menu → car selection → track selection → race → results → menu / restart
+```
+
+Widgets receive the `RaceUiController` interface instead of a `RaceSession`.
+They render its immutable `RaceUiState` and can change a race only with the
+documented `togglePause()` and `restartRace()` commands. Desktop keyboard and
+mobile touch adapters produce `PlayerInput` commands; the Flame adapter passes
+them to `RaceSession.advanceFixedStep()` on the fixed-timestep boundary. UI
+widgets must never mutate a `RaceSession`, `CarState`, race progress, or finish
+results directly.
+
 `package:toy_racers/simulation.dart` is the public pure-Dart entrypoint. The
 included headless assembly check can be run without creating a Flutter binding:
 

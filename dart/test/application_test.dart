@@ -27,15 +27,15 @@ void main() {
     expect(find.text('TOY RACERS'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey<String>('main-menu-play')));
     await tester.pumpAndSettle();
-    expect(find.text('SELECT TRACK'), findsOneWidget);
-
-    await tester.tap(find.byKey(const ValueKey<String>('track-track-02')));
-    await tester.pumpAndSettle();
     expect(find.text('SELECT CAR'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey<String>('car-yellow-sport')));
     await tester.pump();
-    await tester.tap(find.byKey(const ValueKey<String>('start-race')));
+    await tester.tap(find.byKey(const ValueKey<String>('continue-to-track')));
+    await tester.pumpAndSettle();
+    expect(find.text('SELECT TRACK'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey<String>('track-track-02')));
     await tester.pump();
 
     expect(selectedTrack, TrackId.bathroom);
@@ -53,15 +53,16 @@ void main() {
       calls++;
       return game.future;
     }
+
     final application = ToyRacersApplication(gameLoader: legacyLoader);
 
     expect(application.gameLoader, same(legacyLoader));
     await tester.pumpWidget(application);
     await tester.tap(find.byKey(const ValueKey<String>('main-menu-play')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey<String>('track-track-01')));
+    await tester.tap(find.byKey(const ValueKey<String>('continue-to-track')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey<String>('start-race')));
+    await tester.tap(find.byKey(const ValueKey<String>('track-track-01')));
     await tester.pump();
 
     expect(calls, 1);
@@ -87,6 +88,20 @@ void main() {
     expect(await tester.sendKeyEvent(LogicalKeyboardKey.enter), isTrue);
     await tester.pumpAndSettle();
 
+    final carText = find.descendant(
+      of: find.byKey(const ValueKey<String>('car-red-stripe')),
+      matching: find.text('RED STRIPE'),
+    );
+    Focus.of(tester.element(carText)).requestFocus();
+    await tester.pump();
+    expect(await tester.sendKeyEvent(LogicalKeyboardKey.space), isTrue);
+    await tester.pumpAndSettle();
+
+    Focus.of(tester.element(find.text('SELECT TRACK'))).requestFocus();
+    await tester.pump();
+    expect(await tester.sendKeyEvent(LogicalKeyboardKey.enter), isTrue);
+    await tester.pumpAndSettle();
+
     final trackText = find.descendant(
       of: find.byKey(const ValueKey<String>('track-track-01')),
       matching: find.text('LIVING ROOM'),
@@ -94,11 +109,6 @@ void main() {
     Focus.of(tester.element(trackText)).requestFocus();
     await tester.pump();
     expect(await tester.sendKeyEvent(LogicalKeyboardKey.space), isTrue);
-    await tester.pumpAndSettle();
-
-    Focus.of(tester.element(find.text('START RACE'))).requestFocus();
-    await tester.pump();
-    expect(await tester.sendKeyEvent(LogicalKeyboardKey.enter), isTrue);
     await tester.pump();
 
     expect(selectedTrack, TrackId.livingRoom);
@@ -118,9 +128,9 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey<String>('main-menu-play')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey<String>('track-track-01')));
+    await tester.tap(find.byKey(const ValueKey<String>('continue-to-track')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey<String>('start-race')));
+    await tester.tap(find.byKey(const ValueKey<String>('track-track-01')));
     await tester.pump();
     await tester.pump();
 
@@ -133,7 +143,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('keeps selection actions reachable on a short landscape view', (
+  testWidgets('keeps selection actions reachable on a compact view', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(640, 360));
@@ -151,10 +161,8 @@ void main() {
     );
     await tester.tap(find.byKey(const ValueKey<String>('main-menu-play')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey<String>('track-track-01')));
-    await tester.pumpAndSettle();
 
-    final startButton = find.byKey(const ValueKey<String>('start-race'));
+    final startButton = find.byKey(const ValueKey<String>('continue-to-track'));
     await tester.scrollUntilVisible(
       startButton,
       200,
@@ -163,6 +171,15 @@ void main() {
     expect(startButton, findsOneWidget);
 
     await tester.tap(startButton);
+    await tester.pumpAndSettle();
+    final trackCard = find.byKey(const ValueKey<String>('track-track-01'));
+    await tester.scrollUntilVisible(
+      trackCard,
+      200,
+      scrollable: find.byType(Scrollable),
+    );
+    expect(trackCard, findsOneWidget);
+    await tester.tap(trackCard);
     await tester.pump();
     expect(started, isTrue);
   });
