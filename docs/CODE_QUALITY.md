@@ -13,11 +13,12 @@ Run this once after cloning:
 ./scripts/install-git-hooks.sh
 ```
 
-The script is idempotent and sets `core.hooksPath` to `.githooks`. The pre-commit hook runs the SHA-256 Flutter asset
-parity check, Kotlin style checks, detekt, the 500-line source-file gate, JVM unit tests, the desktop UI smoke flow,
-plus Flutter analysis and tests. The pre-push hook runs the same asset parity check and the complete `qualityCheck`,
-including behavioral compatibility fixtures, deterministic repeat tests, Android debug unit tests, the core coverage
-gate, mutation testing, and Flutter analysis plus LCOV-producing tests. Flutter stable must be available on `PATH`.
+The script is idempotent and sets `core.hooksPath` to `.githooks`. The pre-commit hook runs the Flutter asset pipeline
+unit tests and staged SHA-256 parity check, Kotlin style checks, detekt, the 500-line source-file gate, JVM unit tests,
+the desktop UI smoke flow, plus Flutter analysis and tests. The pre-push hook runs the same asset pipeline tests and
+parity check, then the complete `qualityCheck`, including behavioral compatibility fixtures, deterministic repeat
+tests, Android debug unit tests, the core coverage gate, mutation testing, and Flutter analysis plus LCOV-producing
+tests. Flutter stable must be available on `PATH`.
 The fixed-seed fuzz smoke and the 20-run full behavioral stability suite are intentionally opt-in.
 
 On headless Linux, both hooks automatically use `xvfb-run --auto-servernum` for the desktop UI smoke flow. Install

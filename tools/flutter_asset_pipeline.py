@@ -134,19 +134,32 @@ class FlutterAssetPipeline:
     @staticmethod
     def _validate_destination_collisions(destinations: list[PurePosixPath]) -> None:
         """Reject generated paths that cannot coexist in one filesystem tree."""
-        ordered_destinations = sorted(destinations)
+        ordered_destinations = sorted(
+            destinations,
+            key=lambda destination: (
+                FlutterAssetPipeline._filesystem_path_key(destination),
+                destination.as_posix(),
+            ),
+        )
         for index, destination in enumerate(ordered_destinations):
+            destination_key = FlutterAssetPipeline._filesystem_path_key(destination)
             for other in ordered_destinations[index + 1 :]:
+                other_key = FlutterAssetPipeline._filesystem_path_key(other)
                 if (
-                    destination != other
-                    and destination not in other.parents
-                    and other not in destination.parents
+                    destination_key != other_key
+                    and destination_key != other_key[:len(destination_key)]
+                    and other_key != destination_key[:len(other_key)]
                 ):
                     continue
                 raise AssetPipelineError(
                     "generated asset paths collide: "
                     f"{destination.as_posix()} and {other.as_posix()}"
                 )
+
+    @staticmethod
+    def _filesystem_path_key(path: PurePosixPath) -> tuple[str, ...]:
+        """Return a case-normalized key for filesystem path comparisons."""
+        return tuple(part.casefold() for part in path.parts)
 
     def parity_problems(self, entries: list[AssetEntry] | None = None) -> list[str]:
         """Return a deterministic list of source-to-Flutter mirror differences."""

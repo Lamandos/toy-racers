@@ -135,6 +135,25 @@ class FlutterAssetPipelineTest(unittest.TestCase):
             with self.assertRaisesRegex(AssetPipelineError, "generated asset paths collide"):
                 FlutterAssetPipeline(repository_root).sync()
 
+    def test_sync_rejects_case_insensitive_generated_path_collisions(self) -> None:
+        cases = (
+            (Path("Flutter_Asset_Manifest.json"), b"conflict"),
+            (Path("attribution") / "sources.md", b"conflict"),
+        )
+        for relative_path, content in cases:
+            with self.subTest(relative_path=relative_path):
+                with tempfile.TemporaryDirectory() as temporary_directory:
+                    repository_root = Path(temporary_directory)
+                    self._write_sources(repository_root)
+                    conflicting_asset = repository_root / "assets" / relative_path
+                    conflicting_asset.parent.mkdir(parents=True, exist_ok=True)
+                    conflicting_asset.write_bytes(content)
+
+                    with self.assertRaisesRegex(
+                        AssetPipelineError, "generated asset paths collide"
+                    ):
+                        FlutterAssetPipeline(repository_root).sync()
+
     @staticmethod
     def _write_sources(repository_root: Path) -> None:
         assets = repository_root / "assets"
