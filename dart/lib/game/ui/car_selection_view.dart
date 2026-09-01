@@ -5,19 +5,21 @@ import '../rendering/presentation_catalog.dart';
 import 'game_controls.dart';
 import 'track_selection_view.dart';
 
-/// Lets players choose a bundled car sprite before creating a race session.
+/// Lets players choose a bundled car sprite before choosing a track.
 final class CarSelectionView extends StatelessWidget {
-  const CarSelectionView({
+  CarSelectionView({
     required this.selected,
     required this.onSelected,
-    required this.onStart,
+    VoidCallback? onContinue,
+    VoidCallback? onStart,
     required this.onBack,
     super.key,
-  });
+  }) : assert(onContinue != null || onStart != null),
+       onContinue = onContinue ?? onStart!;
 
   final CarModel selected;
   final ValueChanged<CarModel> onSelected;
-  final VoidCallback onStart;
+  final VoidCallback onContinue;
   final VoidCallback onBack;
 
   @override
@@ -43,32 +45,37 @@ final class CarSelectionView extends StatelessWidget {
                     .toList(growable: false),
               ),
               const SizedBox(height: 18),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Expanded(
-                    child: GameActionButton(
-                      label: 'BACK',
-                      secondary: true,
-                      onPressed: onBack,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: GameActionButton(
-                      key: const ValueKey<String>('start-race'),
-                      label: 'START RACE',
-                      onPressed: onStart,
-                    ),
-                  ),
-                ],
-              ),
+              _actions(constraints.maxWidth),
             ],
           ),
         );
       },
     ),
   );
+
+  Widget _actions(double width) {
+    final actions = <Widget>[
+      GameActionButton(label: 'BACK', secondary: true, onPressed: onBack),
+      GameActionButton(
+        key: const ValueKey<String>('continue-to-track'),
+        label: 'SELECT TRACK',
+        onPressed: onContinue,
+      ),
+    ];
+    if (width < 470) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[actions[0], const SizedBox(height: 10), actions[1]],
+      );
+    }
+    return Row(
+      children: <Widget>[
+        Expanded(child: actions[0]),
+        const SizedBox(width: 16),
+        Expanded(child: actions[1]),
+      ],
+    );
+  }
 
   Widget _carCard(CarModel model, double width) {
     final isSelected = model == selected;

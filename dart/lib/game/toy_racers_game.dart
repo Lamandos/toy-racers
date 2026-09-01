@@ -12,6 +12,7 @@ import 'input/player_input_adapter.dart';
 import 'input/touch_input_controller.dart';
 import 'rendering/race_car_models.dart';
 import 'race_world.dart';
+import 'ui/race_ui_controller.dart';
 
 /// Supplies the latest normalized player command to the simulation adapter.
 typedef PlayerInputProvider = PlayerInput Function();
@@ -21,7 +22,9 @@ typedef PlayerInputProvider = PlayerInput Function();
 /// The game delegates all vehicle physics, collision handling, AI, race
 /// progression to [RaceSession]. It schedules reference-rate ticks from
 /// Flame's render deltas, then updates visual components and camera framing.
-final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
+final class ToyRacersGame extends FlameGame<RaceWorld>
+    with KeyboardEvents
+    implements RaceUiController {
   static const String touchControlsOverlayId = 'touch-controls';
   static const String raceHudOverlayId = 'race-hud';
   static const String countdownOverlayId = 'race-countdown';
@@ -70,9 +73,13 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
       ]);
   final RaceCameraController _cameraController;
   final FixedTimestepScheduler _fixedTimestep = FixedTimestepScheduler();
+  @override
   final ValueNotifier<int> presentationFrame = ValueNotifier<int>(0);
 
   double interpolationFactor = 0;
+
+  @override
+  RaceUiState get uiState => RaceUiState.fromSession(session);
 
   /// Creates the first playable session from bundled canonical TMX sources.
   static Future<ToyRacersGame> loadDefault({
@@ -159,6 +166,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
   }
 
   /// Toggles the simulation pause state for keyboard and touch controls.
+  @override
   void togglePause() {
     switch (session.raceState.phase) {
       case RacePhase.racing:
@@ -181,6 +189,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld> with KeyboardEvents {
 
   /// Restarts the simulation and clears all presentation state from the prior
   /// race.
+  @override
   void restartRace() {
     session.restart();
     touchInputController.clear();

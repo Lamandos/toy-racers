@@ -20,8 +20,8 @@ flutter test test/visual/visual_verification_test.dart
 The check captures these reviewable screenshots:
 
 - main menu
-- track selection
 - car selection
+- track selection
 - race start
 - active race
 - pause

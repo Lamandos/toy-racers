@@ -20,29 +20,32 @@ final class TouchControlsOverlay extends StatelessWidget {
   final void Function()? onRestart;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      controller.configure(constraints.biggest);
-      return Listener(
-        behavior: HitTestBehavior.translucent,
-        onPointerDown: (event) =>
-            _handlePointerDown(event, constraints.biggest),
-        onPointerMove: (event) => _handlePointerMove(event),
-        onPointerUp: (event) => _handlePointerUp(event),
-        onPointerCancel: (event) => _handlePointerUp(event),
-        child: AnimatedBuilder(
-          animation: controller,
-          builder: (context, child) => CustomPaint(
-            painter: _TouchControlsPainter(
-              controller.readInput(),
-              showActions: onPause != null || onRestart != null,
+  Widget build(BuildContext context) => SafeArea(
+    minimum: const EdgeInsets.all(8),
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        controller.configure(constraints.biggest);
+        return Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (event) =>
+              _handlePointerDown(event, constraints.biggest),
+          onPointerMove: (event) => _handlePointerMove(event),
+          onPointerUp: (event) => _handlePointerUp(event),
+          onPointerCancel: (event) => _handlePointerUp(event),
+          child: AnimatedBuilder(
+            animation: controller,
+            builder: (context, child) => CustomPaint(
+              painter: _TouchControlsPainter(
+                controller.readInput(),
+                showActions: onPause != null || onRestart != null,
+              ),
+              child: child,
             ),
-            child: child,
+            child: const SizedBox.expand(),
           ),
-          child: const SizedBox.expand(),
-        ),
-      );
-    },
+        );
+      },
+    ),
   );
 
   void _handlePointerDown(PointerDownEvent event, Size size) {

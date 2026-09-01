@@ -23,12 +23,6 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey<String>('main-menu-play')));
     await tester.pumpAndSettle();
-    expect(find.text('SELECT TRACK'), findsOneWidget);
-    expect(find.byType(Image), findsNWidgets(2));
-    await _capture(tester, 'track_selection');
-
-    await tester.tap(find.byKey(const ValueKey<String>('track-track-01')));
-    await tester.pumpAndSettle();
     expect(find.text('SELECT CAR'), findsOneWidget);
     expect(
       find.byKey(const ValueKey<String>('car-red-stripe')),
@@ -36,7 +30,13 @@ void main() {
     );
     await _capture(tester, 'car_selection');
 
-    await tester.tap(find.byKey(const ValueKey<String>('start-race')));
+    await tester.tap(find.byKey(const ValueKey<String>('continue-to-track')));
+    await tester.pumpAndSettle();
+    expect(find.text('SELECT TRACK'), findsOneWidget);
+    expect(find.byType(Image), findsNWidgets(2));
+    await _capture(tester, 'track_selection');
+
+    await tester.tap(find.byKey(const ValueKey<String>('track-track-01')));
     await tester.pump();
     await tester.pump();
     expect(find.byType(GameWidget<ToyRacersGame>), findsOneWidget);
@@ -69,7 +69,7 @@ void main() {
   ) async {
     final game = ToyRacersGame(session: _finishedSession());
     await tester.pumpWidget(
-      _ScreenshotBoundary(child: RaceResultsOverlay(game: game)),
+      _ScreenshotBoundary(child: RaceResultsOverlay(controller: game)),
     );
 
     expect(find.text('RACE RESULTS'), findsOneWidget);
@@ -91,7 +91,7 @@ void main() {
     await tester.pumpWidget(
       _ScreenshotBoundary(
         child: RaceResultsOverlay(
-          game: game,
+          controller: game,
           onMainMenu: () => mainMenuCount++,
         ),
       ),

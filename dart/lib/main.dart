@@ -52,7 +52,6 @@ final class ToyRacersApplication extends StatefulWidget {
 
 final class _ToyRacersApplicationState extends State<ToyRacersApplication> {
   _ToyRacersScreen _screen = _ToyRacersScreen.mainMenu;
-  TrackId _selectedTrack = TrackId.livingRoom;
   CarModel _selectedCar = CarModel.redStripe;
   Future<ToyRacersGame>? _race;
   ToyRacersGame? _activeGame;
@@ -62,16 +61,17 @@ final class _ToyRacersApplicationState extends State<ToyRacersApplication> {
     child: Directionality(
       textDirection: TextDirection.ltr,
       child: switch (_screen) {
-        _ToyRacersScreen.mainMenu => MainMenuView(onPlay: _showTrackSelection),
-        _ToyRacersScreen.trackSelection => TrackSelectionView(
-          onSelected: _showCarSelection,
-          onBack: _showMainMenu,
-        ),
+        _ToyRacersScreen.mainMenu => MainMenuView(onPlay: _showCarSelection),
         _ToyRacersScreen.carSelection => CarSelectionView(
           selected: _selectedCar,
           onSelected: _selectCar,
-          onStart: _startRace,
-          onBack: _showTrackSelection,
+          onContinue: _showTrackSelection,
+          onBack: _showMainMenu,
+        ),
+        _ToyRacersScreen.trackSelection => TrackSelectionView(
+          selectedCar: _selectedCar,
+          onSelected: _startRace,
+          onBack: _showCarSelection,
         ),
         _ToyRacersScreen.race => _RacePresentation(
           race: _race!,
@@ -99,27 +99,23 @@ final class _ToyRacersApplicationState extends State<ToyRacersApplication> {
     });
   }
 
-  void _showTrackSelection() => setState(() {
-    _screen = _ToyRacersScreen.trackSelection;
+  void _showCarSelection() => setState(() {
+    _screen = _ToyRacersScreen.carSelection;
   });
 
-  void _showCarSelection(TrackId track) => setState(() {
-    _selectedTrack = track;
-    _screen = _ToyRacersScreen.carSelection;
+  void _showTrackSelection() => setState(() {
+    _screen = _ToyRacersScreen.trackSelection;
   });
 
   void _selectCar(CarModel car) => setState(() {
     _selectedCar = car;
   });
 
-  void _startRace() {
+  void _startRace(TrackId trackId) {
     final race = Future<ToyRacersGame>.sync(
       () =>
           widget._legacyGameLoader?.call() ??
-          widget.raceGameLoader(
-            trackId: _selectedTrack,
-            playerCarModel: _selectedCar,
-          ),
+          widget.raceGameLoader(trackId: trackId, playerCarModel: _selectedCar),
     );
     race.ignore();
     setState(() {
@@ -201,14 +197,16 @@ final class _RacePresentation extends StatelessWidget {
                 onPause: game.togglePause,
                 onRestart: game.restartRace,
               ),
-          ToyRacersGame.raceHudOverlayId: (context, game) =>
-              RaceHudOverlay(game: game),
+          ToyRacersGame.raceHudOverlayId: (context, game) => RaceHudOverlay(
+            controller: game,
+            showDesktopControls: !showTouchControls,
+          ),
           ToyRacersGame.countdownOverlayId: (context, game) =>
-              RaceCountdownOverlay(game: game),
+              RaceCountdownOverlay(controller: game),
           ToyRacersGame.pauseOverlayId: (context, game) =>
-              RacePauseOverlay(game: game, onQuitToMenu: onExitRace),
+              RacePauseOverlay(controller: game, onQuitToMenu: onExitRace),
           ToyRacersGame.resultsOverlayId: (context, game) =>
-              RaceResultsOverlay(game: game, onMainMenu: onExitRace),
+              RaceResultsOverlay(controller: game, onMainMenu: onExitRace),
         },
         initialActiveOverlays: <String>[ToyRacersGame.raceHudOverlayId],
       );
