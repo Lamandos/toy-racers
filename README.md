@@ -120,7 +120,7 @@ CLI options override environment variables. The most useful settings are:
 | `--poll-interval` | `ORCHESTRATOR_POLL_INTERVAL` | `30` seconds |
 | `--implementation-model` | `ORCHESTRATOR_IMPLEMENTATION_MODEL` | `gpt-5.6-sol` |
 | `--fix-model` | `ORCHESTRATOR_FIX_MODEL` | `gpt-5.6-luna` |
-| `--codex-args` | `ORCHESTRATOR_CODEX_ARGS` | workspace-write, automatic approvals, ephemeral session |
+| `--codex-args` | `ORCHESTRATOR_CODEX_ARGS` | automatic approval review (workspace-write), ephemeral session |
 | `--review-author` | `ORCHESTRATOR_REVIEW_AUTHORS` | common Codex GitHub bot logins |
 | `--required-check` | `ORCHESTRATOR_REQUIRED_CHECKS` | GitHub branch-protection required checks |
 | `--limit-window-hours` | `ORCHESTRATOR_LIMIT_WINDOW_HOURS` | `5` hours |

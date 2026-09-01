@@ -1363,7 +1363,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--codex-args",
         default=env_or_default(
             "ORCHESTRATOR_CODEX_ARGS",
-            "--sandbox workspace-write --approve-for-me --ephemeral",
+            "--approve-for-me --ephemeral",
         ),
         help="Additional arguments passed to codex exec, parsed with shell-style quoting.",
     )
