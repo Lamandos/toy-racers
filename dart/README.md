@@ -69,6 +69,16 @@ them to `RaceSession.advanceFixedStep()` on the fixed-timestep boundary. UI
 widgets must never mutate a `RaceSession`, `CarState`, race progress, or finish
 results directly.
 
+## Audio
+
+`lib/audio/` is a presentation-only controller with a Flame Audio backend. It
+ports the reference music, one-shot effects, looping race mix, volume defaults,
+pause behavior, and 0.8-second finish fade without adding audio to behavioral
+traces or golden masters. Browser playback waits for the first semantic user
+gesture and skips unsupported audio preloading. See
+[`../docs/AUDIO_SMOKE_TESTS.md`](../docs/AUDIO_SMOKE_TESTS.md) for automated
+smoke coverage and real-device/manual acceptance.
+
 `package:toy_racers/simulation.dart` is the public pure-Dart entrypoint. The
 included headless assembly check can be run without creating a Flutter binding:
 
@@ -85,6 +95,8 @@ Read these contracts before adding simulation code:
 ## Dependencies
 
 - `flame` is the required presentation engine for the later Flutter layer.
+- `flame_audio` provides the supported multi-platform playback backend; Flame
+  alone does not include audio players.
 - `xml` reads the canonical TMX collision and road-contour sources without
   bringing Flame Tiled into simulation.
 - `flutter_lints` supplies the shared static-analysis rules.

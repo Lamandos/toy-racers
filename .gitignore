@@ -19,6 +19,10 @@ out/
 # Kotlin
 .kotlin/
 
+# Python tooling
+__pycache__/
+*.py[cod]
+
 # libGDX native/runtime files
 *.dll
 *.dylib
@@ -35,3 +39,9 @@ Thumbs.db
 !.env.example
 *.keystore
 *.jks
+
+# Sequential Codex orchestrator runtime files
+.agent/orchestrator-state.json
+.agent/orchestrator-state.json.tmp
+.agent/orchestrator.lock
+.agent/orchestrator.log

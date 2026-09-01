@@ -4,9 +4,10 @@ import 'game_controls.dart';
 
 /// Entry screen preserving the reference game's full-bleed menu composition.
 final class MainMenuView extends StatelessWidget {
-  const MainMenuView({required this.onPlay, super.key});
+  const MainMenuView({required this.onPlay, this.onSettings, super.key});
 
   final VoidCallback onPlay;
+  final VoidCallback? onSettings;
 
   @override
   Widget build(BuildContext context) => Stack(
@@ -50,6 +51,15 @@ final class MainMenuView extends StatelessWidget {
                             label: 'PLAY',
                             onPressed: onPlay,
                           ),
+                          if (onSettings != null) ...<Widget>[
+                            const SizedBox(height: 12),
+                            GameActionButton(
+                              key: const ValueKey<String>('main-menu-settings'),
+                              label: 'SETTINGS',
+                              secondary: true,
+                              onPressed: onSettings!,
+                            ),
+                          ],
                         ],
                       ),
                     ),

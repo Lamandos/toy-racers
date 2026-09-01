@@ -59,3 +59,11 @@ If a task name differs, use its generated equivalent and record that in the hand
 - Use only original, properly licensed, or public-domain names, code, graphics, models, music, and sounds.
 - Do not copy protected resources, branding, characters, tracks, or other recognizable content from Micro Machines or any other game.
 - Preserve license and attribution information for permitted third-party resources.
+
+## Sequential Codex orchestrator
+
+- `scripts/orchestrator.py` is the repository workflow entry point for sequential plan execution.
+- The orchestrator owns branch creation, commits, pushes, pull requests, review polling, checks, and merges.
+- A Codex implementation worker must stay scoped to the current task, read this file first, and must not create branches, push, merge, or rewrite the plan.
+- Keep task changes focused on the task's acceptance criteria. Do not modify `.agent/orchestrator-state.json`; it is runtime state managed by the orchestrator.
+- Do not bypass hooks or quality gates. If a test or check fails, report the failure with the command and relevant output.

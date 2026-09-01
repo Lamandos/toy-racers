@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+
+import '../../audio/game_audio_controller.dart';
 
 const Color _buttonIdle = Color(0xffc72914);
 const Color _buttonSecondary = Color(0xff172331);
@@ -34,6 +38,20 @@ final class GameNavigationScope extends StatelessWidget {
   );
 }
 
+/// Makes presentation audio available to every semantic game control.
+final class GameAudioScope extends InheritedWidget {
+  const GameAudioScope({required this.audio, required super.child, super.key});
+
+  final GameAudioController audio;
+
+  static GameAudioController? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<GameAudioScope>()?.audio;
+
+  @override
+  bool updateShouldNotify(GameAudioScope oldWidget) =>
+      !identical(audio, oldWidget.audio);
+}
+
 /// Adds pointer and keyboard activation to a game navigation target.
 final class GameActionTarget extends StatelessWidget {
   const GameActionTarget({
@@ -50,23 +68,34 @@ final class GameActionTarget extends StatelessWidget {
   final bool? selected;
 
   @override
-  Widget build(BuildContext context) => FocusableActionDetector(
-    shortcuts: _activationShortcuts,
-    actions: <Type, Action<Intent>>{
-      ActivateIntent: CallbackAction<ActivateIntent>(
-        onInvoke: (_) {
-          onPressed();
-          return null;
-        },
+  Widget build(BuildContext context) {
+    void activate() {
+      final audio = GameAudioScope.maybeOf(context);
+      if (audio != null) {
+        unawaited(audio.activateFromUserGesture());
+        unawaited(audio.buttonClick());
+      }
+      onPressed();
+    }
+
+    return FocusableActionDetector(
+      shortcuts: _activationShortcuts,
+      actions: <Type, Action<Intent>>{
+        ActivateIntent: CallbackAction<ActivateIntent>(
+          onInvoke: (_) {
+            activate();
+            return null;
+          },
+        ),
+      },
+      child: Semantics(
+        button: true,
+        label: semanticLabel,
+        selected: selected,
+        child: GestureDetector(onTap: activate, child: child),
       ),
-    },
-    child: Semantics(
-      button: true,
-      label: semanticLabel,
-      selected: selected,
-      child: GestureDetector(onTap: onPressed, child: child),
-    ),
-  );
+    );
+  }
 }
 
 /// Shared non-Material controls matching the reference game's dark panels.
@@ -130,6 +159,38 @@ final class GamePanel extends StatelessWidget {
       ),
     ),
     child: Padding(padding: padding, child: child),
+  );
+}
+
+/// Shared responsive background for selection and settings panels.
+final class SelectionBackground extends StatelessWidget {
+  const SelectionBackground({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: const Color(0xff121e2e),
+    child: SafeArea(
+      child: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: constraints.maxHeight > 48
+                  ? constraints.maxHeight - 48
+                  : 0,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1120),
+                child: child,
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 }
 

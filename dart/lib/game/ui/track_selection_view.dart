@@ -113,34 +113,3 @@ const double _twoColumnBreakpoint = 720;
 const double _trackCardGap = 20;
 const double _minimumCardHeight = 180;
 const double _maximumCardHeight = 300;
-
-final class SelectionBackground extends StatelessWidget {
-  const SelectionBackground({required this.child, super.key});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => ColoredBox(
-    color: const Color(0xff121e2e),
-    child: SafeArea(
-      child: LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: constraints.maxHeight > 48
-                  ? constraints.maxHeight - 48
-                  : 0,
-            ),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1120),
-                child: child,
-              ),
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-}
