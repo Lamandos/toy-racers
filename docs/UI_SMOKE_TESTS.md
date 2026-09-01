@@ -39,3 +39,20 @@ verification layer in [`VISUAL_VERIFICATION.md`](VISUAL_VERIFICATION.md). Its
 widget test captures seven fixed-size screenshots and checks screen composition
 and gameplay-relevant visuals without treating rendering output as a behavioral
 golden master.
+
+## Flutter application smoke flow
+
+Run the automated Flutter UI smoke flow with:
+
+```sh
+cd dart
+flutter test test/ui_smoke_test.dart
+```
+
+The test launches the application shell and uses normal widget taps to select a
+car and track, start a race, and pause and resume it. A controlled race loader
+supplies the game fixture. The test advances past the countdown without running
+physics and injects a finished simulation state before checking that results are
+displayed. Its assertions cover only UI composition and command wiring; physics,
+collision, checkpoints, laps, and finish correctness remain the responsibility
+of the compatibility suite.
