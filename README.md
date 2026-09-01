@@ -125,6 +125,10 @@ CLI options override environment variables. The most useful settings are:
 | `--required-check` | `ORCHESTRATOR_REQUIRED_CHECKS` | GitHub branch-protection required checks |
 | `--limit-window-hours` | `ORCHESTRATOR_LIMIT_WINDOW_HOURS` | `5` hours |
 | `--limit-buffer-seconds` | `ORCHESTRATOR_LIMIT_BUFFER_SECONDS` | `60` seconds |
+
+When GitHub reports that the branch has no required checks and no
+`--required-check` values were configured, the checks gate is treated as empty and
+the workflow continues. Configure `--required-check NAME` to require specific jobs.
 | `--max-quota-retries` | `ORCHESTRATOR_MAX_QUOTA_RETRIES` | `0` (unlimited) |
 
 For this repository, the default test command runs the pre-push quality gate.

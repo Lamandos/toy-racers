@@ -584,6 +584,9 @@ class GitHub:
         result = self.runner.run([self.gh, *args], self.repository, check=False)
         output = (result.stdout or "").strip()
         if not output:
+            error_output = (result.stderr or "").strip().lower()
+            if not required_names and "no required checks reported" in error_output:
+                return 0, []
             if result.returncode not in (0, 8):
                 raise OrchestratorError("gh could not read pull-request checks")
             return result.returncode, []
