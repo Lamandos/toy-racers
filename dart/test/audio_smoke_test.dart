@@ -218,6 +218,143 @@ void main() {
     },
   );
 
+  test('lifecycle pause waits for pending menu music startup', () async {
+    final backend = _RecordingAudioBackend()
+      ..musicStartGate = Completer<void>();
+    final audio = GameAudioController(backend: backend, policy: nativePolicy);
+
+    final starting = audio.enterMenu();
+    await _settle();
+    final pausing = audio.pauseForLifecycle();
+    await _settle();
+
+    expect(backend.pauseMusicCalls, 0);
+    backend.musicStartGate!.complete();
+    await Future.wait(<Future<void>>[starting, pausing]);
+
+    expect(backend.musicAssets, <GameAudioAsset>[
+      GameAudioAsset.backgroundMusic,
+    ]);
+    expect(backend.pauseMusicCalls, 1);
+  });
+
+  test('lifecycle transitions complete in request order', () async {
+    final backend = _RecordingAudioBackend();
+    final audio = GameAudioController(backend: backend, policy: nativePolicy);
+    await audio.enterMenu();
+    backend.pauseMusicGate = Completer<void>();
+
+    final pausing = audio.pauseForLifecycle();
+    await _settle();
+    expect(backend.pauseMusicCalls, 1);
+
+    final resuming = audio.resumeForLifecycle();
+    await _settle();
+    expect(backend.resumeMusicCalls, 0);
+
+    backend.pauseMusicGate!.complete();
+    await Future.wait(<Future<void>>[pausing, resuming]);
+
+    expect(backend.resumeMusicCalls, 1);
+    expect(backend.musicEvents, <String>[
+      'play',
+      'pause-start',
+      'pause-complete',
+      'resume',
+    ]);
+  });
+
+  test('new loop start waits for an older stop to finish', () async {
+    final backend = _RecordingAudioBackend();
+    final audio = GameAudioController(backend: backend, policy: nativePolicy);
+    await audio.startRaceLoops();
+    backend.blockLoopVolumeWrites = true;
+    backend.volumeWriteGate = Completer<void>();
+
+    final update = audio.updateRace(
+      speed: 8,
+      maxSpeed: 16,
+      input: PlayerInput(throttle: 0.8),
+      driftAmount: 0.2,
+      racing: true,
+      surface: SurfaceType.parquet,
+    );
+    await _settle();
+    final stopping = audio.stopRaceLoops();
+    await _settle();
+    final starting = audio.startRaceLoops();
+    await _settle();
+
+    expect(backend.startLoopCalls, 5);
+    backend.volumeWriteGate!.complete();
+    await Future.wait(<Future<void>>[update, stopping, starting]);
+
+    expect(backend.createdLoops.length, 10);
+    expect(
+      backend.createdLoops.take(5).every((loop) => loop.disposeCalls == 1),
+      isTrue,
+    );
+    expect(
+      backend.createdLoops.skip(5).every((loop) => loop.disposeCalls == 0),
+      isTrue,
+    );
+  });
+
+  test('entering the menu after a race pause starts music again', () async {
+    final backend = _RecordingAudioBackend();
+    final audio = GameAudioController(backend: backend, policy: nativePolicy);
+    await audio.enterMenu();
+
+    final pausing = audio.pauseRace();
+    final entering = audio.enterMenu();
+    await Future.wait(<Future<void>>[pausing, entering]);
+
+    expect(backend.musicAssets, <GameAudioAsset>[
+      GameAudioAsset.backgroundMusic,
+      GameAudioAsset.backgroundMusic,
+    ]);
+    expect(backend.musicEvents, <String>[
+      'play',
+      'pause-start',
+      'pause-complete',
+      'play',
+    ]);
+  });
+
+  test('coalesced race updates trigger one gravel entry sound', () async {
+    final backend = _RecordingAudioBackend();
+    final audio = GameAudioController(backend: backend, policy: nativePolicy);
+    await audio.startRaceLoops();
+    backend.blockLoopVolumeWrites = true;
+    backend.volumeWriteGate = Completer<void>();
+
+    final first = audio.updateRace(
+      speed: 8,
+      maxSpeed: 16,
+      input: PlayerInput(throttle: 0.8),
+      driftAmount: 0.2,
+      racing: true,
+      surface: SurfaceType.parquet,
+    );
+    await _settle();
+    final second = audio.updateRace(
+      speed: 8,
+      maxSpeed: 16,
+      input: PlayerInput(throttle: 0.8),
+      driftAmount: 0.2,
+      racing: true,
+      surface: SurfaceType.parquet,
+    );
+
+    expect(backend.oneShots, isEmpty);
+    backend.volumeWriteGate!.complete();
+    await Future.wait(<Future<void>>[first, second]);
+
+    expect(backend.oneShots.map((event) => event.asset), <GameAudioAsset>[
+      GameAudioAsset.gravelHitOne,
+    ]);
+  });
+
   test('audio settings reject invalid normalized values', () {
     expect(() => AudioSettings(masterVolume: 1.01), throwsArgumentError);
     expect(() => AudioSettings(musicVolume: double.nan), throwsArgumentError);
@@ -301,6 +438,8 @@ Future<void> _settle() => Future<void>.delayed(Duration.zero);
 final class _RecordingAudioBackend implements GameAudioBackend {
   int initializeCalls = 0;
   bool failNextMusicPlay = false;
+  Completer<void>? musicStartGate;
+  Completer<void>? pauseMusicGate;
   Completer<void>? loopStartGate;
   bool blockLoopVolumeWrites = false;
   Completer<void>? volumeWriteGate;
@@ -308,6 +447,7 @@ final class _RecordingAudioBackend implements GameAudioBackend {
   final List<GameAudioAsset> preloaded = <GameAudioAsset>[];
   final List<GameAudioAsset> musicAssets = <GameAudioAsset>[];
   final List<double> musicVolumes = <double>[];
+  final List<String> musicEvents = <String>[];
   final List<double> updatedMusicVolumes = <double>[];
   int pauseMusicCalls = 0;
   int resumeMusicCalls = 0;
@@ -329,6 +469,9 @@ final class _RecordingAudioBackend implements GameAudioBackend {
   @override
   Future<void> pauseMusic() async {
     pauseMusicCalls++;
+    musicEvents.add('pause-start');
+    await pauseMusicGate?.future;
+    musicEvents.add('pause-complete');
   }
 
   @override
@@ -337,8 +480,10 @@ final class _RecordingAudioBackend implements GameAudioBackend {
       failNextMusicPlay = false;
       throw StateError('simulated playback failure');
     }
+    await musicStartGate?.future;
     musicAssets.add(asset);
     musicVolumes.add(volume);
+    musicEvents.add('play');
   }
 
   @override
@@ -357,6 +502,7 @@ final class _RecordingAudioBackend implements GameAudioBackend {
   @override
   Future<void> resumeMusic() async {
     resumeMusicCalls++;
+    musicEvents.add('resume');
   }
 
   @override

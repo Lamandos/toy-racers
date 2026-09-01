@@ -89,6 +89,9 @@ final class GameAudioController {
   bool _disposed = false;
   bool _lifecyclePaused = false;
   Future<void>? _startingMusic;
+  Future<void> _lifecycleTransition = Future<void>.value();
+  Future<void> _raceLoopTransition = Future<void>.value();
+  Future<void> _musicTransition = Future<void>.value();
 
   AudioSettings get settings => _settings;
   bool get isRaceFadeComplete => !_raceFadeActive || _raceMixGain <= 0;
@@ -120,7 +123,7 @@ final class GameAudioController {
     _playbackAllowed = true;
     return Future.wait(<Future<void>>[
       _startRequestedMenuMusic(),
-      _startRequestedRaceLoops(),
+      _enqueueRaceLoopTransition(_startRequestedRaceLoops),
     ]);
   }
 
@@ -133,7 +136,7 @@ final class GameAudioController {
   /// Starts muted long-lived loops before countdown, matching the reference.
   Future<void> startRaceLoops() {
     _raceLoopsRequested = true;
-    return _startRequestedRaceLoops();
+    return _enqueueRaceLoopTransition(_startRequestedRaceLoops);
   }
 
   Future<void> _startRequestedRaceLoops() async {
@@ -155,10 +158,13 @@ final class GameAudioController {
     required SurfaceType surface,
   }) async {
     final offRoad = !surface.isRoad;
-    if (!_canPlay || _lifecyclePaused) {
+    if (!_canPlay || _lifecyclePaused || !_raceLoopsRequested) {
       _wasOffRoad = offRoad;
       return;
     }
+    final enteredGravel =
+        racing && offRoad && !_wasOffRoad && surface != SurfaceType.grass;
+    _wasOffRoad = offRoad;
     final mix = calculateRaceAudioMix(
       speed: speed,
       maxSpeed: maxSpeed,
@@ -172,10 +178,9 @@ final class GameAudioController {
       sfxVolume: _settings.effectiveSfxVolume * _raceMixGain,
     );
     await _raceMixQueue.enqueue(mix);
-    if (racing && offRoad && !_wasOffRoad && surface != SurfaceType.grass) {
+    if (enteredGravel) {
       await _playNext(gravelHitAssets, 0.65, _gravelVariant++);
     }
-    _wasOffRoad = offRoad;
   }
 
   Future<void> _applyRaceMix(RaceAudioMix mix) => Future.wait(<Future<void>>[
@@ -221,46 +226,41 @@ final class GameAudioController {
         .toDouble();
   }
 
-  Future<void> pauseRace() async {
+  Future<void> pauseRace() {
     _racePaused = true;
-    await _raceMixQueue.idle;
-    await Future.wait(<Future<void>>[
-      _ignoreFailure(() => _setRaceLoopsVolume(0)),
-      _ignoreFailure(_backend.pauseMusic),
+    _musicPaused = true;
+    return Future.wait(<Future<void>>[
+      _muteRaceLoopsAfterMix(),
+      _enqueueMusicTransition(_pauseMusicForRace),
     ]);
   }
 
   Future<void> resumeRace() {
     _racePaused = false;
+    if (_lifecyclePaused) {
+      return Future.value();
+    }
     _musicPaused = false;
     if (!_canPlay) {
       return Future.value();
     }
     if (_musicStarted) {
-      return _ignoreFailure(_backend.resumeMusic);
+      return _enqueueMusicTransition(_resumeMusic);
     }
     return _startRequestedMenuMusic();
   }
 
   /// Mutes all runtime audio while Flame pauses its engine for app lifecycle.
-  Future<void> pauseForLifecycle() async {
+  Future<void> pauseForLifecycle() {
     _lifecyclePaused = true;
     _musicPaused = true;
-    await _raceMixQueue.idle;
-    await Future.wait(<Future<void>>[
-      _ignoreFailure(() => _setRaceLoopsVolume(0)),
-      _ignoreFailure(_backend.pauseMusic),
-    ]);
+    return _enqueueLifecycleTransition(_pauseRuntimeAudioForLifecycle);
   }
 
   /// Restores background music after a lifecycle pause when race is not paused.
   Future<void> resumeForLifecycle() {
     _lifecyclePaused = false;
-    if (_racePaused || !_musicStarted || !_canPlay) {
-      return Future.value();
-    }
-    _musicPaused = false;
-    return _ignoreFailure(_backend.resumeMusic);
+    return _enqueueLifecycleTransition(_resumeRuntimeAudioForLifecycle);
   }
 
   /// Resets a retry to the initial mix without creating duplicate loop players.
@@ -272,6 +272,10 @@ final class GameAudioController {
 
   Future<void> stopRaceLoops() async {
     _raceLoopsRequested = false;
+    await _enqueueRaceLoopTransition(_stopRaceLoops);
+  }
+
+  Future<void> _stopRaceLoops() async {
     await _raceMixQueue.idle;
     await Future.wait(_raceLoops.map((loop) => _ignoreFailure(loop.stop)));
     _wasOffRoad = false;
@@ -286,7 +290,7 @@ final class GameAudioController {
     }
     _disposed = true;
     await stopRaceLoops();
-    await _ignoreFailure(_backend.stopMusic);
+    await _enqueueMusicTransition(_stopMusic);
     await _ignoreFailure(_backend.dispose);
   }
 
@@ -300,8 +304,11 @@ final class GameAudioController {
     _offtrackGrass,
   ];
 
-  Future<void> _startRequestedMenuMusic() {
-    if (!_canPlay || !_menuMusicRequested) {
+  Future<void> _startRequestedMenuMusic() =>
+      _enqueueMusicTransition(_startRequestedMenuMusicNow);
+
+  Future<void> _startRequestedMenuMusicNow() {
+    if (!_canPlay || !_menuMusicRequested || _lifecyclePaused) {
       return Future.value();
     }
     if (_musicStarted && !_musicPaused) {
@@ -329,7 +336,7 @@ final class GameAudioController {
         volume: _settings.effectiveMusicVolume,
       );
       _musicStarted = !_disposed;
-      _musicPaused = false;
+      _musicPaused = _lifecyclePaused || _racePaused;
     } catch (_) {
       _musicStarted = false;
       _musicPaused = false;
@@ -338,6 +345,86 @@ final class GameAudioController {
 
   Future<void> _setRaceLoopsVolume(double volume) =>
       Future.wait(_raceLoops.map((loop) => loop.setVolume(volume)));
+
+  Future<void> _muteRaceLoopsAfterMix() async {
+    await _raceMixQueue.idle;
+    await _ignoreFailure(() => _setRaceLoopsVolume(0));
+  }
+
+  Future<void> _pauseMusicForRace() async {
+    await _raceMixQueue.idle;
+    await _waitForMusicStartup();
+    await _ignoreFailure(_backend.pauseMusic);
+  }
+
+  Future<void> _pauseMusicForLifecycle() async {
+    if (!_lifecyclePaused) {
+      return;
+    }
+    await _ignoreFailure(_backend.pauseMusic);
+  }
+
+  Future<void> _resumeMusic() => _ignoreFailure(_backend.resumeMusic);
+
+  Future<void> _stopMusic() async {
+    await _waitForMusicStartup();
+    await _ignoreFailure(_backend.stopMusic);
+  }
+
+  Future<void> _pauseRuntimeAudioForLifecycle() async {
+    if (!_lifecyclePaused) {
+      return;
+    }
+    await _raceMixQueue.idle;
+    await _waitForMusicStartup();
+    if (!_lifecyclePaused) {
+      return;
+    }
+    _musicPaused = true;
+    await Future.wait(<Future<void>>[
+      _ignoreFailure(() => _setRaceLoopsVolume(0)),
+      _enqueueMusicTransition(_pauseMusicForLifecycle),
+    ]);
+  }
+
+  Future<void> _resumeRuntimeAudioForLifecycle() async {
+    if (_lifecyclePaused || _racePaused || !_canPlay) {
+      return;
+    }
+    if (!_musicStarted) {
+      await _startRequestedMenuMusic();
+      return;
+    }
+    _musicPaused = false;
+    await _enqueueMusicTransition(_resumeMusic);
+  }
+
+  Future<void> _waitForMusicStartup() async {
+    final starting = _startingMusic;
+    if (starting != null) {
+      await starting;
+    }
+  }
+
+  Future<void> _enqueueLifecycleTransition(Future<void> Function() operation) {
+    _lifecycleTransition = _appendTransition(_lifecycleTransition, operation);
+    return _lifecycleTransition;
+  }
+
+  Future<void> _enqueueRaceLoopTransition(Future<void> Function() operation) {
+    _raceLoopTransition = _appendTransition(_raceLoopTransition, operation);
+    return _raceLoopTransition;
+  }
+
+  Future<void> _enqueueMusicTransition(Future<void> Function() operation) {
+    _musicTransition = _appendTransition(_musicTransition, operation);
+    return _musicTransition;
+  }
+
+  Future<void> _appendTransition(
+    Future<void> previous,
+    Future<void> Function() operation,
+  ) => previous.then<void>((_) => operation(), onError: (_, _) => operation());
 
   Future<void> _play(GameAudioAsset asset, double volume) {
     if (!_canPlay || _racePaused) {
