@@ -65,7 +65,7 @@ executes `PLAN.md` one task at a time:
 3. run Codex CLI to implement the task;
 4. run the configured local test command;
 5. commit, push, and create a GitHub pull request;
-6. request `@codex review`, wait for the result, and send actionable findings back to Codex;
+6. request `@codex review`, wait for a review or PR-comment result, and send actionable findings back to Codex;
 7. wait for required GitHub checks, then squash-merge and delete the branch;
 8. update local `main` before starting the next task.
 

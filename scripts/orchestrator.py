@@ -45,6 +45,7 @@ TASK_HEADING_RE = re.compile(
 )
 CLEAN_REVIEW_RE = re.compile(
     r"\b(no\s+(?:actionable\s+)?(?:findings?|issues?|problems?)|"
+    r"did(?:n't| not)\s+find\s+any\s+(?:major\s+)?issues?|"
     r"nothing\s+to\s+fix|looks\s+good|lgtm|approved|all\s+checks?\s+pass)\b",
     re.IGNORECASE,
 )
@@ -872,9 +873,13 @@ class Orchestrator:
     def review_baseline(self, pr_number: int) -> dict[str, list[str]]:
         snapshot = self.github.pr_snapshot(pr_number)
         reviews = snapshot.get("reviews") or []
+        issue_comments = snapshot.get("comments") or []
         comments = self.github.review_comments(pr_number)
         return {
             "reviews": [self.object_id(item) for item in reviews if isinstance(item, dict)],
+            "issue_comments": [
+                self.object_id(item) for item in issue_comments if isinstance(item, dict)
+            ],
             "comments": [self.object_id(item) for item in comments if isinstance(item, dict)],
         }
 
@@ -884,8 +889,9 @@ class Orchestrator:
         inline_comments: Iterable[dict[str, Any]],
         baseline: dict[str, list[str]],
         requested_at: str,
-    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
         baseline_reviews = set(baseline.get("reviews", []))
+        baseline_issue_comments = set(baseline.get("issue_comments", []))
         baseline_comments = set(baseline.get("comments", []))
         reviews: list[dict[str, Any]] = []
         for item in snapshot.get("reviews") or []:
@@ -895,6 +901,16 @@ class Orchestrator:
             submitted_at = str(item.get("submittedAt") or "")
             if item_id not in baseline_reviews and (not submitted_at or submitted_at >= requested_at):
                 reviews.append(item)
+        issue_comments: list[dict[str, Any]] = []
+        for item in snapshot.get("comments") or []:
+            if not isinstance(item, dict) or not self.is_codex_author(item.get("author")):
+                continue
+            item_id = self.object_id(item)
+            created_at = str(item.get("createdAt") or "")
+            if item_id not in baseline_issue_comments and (
+                not created_at or created_at >= requested_at
+            ):
+                issue_comments.append(item)
         comments: list[dict[str, Any]] = []
         for item in inline_comments:
             if not isinstance(item, dict) or not self.is_codex_author(item.get("user")):
@@ -903,7 +919,7 @@ class Orchestrator:
             created_at = str(item.get("created_at") or "")
             if item_id not in baseline_comments and (not created_at or created_at >= requested_at):
                 comments.append(item)
-        return reviews, comments
+        return reviews, issue_comments, comments
 
     @staticmethod
     def review_body_is_clean(body: str) -> bool:
@@ -943,13 +959,26 @@ class Orchestrator:
         baseline: dict[str, list[str]],
         requested_at: str,
     ) -> ReviewResult | None:
-        reviews, comments = self.new_review_evidence(
+        reviews, issue_comments, comments = self.new_review_evidence(
             snapshot, inline_comments, baseline, requested_at
         )
-        if not reviews and not comments:
+        if not reviews and not issue_comments and not comments:
             return None
         if comments:
             return ReviewResult(clean=False, findings=self.format_findings(reviews, comments))
+
+        if issue_comments:
+            latest_comment = sorted(
+                issue_comments,
+                key=lambda item: str(item.get("createdAt") or ""),
+            )[-1]
+            body = str(latest_comment.get("body") or "").strip()
+            if self.review_body_is_clean(body):
+                return ReviewResult(clean=True)
+            return ReviewResult(
+                clean=False,
+                findings=f"Codex PR comment:\n{body or '(empty finding)'}",
+            )
 
         latest = sorted(
             reviews,
