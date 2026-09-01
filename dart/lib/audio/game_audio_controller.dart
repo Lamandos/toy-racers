@@ -8,6 +8,7 @@ import 'audio_backend.dart';
 import 'audio_settings.dart';
 import 'flame_audio_backend.dart';
 import 'race_audio_mix.dart';
+import 'race_audio_mix_queue.dart';
 
 /// Browser and device constraints applied before asking a backend to play.
 final class AudioPlaybackPolicy {
@@ -71,6 +72,7 @@ final class GameAudioController {
   final _LoopVoice _offtrackGrass = _LoopVoice(
     GameAudioAsset.offtrackGrassLoop,
   );
+  late final RaceAudioMixQueue _raceMixQueue = RaceAudioMixQueue(_applyRaceMix);
 
   AudioSettings _settings;
   bool _playbackAllowed;
@@ -85,6 +87,8 @@ final class GameAudioController {
   int _collisionVariant = 0;
   int _gravelVariant = 0;
   bool _disposed = false;
+  bool _lifecyclePaused = false;
+  Future<void>? _startingMusic;
 
   AudioSettings get settings => _settings;
   bool get isRaceFadeComplete => !_raceFadeActive || _raceMixGain <= 0;
@@ -151,7 +155,7 @@ final class GameAudioController {
     required SurfaceType surface,
   }) async {
     final offRoad = !surface.isRoad;
-    if (!_canPlay) {
+    if (!_canPlay || _lifecyclePaused) {
       _wasOffRoad = offRoad;
       return;
     }
@@ -167,20 +171,22 @@ final class GameAudioController {
       paused: _racePaused,
       sfxVolume: _settings.effectiveSfxVolume * _raceMixGain,
     );
-    await Future.wait(<Future<void>>[
-      _ignoreFailure(() => _engine.setVolume(mix.engineVolume)),
-      _ignoreFailure(() => _engine.setPitch(mix.enginePitch)),
-      _ignoreFailure(() => _drift.setVolume(mix.driftVolume)),
-      _ignoreFailure(() => _drift.setPitch(mix.driftPitch)),
-      _ignoreFailure(() => _braking.setVolume(mix.brakingVolume)),
-      _ignoreFailure(() => _offtrackGravel.setVolume(mix.gravelVolume)),
-      _ignoreFailure(() => _offtrackGrass.setVolume(mix.grassVolume)),
-    ]);
+    await _raceMixQueue.enqueue(mix);
     if (racing && offRoad && !_wasOffRoad && surface != SurfaceType.grass) {
       await _playNext(gravelHitAssets, 0.65, _gravelVariant++);
     }
     _wasOffRoad = offRoad;
   }
+
+  Future<void> _applyRaceMix(RaceAudioMix mix) => Future.wait(<Future<void>>[
+    _ignoreFailure(() => _engine.setVolume(mix.engineVolume)),
+    _ignoreFailure(() => _engine.setPitch(mix.enginePitch)),
+    _ignoreFailure(() => _drift.setVolume(mix.driftVolume)),
+    _ignoreFailure(() => _drift.setPitch(mix.driftPitch)),
+    _ignoreFailure(() => _braking.setVolume(mix.brakingVolume)),
+    _ignoreFailure(() => _offtrackGravel.setVolume(mix.gravelVolume)),
+    _ignoreFailure(() => _offtrackGrass.setVolume(mix.grassVolume)),
+  ]);
 
   Future<void> countdown() => _play(GameAudioAsset.startCountdown, 0.75);
   Future<void> go() => _play(GameAudioAsset.go, 1);
@@ -215,9 +221,10 @@ final class GameAudioController {
         .toDouble();
   }
 
-  Future<void> pauseRace() {
+  Future<void> pauseRace() async {
     _racePaused = true;
-    return Future.wait(<Future<void>>[
+    await _raceMixQueue.idle;
+    await Future.wait(<Future<void>>[
       _ignoreFailure(() => _setRaceLoopsVolume(0)),
       _ignoreFailure(_backend.pauseMusic),
     ]);
@@ -236,9 +243,11 @@ final class GameAudioController {
   }
 
   /// Mutes all runtime audio while Flame pauses its engine for app lifecycle.
-  Future<void> pauseForLifecycle() {
+  Future<void> pauseForLifecycle() async {
+    _lifecyclePaused = true;
     _musicPaused = true;
-    return Future.wait(<Future<void>>[
+    await _raceMixQueue.idle;
+    await Future.wait(<Future<void>>[
       _ignoreFailure(() => _setRaceLoopsVolume(0)),
       _ignoreFailure(_backend.pauseMusic),
     ]);
@@ -246,6 +255,7 @@ final class GameAudioController {
 
   /// Restores background music after a lifecycle pause when race is not paused.
   Future<void> resumeForLifecycle() {
+    _lifecyclePaused = false;
     if (_racePaused || !_musicStarted || !_canPlay) {
       return Future.value();
     }
@@ -261,8 +271,9 @@ final class GameAudioController {
   }
 
   Future<void> stopRaceLoops() async {
-    await Future.wait(_raceLoops.map((loop) => _ignoreFailure(loop.stop)));
     _raceLoopsRequested = false;
+    await _raceMixQueue.idle;
+    await Future.wait(_raceLoops.map((loop) => _ignoreFailure(loop.stop)));
     _wasOffRoad = false;
     _racePaused = false;
     _raceMixGain = 1;
@@ -296,14 +307,33 @@ final class GameAudioController {
     if (_musicStarted && !_musicPaused) {
       return Future.value();
     }
-    _musicStarted = true;
-    _musicPaused = false;
-    return _ignoreFailure(
-      () => _backend.playMusic(
+    final starting = _startingMusic;
+    if (starting != null) {
+      return starting;
+    }
+    late final Future<void> tracked;
+    final future = _startMenuMusic();
+    tracked = future.whenComplete(() {
+      if (identical(_startingMusic, tracked)) {
+        _startingMusic = null;
+      }
+    });
+    _startingMusic = tracked;
+    return tracked;
+  }
+
+  Future<void> _startMenuMusic() async {
+    try {
+      await _backend.playMusic(
         GameAudioAsset.backgroundMusic,
         volume: _settings.effectiveMusicVolume,
-      ),
-    );
+      );
+      _musicStarted = !_disposed;
+      _musicPaused = false;
+    } catch (_) {
+      _musicStarted = false;
+      _musicPaused = false;
+    }
   }
 
   Future<void> _setRaceLoopsVolume(double volume) =>
@@ -355,8 +385,14 @@ final class _LoopVoice {
     }
     _stopped = false;
     final future = _start(backend);
-    _starting = future;
-    return future.whenComplete(() => _starting = null);
+    late final Future<void> tracked;
+    tracked = future.whenComplete(() {
+      if (identical(_starting, tracked)) {
+        _starting = null;
+      }
+    });
+    _starting = tracked;
+    return tracked;
   }
 
   Future<void> setVolume(double volume) async {
@@ -377,17 +413,25 @@ final class _LoopVoice {
 
   Future<void> stop() async {
     _stopped = true;
+    final starting = _starting;
+    if (starting != null) {
+      try {
+        await starting;
+      } catch (_) {
+        // A failed startup still needs to be followed by loop cleanup.
+      }
+    }
     final loop = _loop;
     _loop = null;
     if (loop != null) {
-      await loop.stop();
+      await _stopAndDispose(loop);
     }
   }
 
   Future<void> _start(GameAudioBackend backend) async {
     final loop = await backend.startLoop(asset, volume: 0, pitch: _pitch);
     if (_stopped) {
-      await loop.stop();
+      await _stopAndDispose(loop);
       return;
     }
     _loop = loop;
@@ -395,6 +439,14 @@ final class _LoopVoice {
       loop.setVolume(_volume),
       loop.setPitch(_pitch),
     ]);
+  }
+
+  Future<void> _stopAndDispose(GameAudioLoop loop) async {
+    try {
+      await loop.stop();
+    } finally {
+      await loop.dispose();
+    }
   }
 }
 
@@ -449,4 +501,7 @@ final class _SilentAudioLoop implements GameAudioLoop {
 
   @override
   Future<void> stop() async {}
+
+  @override
+  Future<void> dispose() async {}
 }

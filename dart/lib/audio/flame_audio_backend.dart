@@ -76,4 +76,7 @@ final class _FlameAudioLoop implements GameAudioLoop {
 
   @override
   Future<void> stop() => _player.stop();
+
+  @override
+  Future<void> dispose() => _player.dispose();
 }

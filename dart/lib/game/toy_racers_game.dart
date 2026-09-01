@@ -161,14 +161,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
   void pauseEngine() {
     touchInputController.clear();
     _fixedTimestep.reset();
-    unawaited(_audio.pauseForLifecycle());
     super.pauseEngine();
-  }
-
-  @override
-  void resumeEngine() {
-    super.resumeEngine();
-    unawaited(_audio.resumeForLifecycle());
   }
 
   @override

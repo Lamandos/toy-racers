@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:toy_racers/audio/audio_assets.dart';
@@ -139,6 +141,80 @@ void main() {
       audio.advanceRaceFadeOut(0.4);
       expect(audio.isRaceFadeComplete, isTrue);
       expect(backend.oneShots.last.asset, GameAudioAsset.finish);
+
+      await audio.stopRaceLoops();
+      expect(
+        backend.loops.values.every((loop) => loop.disposeCalls == 1),
+        isTrue,
+      );
+    },
+  );
+
+  test('retries menu music after a failed backend start', () async {
+    final backend = _RecordingAudioBackend()..failNextMusicPlay = true;
+    final audio = GameAudioController(backend: backend, policy: nativePolicy);
+
+    await audio.enterMenu();
+    expect(backend.musicAssets, isEmpty);
+
+    await audio.enterMenu();
+    expect(backend.musicAssets, <GameAudioAsset>[
+      GameAudioAsset.backgroundMusic,
+    ]);
+  });
+
+  test('lifecycle mute waits for the current race mix write', () async {
+    final backend = _RecordingAudioBackend();
+    final audio = GameAudioController(backend: backend, policy: nativePolicy);
+    await audio.startRaceLoops();
+    backend.blockLoopVolumeWrites = true;
+    backend.volumeWriteGate = Completer<void>();
+
+    final update = audio.updateRace(
+      speed: 8,
+      maxSpeed: 16,
+      input: PlayerInput(throttle: 0.8),
+      driftAmount: 0.2,
+      racing: true,
+      surface: SurfaceType.parquet,
+    );
+    await _settle();
+    final pause = audio.pauseForLifecycle();
+    await _settle();
+
+    expect(backend.pauseMusicCalls, 0);
+    backend.volumeWriteGate!.complete();
+    await Future.wait(<Future<void>>[update, pause]);
+    expect(backend.pauseMusicCalls, 1);
+    expect(
+      backend.loops.values.every((loop) => loop.volumes.last == 0),
+      isTrue,
+    );
+  });
+
+  test(
+    'stopping during loop startup disposes players and allows a retry',
+    () async {
+      final backend = _RecordingAudioBackend();
+      final audio = GameAudioController(backend: backend, policy: nativePolicy);
+      backend.loopStartGate = Completer<void>();
+
+      final starting = audio.startRaceLoops();
+      await _settle();
+      final stopping = audio.stopRaceLoops();
+      await _settle();
+      expect(backend.startLoopCalls, 5);
+
+      backend.loopStartGate!.complete();
+      await Future.wait(<Future<void>>[starting, stopping]);
+      expect(
+        backend.createdLoops.every((loop) => loop.disposeCalls == 1),
+        isTrue,
+      );
+
+      await audio.startRaceLoops();
+      expect(backend.startLoopCalls, 10);
+      expect(backend.loops.length, 5);
     },
   );
 
@@ -202,12 +278,33 @@ void main() {
     expect(audio.settings.masterVolume, closeTo(0.9, 0.000001));
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('application mutes shared audio outside a race', (tester) async {
+    final backend = _RecordingAudioBackend();
+    final audio = GameAudioController(backend: backend, policy: nativePolicy);
+    await audio.enterMenu();
+
+    await tester.pumpWidget(ToyRacersApplication(audio: audio));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump();
+    expect(backend.pauseMusicCalls, 1);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(backend.resumeMusicCalls, 1);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
 Future<void> _settle() => Future<void>.delayed(Duration.zero);
 
 final class _RecordingAudioBackend implements GameAudioBackend {
   int initializeCalls = 0;
+  bool failNextMusicPlay = false;
+  Completer<void>? loopStartGate;
+  bool blockLoopVolumeWrites = false;
+  Completer<void>? volumeWriteGate;
+  int startLoopCalls = 0;
   final List<GameAudioAsset> preloaded = <GameAudioAsset>[];
   final List<GameAudioAsset> musicAssets = <GameAudioAsset>[];
   final List<double> musicVolumes = <double>[];
@@ -217,6 +314,7 @@ final class _RecordingAudioBackend implements GameAudioBackend {
   final List<_OneShot> oneShots = <_OneShot>[];
   final Map<GameAudioAsset, _RecordingAudioLoop> loops =
       <GameAudioAsset, _RecordingAudioLoop>{};
+  final List<_RecordingAudioLoop> createdLoops = <_RecordingAudioLoop>[];
 
   _RecordingAudioLoop loopFor(GameAudioAsset asset) => loops[asset]!;
 
@@ -235,6 +333,10 @@ final class _RecordingAudioBackend implements GameAudioBackend {
 
   @override
   Future<void> playMusic(GameAudioAsset asset, {required double volume}) async {
+    if (failNextMusicPlay) {
+      failNextMusicPlay = false;
+      throw StateError('simulated playback failure');
+    }
     musicAssets.add(asset);
     musicVolumes.add(volume);
   }
@@ -268,7 +370,13 @@ final class _RecordingAudioBackend implements GameAudioBackend {
     required double volume,
     required double pitch,
   }) async {
-    final loop = _RecordingAudioLoop();
+    startLoopCalls++;
+    await loopStartGate?.future;
+    final loop = _RecordingAudioLoop(
+      waitForVolume: () =>
+          blockLoopVolumeWrites ? volumeWriteGate?.future : null,
+    );
+    createdLoops.add(loop);
     loops[asset] = loop;
     await loop.setVolume(volume);
     await loop.setPitch(pitch);
@@ -282,9 +390,13 @@ final class _RecordingAudioBackend implements GameAudioBackend {
 typedef _OneShot = ({GameAudioAsset asset, double volume});
 
 final class _RecordingAudioLoop implements GameAudioLoop {
+  _RecordingAudioLoop({this.waitForVolume});
+
+  final Future<void>? Function()? waitForVolume;
   final List<double> volumes = <double>[];
   final List<double> pitches = <double>[];
   int stopCalls = 0;
+  int disposeCalls = 0;
 
   @override
   Future<void> setPitch(double pitch) async {
@@ -293,11 +405,17 @@ final class _RecordingAudioLoop implements GameAudioLoop {
 
   @override
   Future<void> setVolume(double volume) async {
+    await waitForVolume?.call();
     volumes.add(volume);
   }
 
   @override
   Future<void> stop() async {
     stopCalls++;
+  }
+
+  @override
+  Future<void> dispose() async {
+    disposeCalls++;
   }
 }

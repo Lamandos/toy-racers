@@ -5,6 +5,7 @@ abstract interface class GameAudioLoop {
   Future<void> setVolume(double volume);
   Future<void> setPitch(double pitch);
   Future<void> stop();
+  Future<void> dispose();
 }
 
 /// Platform-specific playback boundary used by [GameAudioController].

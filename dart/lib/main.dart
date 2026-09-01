@@ -61,18 +61,40 @@ final class ToyRacersApplication extends StatefulWidget {
   State<ToyRacersApplication> createState() => _ToyRacersApplicationState();
 }
 
-final class _ToyRacersApplicationState extends State<ToyRacersApplication> {
+final class _ToyRacersApplicationState extends State<ToyRacersApplication>
+    with WidgetsBindingObserver {
   _ToyRacersScreen _screen = _ToyRacersScreen.mainMenu;
   CarModel _selectedCar = CarModel.redStripe;
   Future<ToyRacersGame>? _race;
   ToyRacersGame? _activeGame;
   late final GameAudioController _audio;
+  bool _audioPausedForLifecycle = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _audio = widget.audio ?? GameAudioController.silent();
     unawaited(_audio.enterMenu());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        if (_audioPausedForLifecycle) {
+          _audioPausedForLifecycle = false;
+          unawaited(_audio.resumeForLifecycle());
+        }
+      case AppLifecycleState.inactive ||
+          AppLifecycleState.hidden ||
+          AppLifecycleState.paused ||
+          AppLifecycleState.detached:
+        if (!_audioPausedForLifecycle) {
+          _audioPausedForLifecycle = true;
+          unawaited(_audio.pauseForLifecycle());
+        }
+    }
   }
 
   @override
@@ -170,6 +192,7 @@ final class _ToyRacersApplicationState extends State<ToyRacersApplication> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _activeGame?.dispose();
     unawaited(_audio.dispose());
     super.dispose();
