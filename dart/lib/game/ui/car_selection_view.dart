@@ -3,7 +3,6 @@ import 'package:toy_racers/simulation.dart';
 
 import '../rendering/presentation_catalog.dart';
 import 'game_controls.dart';
-import 'track_selection_view.dart';
 
 /// Lets players choose a bundled car sprite before choosing a track.
 final class CarSelectionView extends StatelessWidget {

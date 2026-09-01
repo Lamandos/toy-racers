@@ -1,9 +1,14 @@
+import 'dart:async';
+
 import 'package:flame/game.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:toy_racers/simulation.dart';
 
+import 'audio/game_audio_controller.dart';
+import 'audio/audio_settings.dart';
+import 'game/ui/audio_settings_view.dart';
 import 'game/input/touch_controls_overlay.dart';
 import 'game/race_results_overlay.dart';
 import 'game/toy_racers_game.dart';
@@ -24,7 +29,9 @@ Future<void> main() async {
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
-  runApp(const ToyRacersApplication());
+  final audio = GameAudioController.production();
+  await audio.prepare();
+  runApp(ToyRacersApplication(audio: audio));
 }
 
 /// Flutter navigation shell around the Flame race presentation.
@@ -34,6 +41,7 @@ final class ToyRacersApplication extends StatefulWidget {
     Future<ToyRacersGame> Function()? gameLoader,
     this.raceGameLoader = ToyRacersGame.loadRace,
     this.showTouchControls,
+    this.audio,
   }) : gameLoader = gameLoader ?? ToyRacersGame.loadDefault,
        _legacyGameLoader = gameLoader;
 
@@ -46,6 +54,9 @@ final class ToyRacersApplication extends StatefulWidget {
   final RaceGameLoader raceGameLoader;
   final bool? showTouchControls;
 
+  /// Optional shared backend; omitting it preserves the silent test shell.
+  final GameAudioController? audio;
+
   @override
   State<ToyRacersApplication> createState() => _ToyRacersApplicationState();
 }
@@ -55,31 +66,50 @@ final class _ToyRacersApplicationState extends State<ToyRacersApplication> {
   CarModel _selectedCar = CarModel.redStripe;
   Future<ToyRacersGame>? _race;
   ToyRacersGame? _activeGame;
+  late final GameAudioController _audio;
 
   @override
-  Widget build(BuildContext context) => GameNavigationScope(
-    child: Directionality(
-      textDirection: TextDirection.ltr,
-      child: switch (_screen) {
-        _ToyRacersScreen.mainMenu => MainMenuView(onPlay: _showCarSelection),
-        _ToyRacersScreen.carSelection => CarSelectionView(
-          selected: _selectedCar,
-          onSelected: _selectCar,
-          onContinue: _showTrackSelection,
-          onBack: _showMainMenu,
-        ),
-        _ToyRacersScreen.trackSelection => TrackSelectionView(
-          selectedCar: _selectedCar,
-          onSelected: _startRace,
-          onBack: _showCarSelection,
-        ),
-        _ToyRacersScreen.race => _RacePresentation(
-          race: _race!,
-          showTouchControls: _shouldShowTouchControls,
-          onGameReady: _setActiveGame,
-          onExitRace: _showMainMenu,
-        ),
-      },
+  void initState() {
+    super.initState();
+    _audio = widget.audio ?? GameAudioController.silent();
+    unawaited(_audio.enterMenu());
+  }
+
+  @override
+  Widget build(BuildContext context) => GameAudioScope(
+    audio: _audio,
+    child: GameNavigationScope(
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: switch (_screen) {
+          _ToyRacersScreen.mainMenu => MainMenuView(
+            onPlay: _showCarSelection,
+            onSettings: _showSettings,
+          ),
+          _ToyRacersScreen.settings => AudioSettingsView(
+            settings: _audio.settings,
+            onChanged: _updateAudioSettings,
+            onBack: _showMainMenu,
+          ),
+          _ToyRacersScreen.carSelection => CarSelectionView(
+            selected: _selectedCar,
+            onSelected: _selectCar,
+            onContinue: _showTrackSelection,
+            onBack: _showMainMenu,
+          ),
+          _ToyRacersScreen.trackSelection => TrackSelectionView(
+            selectedCar: _selectedCar,
+            onSelected: _startRace,
+            onBack: _showCarSelection,
+          ),
+          _ToyRacersScreen.race => _RacePresentation(
+            race: _race!,
+            showTouchControls: _shouldShowTouchControls,
+            onGameReady: _setActiveGame,
+            onExitRace: _showMainMenu,
+          ),
+        },
+      ),
     ),
   );
 
@@ -93,6 +123,7 @@ final class _ToyRacersApplicationState extends State<ToyRacersApplication> {
     _activeGame = null;
     game?.pauseEngine();
     game?.dispose();
+    unawaited(_audio.enterMenu());
     setState(() {
       _race = null;
       _screen = _ToyRacersScreen.mainMenu;
@@ -101,6 +132,14 @@ final class _ToyRacersApplicationState extends State<ToyRacersApplication> {
 
   void _showCarSelection() => setState(() {
     _screen = _ToyRacersScreen.carSelection;
+  });
+
+  void _showSettings() => setState(() {
+    _screen = _ToyRacersScreen.settings;
+  });
+
+  void _updateAudioSettings(AudioSettings settings) => setState(() {
+    _audio.settings = settings;
   });
 
   void _showTrackSelection() => setState(() {
@@ -125,17 +164,19 @@ final class _ToyRacersApplicationState extends State<ToyRacersApplication> {
   }
 
   void _setActiveGame(ToyRacersGame game) {
+    game.attachAudio(_audio);
     _activeGame = game;
   }
 
   @override
   void dispose() {
     _activeGame?.dispose();
+    unawaited(_audio.dispose());
     super.dispose();
   }
 }
 
-enum _ToyRacersScreen { mainMenu, trackSelection, carSelection, race }
+enum _ToyRacersScreen { mainMenu, settings, trackSelection, carSelection, race }
 
 final class _RacePresentation extends StatelessWidget {
   const _RacePresentation({
@@ -194,8 +235,8 @@ final class _RacePresentation extends StatelessWidget {
           ToyRacersGame.touchControlsOverlayId: (context, game) =>
               TouchControlsOverlay(
                 controller: game.touchInputController,
-                onPause: game.togglePause,
-                onRestart: game.restartRace,
+                onPause: game.onTouchPause,
+                onRestart: game.onTouchRestart,
               ),
           ToyRacersGame.raceHudOverlayId: (context, game) => RaceHudOverlay(
             controller: game,

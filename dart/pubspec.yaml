@@ -8,6 +8,9 @@ environment:
 
 dependencies:
   flame: ^1.38.1
+  # Flame itself provides rendering and input, while this bridge supplies the
+  # platform audio players needed by the presentation-only audio controller.
+  flame_audio: ^2.12.2
   flutter:
     sdk: flutter
   # Parses the canonical Tiled TMX sources inside the pure-Dart simulation.

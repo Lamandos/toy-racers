@@ -511,6 +511,11 @@ void main() {
     await tester.pump();
 
     expect(session.raceState.phase, RacePhase.finished);
+    expect(find.text('RACE RESULTS'), findsNothing);
+    for (var frame = 0; frame < 4; frame++) {
+      game.update(CarPhysics.maxFrameDeltaSeconds);
+    }
+    await tester.pump();
     expect(find.text('RACE RESULTS'), findsOneWidget);
     expect(find.text('RESTART RACE'), findsOneWidget);
 

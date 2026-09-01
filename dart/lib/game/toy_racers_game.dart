@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flame/input.dart';
@@ -5,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:toy_racers/simulation.dart';
 
+import '../audio/game_audio_controller.dart';
 import 'camera/race_camera_controller.dart';
 import 'fixed_timestep_scheduler.dart';
 import 'input/keyboard_input_controller.dart';
@@ -37,12 +40,14 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     List<CarModel>? opponentCarModels,
     PlayerInputProvider? playerInputProvider,
     RaceCameraController? cameraController,
+    GameAudioController? audio,
   }) : playerCarModel = playerCarModel,
        opponentCarModels = List<CarModel>.unmodifiable(
          opponentCarModels ?? RaceCarModels.opponentsFor(playerCarModel),
        ),
        _playerInputProvider = playerInputProvider ?? _neutralInput,
        _cameraController = cameraController ?? RaceCameraController(),
+       _audio = audio ?? GameAudioController.silent(),
        super(
          world: RaceWorld(
            session: session,
@@ -72,14 +77,28 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
         touchInputController,
       ]);
   final RaceCameraController _cameraController;
+  GameAudioController _audio;
   final FixedTimestepScheduler _fixedTimestep = FixedTimestepScheduler();
   @override
   final ValueNotifier<int> presentationFrame = ValueNotifier<int>(0);
 
   double interpolationFactor = 0;
+  PlayerInput _latestInput = PlayerInput.none;
+  int _lastCountdownNumber = -1;
+  bool _finishSoundPlayed = false;
+  bool _resultsVisible = false;
+  bool _hasLoaded = false;
 
   @override
   RaceUiState get uiState => RaceUiState.fromSession(session);
+
+  /// The application binds its shared presentation audio before [onLoad].
+  void attachAudio(GameAudioController audio) {
+    if (_hasLoaded && !identical(_audio, audio)) {
+      throw StateError('Audio must be attached before the Flame game loads.');
+    }
+    _audio = audio;
+  }
 
   /// Creates the first playable session from bundled canonical TMX sources.
   static Future<ToyRacersGame> loadDefault({
@@ -123,6 +142,8 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     if (session.raceState.phase == RacePhase.loading) {
       session.start();
     }
+    _hasLoaded = true;
+    unawaited(_audio.startRaceLoops());
     _synchronizePresentationOverlays();
     world.synchronizeVisualState(interpolationFactor);
     _followPlayerCamera(0);
@@ -140,13 +161,21 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
   void pauseEngine() {
     touchInputController.clear();
     _fixedTimestep.reset();
+    unawaited(_audio.pauseForLifecycle());
     super.pauseEngine();
+  }
+
+  @override
+  void resumeEngine() {
+    super.resumeEngine();
+    unawaited(_audio.resumeForLifecycle());
   }
 
   @override
   void onDetach() {
     touchInputController.clear();
     _fixedTimestep.reset();
+    unawaited(_audio.stopRaceLoops());
     super.onDetach();
   }
 
@@ -173,10 +202,12 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
         session.pause();
         touchInputController.clear();
         _fixedTimestep.reset();
+        unawaited(_audio.pauseRace());
         _synchronizePresentationOverlays();
         _publishPresentationFrame();
       case RacePhase.paused:
         session.resume();
+        unawaited(_audio.resumeRace());
         _synchronizePresentationOverlays();
         _publishPresentationFrame();
       case RacePhase.loading ||
@@ -195,6 +226,12 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     touchInputController.clear();
     _fixedTimestep.reset();
     interpolationFactor = 0;
+    _latestInput = PlayerInput.none;
+    _lastCountdownNumber = -1;
+    _finishSoundPlayed = false;
+    _resultsVisible = false;
+    unawaited(_audio.resetRaceMix());
+    unawaited(_audio.resumeRace());
     _synchronizePresentationOverlays();
     if (_touchControlsEnabled &&
         overlays.registeredOverlays.contains(touchControlsOverlayId)) {
@@ -217,24 +254,54 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     );
   }
 
+  /// Touch actions pass through the same browser-unlock and UI-sound path.
+  void onTouchPause() {
+    unawaited(_audio.activateFromUserGesture());
+    unawaited(_audio.buttonClick());
+    togglePause();
+  }
+
+  /// Restarts a touch race without bypassing the presentation audio layer.
+  void onTouchRestart() {
+    unawaited(_audio.activateFromUserGesture());
+    unawaited(_audio.buttonClick());
+    restartRace();
+  }
+
   @override
   void update(double dt) {
     final frameDelta = FixedTimestepScheduler.boundedRenderDelta(dt);
+    final phaseBeforeAdvance = session.raceState.phase;
     final racingDelta = session.advanceLifecycle(elapsedSeconds: frameDelta);
+    _audio.advanceRaceFadeOut(frameDelta);
+    _updateCountdownAudio(phaseBeforeAdvance);
     var maximumImpactSpeed = 0.0;
+    var playerCheckpointPassed = false;
     final frame = _fixedTimestep.advance(
       simulationDeltaSeconds: racingDelta,
       isSimulationActive: _isRacing,
       onFixedStep: () {
-        final impactSpeed = _advanceSimulation();
-        if (impactSpeed > maximumImpactSpeed) {
-          maximumImpactSpeed = impactSpeed;
+        final step = _advanceSimulation();
+        playerCheckpointPassed =
+            playerCheckpointPassed || step.playerCheckpointPassed;
+        if (step.maxImpactSpeed > maximumImpactSpeed) {
+          maximumImpactSpeed = step.maxImpactSpeed;
         }
       },
     );
+    if (playerCheckpointPassed) {
+      unawaited(_audio.checkpoint());
+    }
     if (maximumImpactSpeed >= _minimumShakeImpactSpeed) {
       _cameraController.addShake(maximumImpactSpeed * _shakePerImpactSpeed);
+      unawaited(
+        _audio.collision(
+          maximumImpactSpeed / session.player.carConfig.maxForwardSpeed,
+        ),
+      );
     }
+    _updateRaceAudio();
+    _showResultsWhenFadeCompletes();
     _synchronizePresentationOverlays();
     interpolationFactor = frame.interpolationFactor;
     world.synchronizeVisualState(interpolationFactor);
@@ -253,11 +320,60 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     RacePhase.finished => false,
   };
 
-  double _advanceSimulation() {
+  RaceStepResult _advanceSimulation() {
     final step = session.advanceFixedStep(
       playerInput: _playerInputAdapter.readInput(),
     );
-    return step.maxImpactSpeed;
+    final input = step.appliedPlayerInput;
+    if (input != null) {
+      _latestInput = input;
+    }
+    return step;
+  }
+
+  void _updateCountdownAudio(RacePhase phaseBeforeAdvance) {
+    if (session.raceState.phase == RacePhase.countdown) {
+      final countdownNumber = session.raceState.countdownRemainingSeconds
+          .ceil()
+          .clamp(0, 3);
+      if (countdownNumber != _lastCountdownNumber) {
+        _lastCountdownNumber = countdownNumber;
+        if (countdownNumber == 3) {
+          unawaited(_audio.countdown());
+        }
+      }
+    } else if (phaseBeforeAdvance == RacePhase.countdown &&
+        session.raceState.phase == RacePhase.racing) {
+      unawaited(_audio.go());
+    }
+  }
+
+  void _updateRaceAudio() {
+    final state = session.player.carState;
+    unawaited(
+      _audio.updateRace(
+        speed: state.longitudinalSpeed,
+        maxSpeed: session.player.carConfig.maxForwardSpeed,
+        input: _latestInput,
+        driftAmount: state.driftAmount,
+        racing: session.raceState.phase == RacePhase.racing,
+        surface: session.track.surfaceAtCoordinates(state.x, state.y),
+      ),
+    );
+  }
+
+  void _showResultsWhenFadeCompletes() {
+    if (session.raceState.phase != RacePhase.finished) {
+      return;
+    }
+    if (!_finishSoundPlayed) {
+      _finishSoundPlayed = true;
+      _latestInput = PlayerInput.none;
+      unawaited(_audio.finishRace());
+    }
+    if (_audio.isRaceFadeComplete) {
+      _resultsVisible = true;
+    }
   }
 
   void _followPlayerCamera(double deltaSeconds) => _cameraController.follow(
@@ -291,11 +407,8 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
       pauseOverlayId,
       session.raceState.phase == RacePhase.paused,
     );
-    _setOverlayActive(
-      registeredOverlays,
-      resultsOverlayId,
-      session.raceState.phase == RacePhase.finished,
-    );
+    _setOverlayActive(registeredOverlays, resultsOverlayId, _resultsVisible);
+    _setOverlayActive(registeredOverlays, raceHudOverlayId, !_resultsVisible);
     _setOverlayActive(
       registeredOverlays,
       touchControlsOverlayId,
