@@ -424,8 +424,9 @@ final class ReferenceAiDriver
     if (seed == null) {
       return 0;
     }
-    final narrowed = seed & _unsignedLongMask;
-    return (narrowed ^ (narrowed >> 32)) & _unsignedIntMask;
+    final narrowed = BigInt.from(seed) & _unsignedLongMask;
+    return ((narrowed ^ (narrowed >> 32)) & BigInt.from(_unsignedIntMask))
+        .toInt();
   }
 
   static double _maximum(double left, double right) =>
@@ -447,7 +448,10 @@ final class ReferenceAiDriver
   static const int _randomIncrement = 1013904223;
   static const int _randomSampleDivisor = 0x01000000;
   static const int _unsignedIntMask = 0xffffffff;
-  static const int _unsignedLongMask = 0xffffffffffffffff;
+  static final BigInt _unsignedLongMask = BigInt.parse(
+    'ffffffffffffffff',
+    radix: 16,
+  );
 }
 
 /// Current observable AI behavior selected for a command.

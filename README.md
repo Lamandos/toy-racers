@@ -65,7 +65,7 @@ executes `PLAN.md` one task at a time:
 3. run Codex CLI to implement the task;
 4. run the configured local test command;
 5. commit, push, and create a GitHub pull request;
-6. request `@codex review`, wait for the result, and send actionable findings back to Codex;
+6. request `@codex review`, wait for a review or PR-comment result, and send actionable findings back to Codex;
 7. wait for required GitHub checks, then squash-merge and delete the branch;
 8. update local `main` before starting the next task.
 
@@ -120,11 +120,15 @@ CLI options override environment variables. The most useful settings are:
 | `--poll-interval` | `ORCHESTRATOR_POLL_INTERVAL` | `30` seconds |
 | `--implementation-model` | `ORCHESTRATOR_IMPLEMENTATION_MODEL` | `gpt-5.6-sol` |
 | `--fix-model` | `ORCHESTRATOR_FIX_MODEL` | `gpt-5.6-luna` |
-| `--codex-args` | `ORCHESTRATOR_CODEX_ARGS` | workspace-write, automatic approvals, ephemeral session |
+| `--codex-args` | `ORCHESTRATOR_CODEX_ARGS` | automatic approval review (workspace-write), ephemeral session |
 | `--review-author` | `ORCHESTRATOR_REVIEW_AUTHORS` | common Codex GitHub bot logins |
 | `--required-check` | `ORCHESTRATOR_REQUIRED_CHECKS` | GitHub branch-protection required checks |
 | `--limit-window-hours` | `ORCHESTRATOR_LIMIT_WINDOW_HOURS` | `5` hours |
 | `--limit-buffer-seconds` | `ORCHESTRATOR_LIMIT_BUFFER_SECONDS` | `60` seconds |
+
+When GitHub reports that the branch has no required checks and no
+`--required-check` values were configured, the checks gate is treated as empty and
+the workflow continues. Configure `--required-check NAME` to require specific jobs.
 | `--max-quota-retries` | `ORCHESTRATOR_MAX_QUOTA_RETRIES` | `0` (unlimited) |
 
 For this repository, the default test command runs the pre-push quality gate.
