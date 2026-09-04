@@ -19,6 +19,11 @@ final class CarComponent extends PositionComponent {
     required CarVisualState visualState,
     required CarConfig carConfig,
   }) : _visualState = visualState,
+       _destinationRectangle = Rect.fromCenter(
+         center: Offset.zero,
+         width: carConfig.width,
+         height: carConfig.length,
+       ),
        super(
          position: visualState.position.clone(),
          size: Vector2(carConfig.length, carConfig.width),
@@ -52,21 +57,32 @@ final class CarComponent extends PositionComponent {
   final String participantId;
   final CarModel carModel;
   final RaceWorldProjection _projection;
+  Rect _destinationRectangle;
+  final Paint _spritePaint = Paint()..filterQuality = FilterQuality.high;
   CarVisualState _visualState;
   Image? _sprite;
+  Rect? _sourceRectangle;
 
   CarVisualState get visualState => _visualState;
 
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    _sprite = await RasterAssetLoader.load(carModel.spriteAsset);
+    final sprite = await RasterAssetLoader.load(carModel.spriteAsset);
+    _sprite = sprite;
+    _sourceRectangle = Rect.fromLTWH(
+      0,
+      0,
+      sprite.width.toDouble(),
+      sprite.height.toDouble(),
+    );
   }
 
   @override
   void onRemove() {
     _sprite?.dispose();
     _sprite = null;
+    _sourceRectangle = null;
     super.onRemove();
   }
 
@@ -85,7 +101,8 @@ final class CarComponent extends PositionComponent {
   @override
   void render(Canvas canvas) {
     final sprite = _sprite;
-    if (sprite == null) {
+    final sourceRectangle = _sourceRectangle;
+    if (sprite == null || sourceRectangle == null) {
       return;
     }
     canvas.save();
@@ -93,11 +110,23 @@ final class CarComponent extends PositionComponent {
     canvas.rotate(math.pi / 2);
     canvas.drawImageRect(
       sprite,
-      Rect.fromLTWH(0, 0, sprite.width.toDouble(), sprite.height.toDouble()),
-      Rect.fromCenter(center: Offset.zero, width: size.y, height: size.x),
-      Paint()..filterQuality = FilterQuality.high,
+      sourceRectangle,
+      _destinationRectangleForCurrentSize(),
+      _spritePaint,
     );
     canvas.restore();
+  }
+
+  Rect _destinationRectangleForCurrentSize() {
+    if (_destinationRectangle.width != size.y ||
+        _destinationRectangle.height != size.x) {
+      _destinationRectangle = Rect.fromCenter(
+        center: Offset.zero,
+        width: size.y,
+        height: size.x,
+      );
+    }
+    return _destinationRectangle;
   }
 
   static int _renderPriority(bool isPlayer, CarModel model) =>

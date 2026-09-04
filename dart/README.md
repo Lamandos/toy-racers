@@ -187,6 +187,26 @@ available in GitHub Actions through **Run workflow** with
 `run_dart_stress_determinism` enabled; it is too long for the normal pull
 request checks. It never changes scenarios, golden masters, or tolerances.
 
+## Performance sanity checks
+
+Run the bounded six-car long-race probe and the focused regressions with:
+
+```sh
+dart run tool/performance_sanity.dart
+flutter test test/performance_sanity_test.dart
+```
+
+Profile rendering on a real target with:
+
+```sh
+flutter run --profile -d <device> -t tool/render_performance_sanity.dart
+```
+
+Commands, thresholds, measurements, and target limitations are recorded in
+[`docs/PERFORMANCE.md`](docs/PERFORMANCE.md). A headless browser or
+software-rendered emulator result is not treated as a representative-device
+pass.
+
 ## Build targets
 
 ```sh

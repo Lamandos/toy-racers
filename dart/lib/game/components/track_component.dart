@@ -9,18 +9,29 @@ import '../rendering/raster_asset_loader.dart';
 /// Draws an authored track image with geometry as the custom-track fallback.
 final class TrackComponent extends Component {
   TrackComponent({required this.track, required this.projection})
-    : super(priority: 0);
+    : _destinationRectangle = projection.rectangleFor(track.worldBounds),
+      super(priority: 0);
 
   final Track track;
   final RaceWorldProjection projection;
+  final Rect _destinationRectangle;
+  final Paint _imagePaint = Paint()..filterQuality = FilterQuality.high;
   Image? _image;
+  Rect? _sourceRectangle;
 
   @override
   Future<void> onLoad() async {
     await super.onLoad();
     final assetPath = _assetPathFor(track);
     if (assetPath != null) {
-      _image = await RasterAssetLoader.load(assetPath);
+      final image = await RasterAssetLoader.load(assetPath);
+      _image = image;
+      _sourceRectangle = Rect.fromLTWH(
+        0,
+        0,
+        image.width.toDouble(),
+        image.height.toDouble(),
+      );
     }
   }
 
@@ -28,21 +39,23 @@ final class TrackComponent extends Component {
   void onRemove() {
     _image?.dispose();
     _image = null;
+    _sourceRectangle = null;
     super.onRemove();
   }
 
   @override
   void render(Canvas canvas) {
     final image = _image;
-    if (image == null) {
+    final sourceRectangle = _sourceRectangle;
+    if (image == null || sourceRectangle == null) {
       _renderProceduralTrack(canvas);
       return;
     }
     canvas.drawImageRect(
       image,
-      Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
-      projection.rectangleFor(track.worldBounds),
-      Paint()..filterQuality = FilterQuality.high,
+      sourceRectangle,
+      _destinationRectangle,
+      _imagePaint,
     );
   }
 

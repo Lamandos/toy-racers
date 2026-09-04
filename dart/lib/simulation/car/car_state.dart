@@ -77,6 +77,22 @@ final class CarState {
     driftAmount: driftAmount,
   );
 
+  /// Replaces every field with an already narrowed value from [other].
+  ///
+  /// Simulation owners use this to retain fixed snapshot storage across ticks;
+  /// no arithmetic is performed and binary32 values keep their exact bit pattern.
+  void copyFrom(CarState other) {
+    _x = other._x;
+    _y = other._y;
+    _rotationDegrees = other._rotationDegrees;
+    _longitudinalSpeed = other._longitudinalSpeed;
+    _velocityX = other._velocityX;
+    _velocityY = other._velocityY;
+    _angularVelocity = other._angularVelocity;
+    _lateralSpeed = other._lateralSpeed;
+    _driftAmount = other._driftAmount;
+  }
+
   @override
   bool operator ==(Object other) =>
       other is CarState &&
