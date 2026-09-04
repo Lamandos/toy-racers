@@ -68,6 +68,14 @@ DURATION_PART_RE = re.compile(
     r"(?P<amount>\d+(?:\.\d+)?)\s*(?P<unit>hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s)",
     re.IGNORECASE,
 )
+ABSOLUTE_RESET_RE = re.compile(
+    r"(?:try\s+again|available|reset)[^\n]{0,60}?(?:at\s+)?"
+    r"(?P<month>Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|"
+    r"Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+"
+    r"(?P<day>\d{1,2})(?:st|nd|rd|th)?,?\s+(?P<year>\d{4})\s+"
+    r"(?P<clock>\d{1,2}:\d{2}\s*[AP]M)",
+    re.IGNORECASE,
+)
 FAILURE_BUCKETS = {"fail", "cancel"}
 SUCCESS_BUCKETS = {"pass", "skipping"}
 
@@ -614,17 +622,45 @@ class FileLock:
 
     def __enter__(self) -> "FileLock":
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            descriptor = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-        except FileExistsError as exc:
-            raise OrchestratorError(
-                f"Another orchestrator appears to be running ({self.path}); "
-                "remove the lock only after verifying no process is active"
-            ) from exc
+        descriptor: int | None = None
+        for attempt in range(2):
+            try:
+                descriptor = os.open(
+                    self.path,
+                    os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+                    0o600,
+                )
+                break
+            except FileExistsError as exc:
+                if attempt == 0 and self.remove_if_stale():
+                    continue
+                raise OrchestratorError(
+                    f"Another orchestrator appears to be running ({self.path}); "
+                    "remove the lock only after verifying no process is active"
+                ) from exc
+        if descriptor is None:
+            raise OrchestratorError(f"Could not acquire orchestrator lock: {self.path}")
         with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
             stream.write(f"pid={os.getpid()}\nstarted_at={utc_now()}\n")
         self.acquired = True
         return self
+
+    def remove_if_stale(self) -> bool:
+        try:
+            contents = self.path.read_text(encoding="utf-8")
+            match = re.search(r"^pid=(\d+)$", contents, re.MULTILINE)
+            if not match:
+                return False
+            os.kill(int(match.group(1)), 0)
+            return False
+        except ProcessLookupError:
+            try:
+                self.path.unlink()
+            except FileNotFoundError:
+                pass
+            return True
+        except (OSError, ValueError):
+            return False
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         if self.acquired:
@@ -692,7 +728,30 @@ class Orchestrator:
     def usage_limit_detected(output: str) -> bool:
         return bool(USAGE_LIMIT_RE.search(output))
 
+    @staticmethod
+    def absolute_reset_epoch(output: str) -> float | None:
+        match = ABSOLUTE_RESET_RE.search(output)
+        if not match:
+            return None
+        value = (
+            f"{match.group('month')} {match.group('day')} {match.group('year')} "
+            f"{match.group('clock')}"
+        )
+        try:
+            parsed = datetime.strptime(value, "%b %d %Y %I:%M %p")
+        except ValueError:
+            try:
+                parsed = datetime.strptime(value, "%B %d %Y %I:%M %p")
+            except ValueError:
+                return None
+        local_timezone = datetime.now().astimezone().tzinfo
+        return parsed.replace(tzinfo=local_timezone).timestamp()
+
     def retry_seconds_from_output(self, output: str) -> int:
+        reset_epoch = self.absolute_reset_epoch(output)
+        if reset_epoch is not None:
+            return max(1, round(reset_epoch - time.time()))
+
         retry_match = RETRY_AFTER_RE.search(output)
         if retry_match:
             amount = float(retry_match.group("amount"))
@@ -738,6 +797,20 @@ class Orchestrator:
     def resume_quota_wait(self, task: PlanTask) -> None:
         record = self.task_record(task)
         resume_epoch = float(record.get("quota_resume_epoch") or time.time())
+        if self.args.retry_quota_now:
+            self.logger.warning(
+                "[%s] forcing an immediate Codex quota retry", task.task_id
+            )
+            resume_epoch = time.time()
+        else:
+            reported_reset = self.absolute_reset_epoch(
+                str(record.get("quota_message") or "")
+            )
+            if reported_reset is not None:
+                resume_epoch = min(
+                    resume_epoch,
+                    reported_reset + self.args.limit_buffer_seconds,
+                )
         self.wait_until(task, resume_epoch, "Codex usage limit is active")
         previous_status = str(record.get("quota_previous_status") or "implementing")
         self.transition(
@@ -1361,6 +1434,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--allow-dirty-resume",
         action="store_true",
         help="Allow interrupted implementation/fix states to resume with edits present.",
+    )
+    parser.add_argument(
+        "--retry-quota-now",
+        action="store_true",
+        help="Retry Codex immediately when a saved quota reset happened early.",
     )
     parser.add_argument(
         "--main-branch",

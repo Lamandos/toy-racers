@@ -112,11 +112,15 @@ final class AiObstacleDetector {
     final directionY = Float32.narrow(math.sin(radians));
     var distance = config.sensorRayStep;
     while (distance <= config.obstacleDetectionDistance) {
-      final point = TrackPoint(
-        Float32.add(carState.x, Float32.multiply(directionX, distance)),
-        Float32.add(carState.y, Float32.multiply(directionY, distance)),
+      final pointX = Float32.add(
+        carState.x,
+        Float32.multiply(directionX, distance),
       );
-      if (_isBlocked(track, point)) {
+      final pointY = Float32.add(
+        carState.y,
+        Float32.multiply(directionY, distance),
+      );
+      if (_isBlocked(track, pointX, pointY)) {
         break;
       }
       distance = Float32.add(distance, config.sensorRayStep);
@@ -136,22 +140,24 @@ final class AiObstacleDetector {
     );
   }
 
-  bool _isBlocked(Track track, TrackPoint point) {
-    if (!track.worldBounds.containsPoint(point) ||
-        track.innerObstacles.any((obstacle) => obstacle.containsPoint(point))) {
+  bool _isBlocked(Track track, double pointX, double pointY) {
+    if (!track.worldBounds.contains(pointX, pointY) ||
+        track.innerObstacles.any(
+          (obstacle) => obstacle.contains(pointX, pointY),
+        )) {
       return true;
     }
     return track.collisionShapes.any(
       (shape) => switch (shape) {
-        TrackCircle() => _circleContains(shape, point),
-        TrackPolygon() => shape.contains(point.x, point.y),
+        TrackCircle() => _circleContains(shape, pointX, pointY),
+        TrackPolygon() => shape.contains(pointX, pointY),
       },
     );
   }
 
-  bool _circleContains(TrackCircle circle, TrackPoint point) {
-    final deltaX = Float32.subtract(point.x, circle.center.x);
-    final deltaY = Float32.subtract(point.y, circle.center.y);
+  bool _circleContains(TrackCircle circle, double pointX, double pointY) {
+    final deltaX = Float32.subtract(pointX, circle.center.x);
+    final deltaY = Float32.subtract(pointY, circle.center.y);
     final distanceSquared = Float32.add(
       Float32.multiply(deltaX, deltaX),
       Float32.multiply(deltaY, deltaY),

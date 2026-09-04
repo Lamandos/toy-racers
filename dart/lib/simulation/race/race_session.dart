@@ -42,8 +42,8 @@ final class RaceParticipant {
   final AiDriver? aiDriver;
   final SurfaceSpeedState surfaceSpeedState;
   final RaceProgress progress;
-  CarState _lastSafeState;
-  CarState _previousState;
+  final CarState _lastSafeState;
+  final CarState _previousState;
   final CarState _initialState;
 
   /// Last state that an AI recovery operation may restore.
@@ -53,11 +53,11 @@ final class RaceParticipant {
   CarState get previousState => _previousState.copy();
 
   void _captureStateForRendering() {
-    _previousState = carState.copy();
+    _previousState.copyFrom(carState);
   }
 
   void _saveLastSafeState() {
-    _lastSafeState = carState.copy();
+    _lastSafeState.copyFrom(carState);
   }
 
   void _resetForRestart() {
@@ -80,8 +80,8 @@ final class RaceParticipant {
       ..finished = false
       ..finishPosition = null;
     surfaceSpeedState.speedMultiplier = 1;
-    _lastSafeState = _initialState.copy();
-    _previousState = _initialState.copy();
+    _lastSafeState.copyFrom(_initialState);
+    _previousState.copyFrom(_initialState);
     final initialPosition = TrackPoint(_initialState.x, _initialState.y);
     if (aiDriver case final RaceResettableAiDriver driver) {
       driver.resetForRace(initialPosition);
@@ -543,17 +543,17 @@ final class RaceSession {
     return maxImpactSpeed;
   }
 
-  List<AiObstacle> _obstaclesFor(RaceParticipant participant) => participants
-      .where((other) => !identical(other, participant))
-      .map(
-        (other) => AiObstacle(
-          x: other.carState.x,
-          y: other.carState.y,
-          radius: other.carConfig.collisionRadius,
-          speed: other.carState.longitudinalSpeed,
-        ),
-      )
-      .toList(growable: false);
+  Iterable<AiObstacle> _obstaclesFor(RaceParticipant participant) =>
+      participants
+          .where((other) => !identical(other, participant))
+          .map(
+            (other) => AiObstacle(
+              x: other.carState.x,
+              y: other.carState.y,
+              radius: other.carConfig.collisionRadius,
+              speed: other.carState.longitudinalSpeed,
+            ),
+          );
 
   RaceResult _resultFor(RaceParticipant participant) => RaceResult(
     finishPosition: participant.progress.finishPosition!,
