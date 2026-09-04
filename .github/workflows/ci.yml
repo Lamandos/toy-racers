@@ -10,11 +10,6 @@ on:
       - main
   workflow_dispatch:
     inputs:
-      run_fuzz_smoke:
-        description: Run the optional fixed-seed differential fuzz smoke suite.
-        required: false
-        default: false
-        type: boolean
       run_dart_stress_determinism:
         description: Run the optional 20-repeat Dart stress and Kotlin comparison suite.
         required: false
@@ -122,8 +117,8 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-  dart-quality:
-    name: Dart lint, test, and coverage
+  dart-static-analysis:
+    name: dart-static-analysis
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -142,12 +137,40 @@ jobs:
           python3 tools/test_flutter_asset_pipeline.py
           python3 tools/flutter_asset_pipeline.py check
 
-      - name: Verify Dart dependencies and quality
+      - name: Resolve locked Dart dependencies
         working-directory: dart
-        run: |-
-          flutter pub get --enforce-lockfile
-          flutter analyze --fatal-infos
-          flutter test --coverage
+        run: flutter pub get --enforce-lockfile
+
+      - name: Verify Dart formatting
+        working-directory: dart
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Run Flutter static analysis
+        working-directory: dart
+        run: flutter analyze --fatal-infos
+
+  dart-unit:
+    name: dart-unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter stable
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve locked Dart dependencies
+        working-directory: dart
+        run: flutter pub get --enforce-lockfile
+
+      - name: Run Dart unit and widget tests with coverage
+        working-directory: dart
+        run: flutter test --coverage
 
       - name: Upload Dart coverage report
         if: ${{ always() }}
@@ -158,8 +181,43 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-  behavioral-compatibility:
-    name: Behavioral compatibility tests
+  dart-compatibility:
+    name: dart-compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle cache and validate wrapper
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+          validate-wrappers: true
+
+      - name: Set up Flutter stable
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve locked Dart dependencies
+        working-directory: dart
+        run: flutter pub get --enforce-lockfile
+
+      - name: Replay Dart compatibility inventory against Kotlin goldens
+        working-directory: dart
+        run: dart run tool/full_behavioral_gate.dart
+
+  kotlin-reference:
+    name: kotlin-reference
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -179,7 +237,7 @@ jobs:
           cache-provider: basic
           validate-wrappers: true
 
-      - name: Verify behavioral compatibility goldens
+      - name: Run Kotlin reference tests and compatibility goldens
         run: ./gradlew behavioralCompatibilityTest --no-daemon
 
       - name: Upload behavioral test reports
@@ -298,9 +356,8 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-  fuzz-smoke:
-    name: Optional Kotlin-versus-Dart fuzz smoke
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_fuzz_smoke }}
+  dart-fuzz:
+    name: dart-fuzz
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -342,6 +399,103 @@ jobs:
             core/build/differential-fuzz/**
           if-no-files-found: warn
           retention-days: 7
+
+  dart-builds:
+    name: dart-builds (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: android
+            runner: ubuntu-latest
+            desktop: false
+            command: flutter build apk --debug
+            limitation: >-
+              This is a debug-APK compile check; device installation, touch,
+              lifecycle, and audible-output verification need an emulator or device.
+          - platform: web
+            runner: ubuntu-latest
+            desktop: false
+            command: flutter build web --release
+            limitation: >-
+              This is a release web compile check; deployed-browser interaction and
+              audible-output verification remain outside this build job.
+          - platform: linux
+            runner: ubuntu-latest
+            desktop: true
+            command: flutter build linux --release
+            limitation: >-
+              This is a native Linux compile check; GTK runtime interaction and
+              audible-output verification need a provisioned desktop session.
+          - platform: windows
+            runner: windows-latest
+            desktop: true
+            command: flutter build windows --release
+            limitation: >-
+              This is a native Windows compile check; keyboard, resize, and audio
+              behavior require an interactive Windows session.
+          - platform: macos
+            runner: macos-latest
+            desktop: true
+            command: flutter build macos --release
+            limitation: >-
+              This is a native macOS compile check; keyboard and audio behavior
+              require an interactive macOS session.
+          - platform: ios-simulator
+            runner: macos-latest
+            desktop: false
+            command: flutter build ios --simulator --debug
+            limitation: >-
+              This is an unsigned, simulator-compatible iOS build; it does not
+              sign for or exercise a physical iOS device.
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter stable
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Set up Android SDK
+        if: ${{ matrix.platform == 'android' }}
+        uses: android-actions/setup-android@v4
+
+      - name: Install Linux desktop build dependencies
+        if: ${{ matrix.platform == 'linux' }}
+        run: |-
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes \
+            clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+      - name: Enable Flutter desktop target
+        if: ${{ matrix.desktop }}
+        run: flutter config --enable-${{ matrix.platform }}-desktop
+
+      - name: Resolve locked Dart dependencies
+        working-directory: dart
+        run: flutter pub get --enforce-lockfile
+
+      - name: Document platform verification boundary
+        shell: bash
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          LIMITATION: ${{ matrix.limitation }}
+        run: |-
+          {
+            echo "## ${PLATFORM} build verification"
+            echo
+            echo "${LIMITATION}"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=${PLATFORM} CI boundary::${LIMITATION}"
+
+      - name: Build ${{ matrix.platform }} target
+        working-directory: dart
+        run: ${{ matrix.command }}
 
   dart-stress-determinism:
     name: Optional Dart stress determinism

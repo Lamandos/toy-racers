@@ -520,8 +520,8 @@ final class DefaultCollisionSystem implements CollisionSystem {
 
   static CollisionResult _resultFor(List<CollisionContact> contacts) =>
       contacts.isEmpty
-          ? CollisionResult.none
-          : CollisionResult(contacts: contacts);
+      ? CollisionResult.none
+      : CollisionResult(contacts: contacts);
 
   static double _minimum(double left, double right) =>
       left < right ? left : right;

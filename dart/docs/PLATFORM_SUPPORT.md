@@ -24,6 +24,23 @@ This verification does **not** establish all six targets as release-ready. The
 successful build targets in this environment are Android and web. The open
 platform-specific gaps are listed below instead of being counted as passing.
 
+## Continuous integration build matrix
+
+GitHub Actions runs the `dart-builds` matrix on native hosted runners for each
+target: Android and web on Ubuntu, Linux on Ubuntu with the GTK build
+dependencies, Windows on Windows, and macOS plus an unsigned,
+simulator-compatible iOS build on macOS. This removes the local-host limitation
+from compile verification without turning a successful build into a runtime
+claim.
+
+Every matrix job writes the following boundary to its workflow summary so it is
+visible with the result: Android builds are debug APK compile checks; web and
+desktop builds do not exercise deployed or interactive applications; and the
+iOS build is unsigned and simulator-compatible rather than a physical-device
+or signing verification. Device installation, touch/keyboard behavior,
+lifecycle behavior, resize behavior, and audible output remain covered by the
+targeted automated tests and the native-host/manual work recorded below.
+
 ## Verification host and toolchains
 
 - Host: Intel macOS 26.6.2, build 25G83, Darwin 25.6.0, `x86_64`.

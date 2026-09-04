@@ -18,10 +18,7 @@ void main() {
       'keeps double-precision hypot intermediates at the binary32 boundary',
       () {
         expect(
-          CollisionGeometry.hypot(
-            132.68743896484375,
-            -117.60503387451172,
-          ),
+          CollisionGeometry.hypot(132.68743896484375, -117.60503387451172),
           177.30453491210938,
         );
         expect(CollisionGeometry.minimumDistance, 0.00009999999747378752);

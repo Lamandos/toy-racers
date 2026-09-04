@@ -9,10 +9,12 @@ void main() {
 
   setUpAll(() async {
     final sources = <String, String>{
-      TrackLoader.track01TmxPath:
-          await rootBundle.loadString(TrackLoader.track01TmxPath),
-      TrackLoader.track02TmxPath:
-          await rootBundle.loadString(TrackLoader.track02TmxPath),
+      TrackLoader.track01TmxPath: await rootBundle.loadString(
+        TrackLoader.track01TmxPath,
+      ),
+      TrackLoader.track02TmxPath: await rootBundle.loadString(
+        TrackLoader.track02TmxPath,
+      ),
     };
     loader = TrackLoader((assetPath) {
       final source = sources[assetPath];
