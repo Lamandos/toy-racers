@@ -1,17 +1,24 @@
 # Performance sanity report
 
 This report records the TASK-028 checks run on 2026-09-02 and revalidated on
-2026-09-04 after the Dart correctness and UI smoke work. Performance changes
+2026-09-05 after the Dart correctness and UI smoke work. Performance changes
 are accepted only when the Kotlin compatibility goldens remain unchanged. The
 measurements below are sanity evidence from one host, not release budgets for
 every supported target.
 
+**TASK-028 status: incomplete.** The simulation, memory, collection, and
+debug/release checks pass, but this host still has no successful default
+rendering probe on both a representative desktop and mobile target. The
+rendering acceptance criterion is therefore intentionally not claimed.
+
 ## Host and thresholds
 
 - Host: Intel macOS 26.6.2, build 25G83, `x86_64`.
-- Flutter 3.47.1 stable, Dart 3.13.1, Chrome 152.0.7977.66.
-- Long-race RSS threshold: no more than 64 MiB of later-half peak growth after
-  warm-up. This uses process RSS and allows normal garbage-collector sawtooth.
+- Flutter 3.47.1 stable, Dart 3.13.1, Chrome 152.0.7977.76.
+- Long-race RSS threshold: no more than 64 MiB of peak growth from the first
+  post-warm-up RSS sample. This uses process RSS and allows normal
+  garbage-collector sawtooth while still counting growth accumulated across
+  the measured interval.
 - Rendering threshold: after a three-second asset warm-up, at most 5% of 300
   profile-mode frames may exceed 16.667 ms on either the UI or raster thread.
   Flutter Web uses a 20 ms frame-cadence fallback because it does not expose
@@ -31,21 +38,21 @@ dart run tool/performance_sanity.dart \
   --report-output build/performance/task-028-long-race.json
 ```
 
-Result: **PASS**. The measured loop took 89,564 ms (55 ticks/s in the JIT
+Result: **PASS**. The measured loop took 113,124 ms (44 ticks/s in the JIT
 process), and the final state fingerprint was `f2c93a7bd53a70c2`. RSS samples
 in bytes were:
 
 ```text
-257650688, 259829760, 261296128, 262901760, 263958528,
-265531392, 267374592, 244310016, 245358592, 246931456,
-248135680
+210853888, 212619264, 214175744, 214818816, 216391680,
+200060928, 177565696, 179724288, 114159616, 98963456,
+100012032
 ```
 
-The early-half peak was 265,531,392 bytes and the later-half peak was
-267,374,592 bytes, so reported later-half growth was 1,843,200 bytes (1.76
-MiB), well below the 64 MiB threshold. The last sample was also below the
-initial sample. This 5,500-tick run is 91.7 seconds of simulated race time and
-retains no per-tick trace or snapshot history.
+The first post-warm-up sample was 210,853,888 bytes and the measured peak was
+216,391,680 bytes, so reported peak growth was 5,537,792 bytes (5.28 MiB),
+well below the 64 MiB threshold. The last sample was also below the initial
+sample. This 5,500-tick run is 91.7 seconds of simulated race time and retains
+no per-tick trace or snapshot history.
 
 The runner reports bounds from the production assembly rather than growing
 collections while it runs. The six-car configuration has five opponents, at
@@ -141,18 +148,15 @@ representative desktop-and-mobile pair:
   60-frame diagnostic completed with all 60 intervals above 20 ms, cadence p90
   733,300 microseconds and p99 783,300 microseconds. Headless Chrome is retained
   as negative harness evidence, not promoted to a desktop performance pass.
-- GPU-backed Chrome profile rerun on 2026-09-04: **BLOCKED / not
-  representative**. The default 300-frame web build succeeded, but Flutter's
-  temporary Chrome instance emitted no result after the probe timeout and was
-  not visible to the connected browser-control session, so it could not be
-  foregrounded to rule out background throttling. The run was stopped after
-  approximately four minutes and is not counted as a desktop pass.
+- Chrome profile rerun on 2026-09-05: **BLOCKED / no report**. The default
+  300-frame web build succeeded, but the probe emitted no result after more
+  than 90 seconds and was stopped. It is not counted as a desktop pass.
 - Pixel 9 Pro API 35 `x86_64` emulator, profile mode, Impeller OpenGLES through
-  SwiftShader: **BLOCKED**. The default 300-frame probe timed out after 45
-  seconds without receiving 300 timing samples. A reduced 60-frame diagnostic
-  APK built successfully, but the headless emulator then stopped completing
-  ADB installation and was interrupted after 60 seconds. This repeats the ADB
-  responsiveness limit recorded in `PLATFORM_SUPPORT.md`.
+  SwiftShader, rerun on 2026-09-05: **FAIL / no timing samples**. The default
+  300-frame APK built and installed successfully, but the probe timed out after
+  45 seconds in `RenderingPerformanceProbe.run`; startup logged 64 skipped
+  frames. It is not counted as a mobile pass. This repeats the ADB and
+  software-rendering limits recorded in `PLATFORM_SUPPORT.md`.
 - Native macOS: **BLOCKED** because full Xcode is unavailable. iOS is blocked
   for the same reason; Windows and Linux require their native hosts.
 
@@ -161,7 +165,7 @@ iOS device and on a representative native desktop or interactive Chrome
 session. Record UI/raster percentiles and the exact device, refresh rate,
 renderer, and power mode. The current automated environment cannot establish
 the rendering-stability acceptance criterion, so no desktop or mobile pass is
-claimed here.
+claimed here and TASK-028 must remain incomplete until those probes pass.
 
 ## Verification commands
 
@@ -174,11 +178,15 @@ dart run tool/full_behavioral_gate.dart
 git diff --exit-code -- ../compatibility/golden
 ```
 
-The final full gate was compiled to a temporary AOT executable to make the
-long fixture inventory practical on this host. It reported **113 / 113 PASS**
-across car, collision, race, track, surface, AI, and full-race categories, with
-zero unexpected golden changes. The normal `dart run` command above exercises
-the same gate but is substantially slower in this environment.
+The final full gate previously compiled to a temporary AOT executable to make
+the long fixture inventory practical on this host. It reported **113 / 113
+PASS** across car, collision, race, track, surface, AI, and full-race
+categories, with zero unexpected golden changes. On 2026-09-05, the complete
+`flutter test` suite also reported **238 tests passed**. A fresh direct gate
+attempt was stopped after 29 of 113 fixture comparisons because each comparison
+starts Gradle and the host made completion impractical; it emitted no mismatch.
+The normal `dart run` command above exercises the same gate but is
+substantially slower in this environment.
 
 The performance test covers RSS scoring, collection bounds, repeated-run state
 identity, binary32 state copying, fixed render topology, and rendering report

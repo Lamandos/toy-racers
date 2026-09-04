@@ -30,7 +30,7 @@ void main() {
     expect(target.x, -0.0);
   });
 
-  test('long-race runner keeps production collection bounds fixed', () {
+  test('RSS growth is measured from the first post-warm-up sample', () {
     final rss = <int>[
       100 * _bytesPerMiB,
       104 * _bytesPerMiB,
@@ -49,8 +49,8 @@ void main() {
           ),
         );
 
-    expect(report.memoryStable, isTrue);
-    expect(report.laterHalfPeakGrowthBytes, 2 * _bytesPerMiB);
+    expect(report.memoryStable, isFalse);
+    expect(report.laterHalfPeakGrowthBytes, 8 * _bytesPerMiB);
     expect(report.collectionBounds, <String, int>{
       'participants': 6,
       'opponents': 5,
@@ -99,7 +99,7 @@ void main() {
       final report = PerformanceSanityReport(
         options: const PerformanceSanityOptions(measuredTicks: 1),
         elapsed: const Duration(seconds: 1),
-        rssSamplesBytes: const <int>[120, 130, 100, 110],
+        rssSamplesBytes: const <int>[120, 110, 100, 110],
         collectionBounds: const <String, int>{},
         state: const <String, Object>{'fingerprint': 'test'},
       );

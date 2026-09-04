@@ -113,14 +113,18 @@ final class PerformanceSanityReport {
             Duration.microsecondsPerSecond ~/
             elapsed.inMicroseconds;
 
+  /// Measures peak growth against the first post-warm-up RSS sample.
+  ///
+  /// The historical report field keeps its schema-v1 name, but the baseline
+  /// must be the first measured sample so growth accumulated throughout the
+  /// run cannot be hidden by an earlier peak.
   int get laterHalfPeakGrowthBytes {
     if (rssSamplesBytes.length < 2) {
       return 0;
     }
-    final split = (rssSamplesBytes.length / 2).ceil();
-    final earlyPeak = rssSamplesBytes.take(split).reduce(_maximum);
-    final laterPeak = rssSamplesBytes.skip(split).reduce(_maximum);
-    final growth = laterPeak - earlyPeak;
+    final baseline = rssSamplesBytes.first;
+    final peak = rssSamplesBytes.skip(1).reduce(_maximum);
+    final growth = peak - baseline;
     return growth > 0 ? growth : 0;
   }
 

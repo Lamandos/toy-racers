@@ -156,15 +156,9 @@ If Codex exits with a recognizable usage, quota, rate-limit, or five-hour-limit
 error, the orchestrator does not discard the task. It records `quota_wait` and a
 resume timestamp in `.agent/orchestrator-state.json`, waits in short intervals,
 and retries the same prompt with the same model after the reset window. If Codex
-reports a retry duration or an absolute reset time such as
-`Sep 2nd, 2026 12:11 AM`, that value is used; otherwise the configured five-hour
-fallback plus a one-minute buffer is used. Restarting the orchestrator while it
-is waiting recalculates an older fallback from the saved Codex message and
-resumes from the earliest valid timestamp.
-
-The single-process lock contains the orchestrator PID. On startup, a lock whose
-PID no longer exists is removed automatically; a live PID still blocks a second
-orchestrator from changing the same worktree.
+reports a retry duration, that duration is used; otherwise the configured
+five-hour fallback plus a one-minute buffer is used. Restarting the orchestrator
+while it is waiting resumes from the saved timestamp.
 
 The Codex CLI does not expose the account's remaining five-hour allowance as a
 portable local metric, so the watcher reacts to the limit signal returned by the
@@ -178,12 +172,9 @@ Useful recovery options:
 
 ```sh
 python3 scripts/orchestrator.py --execute --allow-dirty-resume
-python3 scripts/orchestrator.py --execute --allow-dirty-resume --retry-quota-now
 python3 scripts/orchestrator.py --execute --reset-state
 ```
 
 Use `--allow-dirty-resume` only after inspecting edits left by an interrupted
 Codex run. It permits resuming an implementation/fix state with uncommitted
-files; normal starts still require a clean worktree. Use `--retry-quota-now`
-when the account limit was reset earlier than the timestamp saved in the state
-file. If the limit is still active, the next Codex response refreshes the wait.
+files; normal starts still require a clean worktree.
