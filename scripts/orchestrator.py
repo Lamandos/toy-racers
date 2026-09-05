@@ -20,7 +20,7 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
@@ -729,8 +729,11 @@ class Orchestrator:
                 microsecond=0,
             )
             seconds = (candidate - now).total_seconds()
+            if seconds <= 0:
+                candidate += timedelta(days=1)
+                seconds = (candidate - now).total_seconds()
             # CLI reset times are always near-term. A clock time more than
-            # twelve hours ahead refers to yesterday and has already elapsed.
+            # twelve hours away is treated as already elapsed.
             if 0 < seconds <= 12 * 60 * 60:
                 return max(1, round(seconds))
             return 1
@@ -1113,11 +1116,23 @@ class Orchestrator:
                 self.logger.info("[%s] Codex review is clean", task.task_id)
                 return
             if result.quota_limited:
+                quota_attempts = (
+                    int(self.task_record(task).get("quota_attempts") or 0) + 1
+                )
+                if (
+                    self.args.max_quota_retries
+                    and quota_attempts > self.args.max_quota_retries
+                ):
+                    raise OrchestratorError(
+                        f"Codex code-review quota retries exhausted for {task.task_id}: "
+                        f"{self.args.max_quota_retries}"
+                    )
                 retry_at = time.time() + self.args.limit_window_seconds
                 self.transition(
                     task,
                     "review_quota_wait",
                     review_iteration=max(0, next_iteration - 1),
+                    quota_attempts=quota_attempts,
                     review_findings=result.findings,
                     quota_resume_epoch=retry_at,
                     quota_resume_at=datetime.fromtimestamp(
