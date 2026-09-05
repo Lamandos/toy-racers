@@ -96,6 +96,10 @@ Read these contracts before adding simulation code:
 - [`../compatibility/README.md`](../compatibility/README.md)
 - [`../docs/BEHAVIORAL_TEST_STRATEGY.md`](../docs/BEHAVIORAL_TEST_STRATEGY.md)
 - [`MIGRATION_BASELINE.md`](MIGRATION_BASELINE.md)
+- [`docs/MISMATCH_INVESTIGATION.md`](docs/MISMATCH_INVESTIGATION.md) for the
+  required evidence-first Kotlin-to-Dart mismatch workflow
+- [`docs/PORTING_DIFFERENCES.md`](docs/PORTING_DIFFERENCES.md) for confirmed
+  difficult-divergence records
 
 ## Dependencies
 

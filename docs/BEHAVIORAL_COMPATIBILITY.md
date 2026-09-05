@@ -158,6 +158,18 @@ The command reports `100 / 100 PASS` only after every fixed seed matches. A mism
 signed seed, first divergent tick, field, expected value, actual value, and delta. GitHub Actions
 runs it as the independently visible `dart-fuzz` stage on every normal workflow.
 
+## Kotlin-to-Dart mismatch investigation
+
+Every Kotlin-versus-Dart mismatch follows the evidence-first procedure in
+[`dart/docs/MISMATCH_INVESTIGATION.md`](../dart/docs/MISMATCH_INVESTIGATION.md): identify the
+scenario, first divergent sample/tick/field, isolate one tick, compare inputs and pre-state, then
+compare intermediates until the first mathematical divergence is known. Fix Dart, add a
+reproducible regression test, and rerun the original scenario through the shared comparator before
+marking it resolved. Confirmed difficult divergences are retained in
+[`dart/docs/PORTING_DIFFERENCES.md`](../dart/docs/PORTING_DIFFERENCES.md); every entry records its
+scenario, tick, field, root cause, Kotlin semantics, incorrect Dart semantics, fix, and regression
+test.
+
 ## Dart stress and determinism
 
 The Kotlin-versus-Dart stress gate replays the two existing exact-duration
