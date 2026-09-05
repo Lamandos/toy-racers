@@ -110,7 +110,8 @@ periodic sample and falsely identify the failing tick.
    state can erase the history that caused the mismatch and produce a false
    result.
 6. **Compare inputs and pre-state.** List the raw scenario command, applied
-   normalized command, `inputTweaks`, fixed delta (`Float32(1 / 60)`), and each
+   normalized command, `inputTweaks`, fixed delta
+   (`Float32.fixedDeltaSeconds`, equivalent to `Float32.divide(1, 60)`), and each
    relevant pre-state value. Verify IDs, participant order, track/surface,
    checkpoint/lap/finish state, and Float32 narrowing before any physics. Do
    not call six-decimal trace values an exact pre-state; if exact capture was
