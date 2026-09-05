@@ -78,8 +78,10 @@ The following cannot currently be checked reliably by the automated headless beh
 
 Golden masters intentionally preserve these current behaviors, which may be surprising or may become bug-fix candidates:
 
-- The public scenario `seed` is recorded in traces but does not seed gameplay randomness. AI pseudo-random mistakes derive from initial state, so changing only the scenario seed does not change the replay.
-- The race becomes `FINISHED` as soon as the player finishes, even when AI participants are still running. AI completion does not independently end the race.
-- When the player finishes during an `advance` call, the accumulator is cleared and the loop stops. Any sub-tick remainder and additional whole ticks supplied by that same call are intentionally discarded; later requested samples keep the frozen finished state.
-- `RaceStepResult.maxImpactSpeed` includes the player's track contacts and car contacts but excludes track contacts for AI cars, so it cannot always be recomputed as the maximum of the exposed contacts.
-- A test-only explicitly seeded initial state may contain a speed component inconsistent with its emitted velocity. This is preserved as fixture behavior and is not produced by the normal constructor path.
+- The public scenario `seed` is recorded in traces but does not seed gameplay randomness. AI pseudo-random mistakes derive from initial state, so changing only the scenario seed does not change the replay. The Kotlin implementation remains the reference during migration.
+- The race becomes `FINISHED` as soon as the player finishes, even when AI participants are still running. AI completion does not independently end the race. The Kotlin implementation remains the reference during migration.
+- When the player finishes during an `advance` call, the accumulator is cleared and the loop stops. Any sub-tick remainder and additional whole ticks supplied by that same call are intentionally discarded; later requested samples keep the frozen finished state. The Kotlin implementation remains the reference during migration.
+- `RaceStepResult.maxImpactSpeed` includes the player's track contacts and car contacts but excludes track contacts for AI cars, so it cannot always be recomputed as the maximum of the exposed contacts. The Kotlin implementation remains the reference during migration.
+- A test-only explicitly seeded initial state may contain a speed component inconsistent with its emitted velocity. This is preserved as fixture behavior and is not produced by the normal constructor path. The Kotlin implementation remains the reference during migration.
+
+This task records these anomalies only; it does not change or normalize them. Any later behavior change must be a separately reviewed change made in both implementations and their tests, with Kotlin remaining the reference during migration.
