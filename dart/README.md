@@ -37,8 +37,13 @@ Run one scenario from this directory with:
 ```sh
 dart run tool/behavior_runner.dart \
   --scenario ../compatibility/scenarios/car/straight_acceleration.json \
-  --output build/behavior/actual.json
+  --output build/behavior/straight_acceleration.json
 ```
+
+The scenario input is
+`../compatibility/scenarios/car/straight_acceleration.json`; the generated
+canonical trace is written to
+`dart/build/behavior/straight_acceleration.json` from the repository root.
 
 The runner already owns parsing, input-script resolution, initial-state
 injection, one `1 / 60` fixed step per requested tick, lifecycle/event
@@ -140,7 +145,14 @@ for the packaging rule.
 
 ## Verify
 
-Run these commands from this directory:
+From the repository root, the regular Dart suite is:
+
+```sh
+cd dart && flutter test
+```
+
+For analysis, coverage, and locked dependency resolution, run these commands
+from this directory:
 
 ```sh
 flutter pub get --enforce-lockfile
@@ -148,6 +160,19 @@ flutter analyze --fatal-infos
 flutter test
 flutter test --coverage
 ```
+
+After resolving dependencies, run either complete compatibility workflow from
+the repository root:
+
+```sh
+./gradlew dartCompatibilityTest --no-daemon
+./gradlew fuzzSmokeTest --no-daemon
+```
+
+`dartCompatibilityTest` replays every Dart compatibility scenario against its
+Kotlin golden. `fuzzSmokeTest` runs the fixed-seed Kotlin-versus-Dart
+differential suite. Both use `dart` by default; use
+`-PdartExecutable=/path/to/dart` before the task name when needed.
 
 The coverage output is `coverage/lcov.info` and is intentionally ignored by
 Git. The repository CI runs analysis and the coverage-producing test command.
@@ -160,6 +185,8 @@ inventory against its checked-in Kotlin goldens:
 ```sh
 dart run tool/full_behavioral_gate.dart
 ```
+
+The root-level equivalent is `./gradlew dartCompatibilityTest --no-daemon`.
 
 The gate dynamically includes every legacy fixture plus every file-based
 scenario with a matching golden, while excluding referenced input scripts. It

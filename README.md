@@ -39,6 +39,39 @@ The Android task requires an Android SDK and a connected device or running emula
 
 Task names may be adjusted to match the generated GDX-Liftoff project. Before completing a change, run the relevant tests, the desktop task, and the Android debug build.
 
+## Dart and compatibility verification
+
+Resolve Flutter dependencies, then run the Dart test suite from the repository
+root:
+
+```sh
+cd dart && flutter pub get --enforce-lockfile
+cd dart && flutter test
+```
+
+To replay one behavior scenario, the input is the shared scenario JSON and the
+output is a generated Dart trace under `dart/build/behavior/`:
+
+```sh
+cd dart && dart run tool/behavior_runner.dart \
+  --scenario ../compatibility/scenarios/car/straight_acceleration.json \
+  --output build/behavior/straight_acceleration.json
+```
+
+After dependencies are resolved, these root-level Gradle commands provide the
+two complete compatibility workflows:
+
+```sh
+./gradlew dartCompatibilityTest --no-daemon
+./gradlew fuzzSmokeTest --no-daemon
+```
+
+`dartCompatibilityTest` replays every Dart compatibility scenario against its
+checked-in Kotlin golden. `fuzzSmokeTest` runs the fixed-seed Kotlin-versus-Dart
+differential suite. Both commands use `dart` by default; pass
+`-PdartExecutable=/path/to/dart` before the task name when Dart is not on
+`PATH`.
+
 ## Assets
 
 Runtime assets will live in `assets/`, which is shared by the platform launchers according to the generated libGDX configuration. Only original, licensed, or public-domain assets may be added. Record licenses and attribution alongside third-party assets.
