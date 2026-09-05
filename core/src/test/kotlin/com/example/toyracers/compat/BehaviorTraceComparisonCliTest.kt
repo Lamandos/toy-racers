@@ -42,6 +42,33 @@ class BehaviorTraceComparisonCliTest {
         }
     }
 
+    @Test
+    fun `compares every trace in one manifest`() {
+        val expected = golden("car/straight_acceleration.json")
+        val actual = Files.createTempFile("dart-compatible-trace", ".json")
+        val manifest = Files.createTempFile("behavior-trace-manifest", ".json")
+        try {
+            Files.copy(expected, actual, REPLACE_EXISTING)
+            Files.writeString(
+                manifest,
+                """
+                [{
+                  "label": "straight_acceleration",
+                  "expected": "${jsonPath(expected)}",
+                  "actual": "${jsonPath(actual)}"
+                }]
+                """.trimIndent(),
+            )
+
+            BehaviorTraceComparisonCli.execute(arrayOf("--manifest", manifest.toString()))
+        } finally {
+            Files.deleteIfExists(manifest)
+            Files.deleteIfExists(actual)
+        }
+    }
+
+    private fun jsonPath(path: Path): String = path.toString().replace("\\", "\\\\").replace("\"", "\\\"")
+
     private fun golden(relativePath: String): Path =
         requireNotNull(System.getProperty("compatibilityDirectory"))
             .let { compatibilityDirectory ->

@@ -23,12 +23,12 @@ Run this once after cloning:
 
 The script is idempotent and sets `core.hooksPath` to `.githooks`. The pre-commit hook runs the Flutter asset pipeline
 unit tests and staged SHA-256 parity check, Kotlin style checks, detekt, the 500-line source-file gate, JVM unit tests,
-the desktop UI smoke flow, plus Dart format verification, Flutter analysis, and tests. The pre-push hook runs the same
-asset pipeline tests and parity check, then the complete `qualityCheck`, including behavioral compatibility fixtures,
-deterministic repeat tests, Android debug unit tests, the core coverage gate, mutation testing, and Dart format
-verification, Flutter analysis, LCOV-producing tests, the Dart full behavioral gate, and fixed-seed differential fuzz
-smoke. Flutter stable must be available on `PATH`. The 20-run full behavioral stability suite remains intentionally
-opt-in.
+the desktop UI smoke flow, plus Dart format verification, Flutter analysis, and tests. The pre-push hook runs the asset
+pipeline checks, Dart format and analysis, the Flutter test suite, and the complete `qualityCheck` gate. The fixed-seed
+differential fuzz smoke runs once in GitHub CI rather than once during the orchestrator test phase and again from
+`git push`. Flutter stable must be available on `PATH`. The
+`pre-merge-regression` GitHub Actions job remains the authoritative full aggregate gate. The 20-run full behavioral
+stability suite remains intentionally opt-in.
 
 On headless Linux, both hooks automatically use `xvfb-run --auto-servernum` for the desktop UI smoke flow. Install
 Xvfb before committing or pushing from that environment.
@@ -41,6 +41,8 @@ Xvfb before committing or pushing from that environment.
 ./gradlew unitTest
 ./gradlew behavioralTest
 ./gradlew fuzzSmokeTest
+./gradlew dartMigrationStageCheck -Psubsystem=car
+./gradlew preMergeRegressionCheck
 ./gradlew coverageReport
 ./gradlew mutationTest
 ./gradlew behavioralStabilityTest
@@ -72,6 +74,15 @@ legacy, file-per-scenario, full-race, and long-running fixtures twenty times seq
 from every replay. Reserve up to six hours for the manual GitHub Actions job (or use a sufficiently provisioned local
 machine) before a release. Run it through **Run workflow** with `run_behavioral_stability` enabled; a successful
 invocation is the evidence for a 0% flaky result across 20 full suite runs.
+
+For Dart migration stages, use `dartMigrationStageCheck` with the affected
+compatibility category. It runs the registered focused Dart tests and then the
+entire compatibility inventory, so every already-green category is protected.
+`preMergeRegressionCheck` is the required aggregate pre-merge command; it runs
+the full Kotlin suite through `qualityCheck`, the entire Dart suite, and the
+complete Dart compatibility inventory. See
+[`BEHAVIORAL_COMPATIBILITY.md`](BEHAVIORAL_COMPATIBILITY.md) for the category
+mapping and the workflow for future task authors.
 
 Ordinary test tasks are read-only with respect to checked-in fixtures. Regenerate behavioral goldens only with:
 

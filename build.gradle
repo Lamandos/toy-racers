@@ -187,6 +187,47 @@ tasks.register('dartCompatibilityTest', Exec) {
   outputs.upToDateWhen { false }
 }
 
+tasks.register('dartUnitTest', Exec) {
+  group = 'verification'
+  description = 'Runs the complete Dart and Flutter unit-test suite.'
+  workingDir rootProject.file('dart')
+  def flutterExecutable = providers.gradleProperty('flutterExecutable').orElse('flutter')
+  executable flutterExecutable.get()
+  args 'test', '--coverage'
+  inputs.dir(rootProject.file('dart/lib'))
+  inputs.dir(rootProject.file('dart/test'))
+  inputs.file(rootProject.file('dart/pubspec.lock'))
+  outputs.upToDateWhen { false }
+}
+
+tasks.register('dartMigrationStageCheck', Exec) {
+  group = 'verification'
+  description = 'Runs focused Dart tests and every protected compatibility category for one migration subsystem.'
+  workingDir rootProject.file('dart')
+  def dartExecutable = providers.gradleProperty('dartExecutable').orElse('dart')
+  def flutterExecutable = providers.gradleProperty('flutterExecutable').orElse('flutter')
+  def subsystem = providers.gradleProperty('subsystem')
+  executable dartExecutable.get()
+  doFirst {
+    if (!subsystem.isPresent()) {
+      throw new GradleException(
+        'dartMigrationStageCheck requires -Psubsystem=<compatibility-category>',
+      )
+    }
+    args(
+      'run', 'tool/migration_regression_gate.dart',
+      '--subsystem', subsystem.get(),
+      '--flutter-executable', flutterExecutable.get(),
+    )
+  }
+  inputs.dir(rootProject.file('compatibility/scenarios'))
+  inputs.dir(rootProject.file('compatibility/golden'))
+  inputs.dir(rootProject.file('dart/lib'))
+  inputs.dir(rootProject.file('dart/test'))
+  inputs.dir(rootProject.file('dart/tool'))
+  outputs.upToDateWhen { false }
+}
+
 tasks.register('dartStressDeterminismTest') {
   group = 'verification'
   description = 'Runs Dart long-running determinism and Kotlin comparison stress checks.'
@@ -240,6 +281,12 @@ tasks.register('qualityCheck') {
   description = 'Runs every repository quality gate used by pre-push and CI.'
   dependsOn tasks.named('quickQualityCheck')
   dependsOn tasks.named('behavioralTest'), tasks.named('coverageReport'), tasks.named('mutationTest'), ':android:testDebugUnitTest'
+}
+
+tasks.register('preMergeRegressionCheck') {
+  group = 'verification'
+  description = 'Runs the entire Kotlin suite, entire Dart suite, and complete Dart compatibility inventory.'
+  dependsOn tasks.named('qualityCheck'), tasks.named('dartUnitTest'), tasks.named('dartCompatibilityTest')
 }
 
 tasks.register('verifyCompatibilityGoldens') {

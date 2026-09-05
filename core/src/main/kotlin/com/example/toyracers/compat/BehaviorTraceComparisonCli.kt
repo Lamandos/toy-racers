@@ -12,10 +12,27 @@ import kotlin.system.exitProcess
 internal object BehaviorTraceComparisonCli {
     fun execute(args: Array<String>) {
         val options = parseOptions(args)
-        val expected = readTrace(options.expected)
-        val actual = readTrace(options.actual)
-        val report = SnapshotComparisonEngine.compare(expected, actual).failureReport(scenarioId(expected))
-        if (report != null) throw IllegalArgumentException(report)
+        val comparisons =
+            options.manifest
+                ?.let(::readManifest)
+                ?: listOf(
+                    TracePair(
+                        "trace",
+                        requireNotNull(options.expected),
+                        requireNotNull(options.actual),
+                    ),
+                )
+        val failures =
+            comparisons
+                .mapNotNull { comparison ->
+                    val expected = readTrace(comparison.expected)
+                    val actual = readTrace(comparison.actual)
+                    SnapshotComparisonEngine
+                        .compare(expected, actual)
+                        .failureReport(scenarioId(expected))
+                        ?.let { "${comparison.label}:\n$it" }
+                }
+        require(failures.isEmpty()) { failures.joinToString("\n\n") }
     }
 
     private fun parseOptions(args: Array<String>): BehaviorTraceComparisonOptions {
@@ -29,24 +46,56 @@ internal object BehaviorTraceComparisonCli {
             require(values.put(name, value) == null) { "Option may only be supplied once: $name" }
             index += 2
         }
-        return BehaviorTraceComparisonOptions(
-            expected = Path.of(requireNotNull(values[EXPECTED_OPTION]) { "Missing $EXPECTED_OPTION" }),
-            actual = Path.of(requireNotNull(values[ACTUAL_OPTION]) { "Missing $ACTUAL_OPTION" }),
-        )
+        val manifest = values[MANIFEST_OPTION]?.let(Path::of)
+        val expected = values[EXPECTED_OPTION]?.let(Path::of)
+        val actual = values[ACTUAL_OPTION]?.let(Path::of)
+        require(
+            (manifest != null && expected == null && actual == null) ||
+                (manifest == null && expected != null && actual != null),
+        ) { "Supply either $MANIFEST_OPTION or both $EXPECTED_OPTION and $ACTUAL_OPTION" }
+        return BehaviorTraceComparisonOptions(expected, actual, manifest)
     }
+
+    private fun readManifest(path: Path): List<TracePair> {
+        val root = readTrace(path)
+        require(root.isArray) { "Comparison manifest must be a JSON array" }
+        return generateSequence(root.child) { it.next }
+            .mapIndexed { index, entry ->
+                require(entry.isObject) { "Comparison manifest entry $index must be an object" }
+                TracePair(
+                    label = entry.requiredString("label", index),
+                    expected = Path.of(entry.requiredString("expected", index)),
+                    actual = Path.of(entry.requiredString("actual", index)),
+                )
+            }.toList()
+            .also { require(it.isNotEmpty()) { "Comparison manifest must not be empty" } }
+    }
+
+    private fun JsonValue.requiredString(
+        name: String,
+        index: Int,
+    ): String = requireNotNull(get(name)?.asString()) { "Missing $name in manifest entry $index" }
 
     private fun readTrace(path: Path): JsonValue = Files.newBufferedReader(path, UTF_8).use(JsonReader()::parse)
 
     private fun scenarioId(trace: JsonValue): String = trace.get("scenarioId")?.asString() ?: "unknown"
 
     private data class BehaviorTraceComparisonOptions(
+        val expected: Path?,
+        val actual: Path?,
+        val manifest: Path?,
+    )
+
+    private data class TracePair(
+        val label: String,
         val expected: Path,
         val actual: Path,
     )
 
     private const val ACTUAL_OPTION = "--actual"
     private const val EXPECTED_OPTION = "--expected"
-    private val OPTIONS = setOf(EXPECTED_OPTION, ACTUAL_OPTION)
+    private const val MANIFEST_OPTION = "--manifest"
+    private val OPTIONS = setOf(EXPECTED_OPTION, ACTUAL_OPTION, MANIFEST_OPTION)
 }
 
 fun main(args: Array<String>) {

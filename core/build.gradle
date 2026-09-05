@@ -140,15 +140,20 @@ tasks.register('compareBehaviorTraces', JavaExec) {
   workingDir = rootProject.projectDir
   def expectedProperty = providers.gradleProperty('expected')
   def actualProperty = providers.gradleProperty('actual')
+  def manifestProperty = providers.gradleProperty('manifest')
   doFirst {
+    def manifest = manifestProperty.orNull
     def expected = expectedProperty.orNull
     def actual = actualProperty.orNull
-    if (expected == null || actual == null) {
+    if (manifest != null) {
+      args '--manifest', manifest
+    } else if (expected == null || actual == null) {
       throw new GradleException(
-        'compareBehaviorTraces requires -Pexpected=<file> and -Pactual=<file>',
+        'compareBehaviorTraces requires -Pmanifest=<file> or both -Pexpected=<file> and -Pactual=<file>',
       )
+    } else {
+      args '--expected', expected, '--actual', actual
     }
-    args '--expected', expected, '--actual', actual
   }
 }
 

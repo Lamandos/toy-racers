@@ -75,6 +75,16 @@ differential suite. Both commands use `dart` by default; pass
 `-PdartExecutable=/path/to/dart` before the task name when Dart is not on
 `PATH`.
 
+For a migration stage, run the focused regression gate with its affected
+compatibility category, for example
+`./gradlew dartMigrationStageCheck -Psubsystem=car --no-daemon`. Before merge,
+run `./gradlew preMergeRegressionCheck --no-daemon`; it covers the complete
+Kotlin suite, Dart suite, and Dart compatibility inventory.
+
+The local pre-push hook intentionally runs the fast suite; GitHub CI runs the
+complete compatibility and fuzz gates once. The orchestrator uses `git push
+--no-verify` after its explicit test phase to avoid executing the hook twice.
+
 ## Assets
 
 Runtime assets will live in `assets/`, which is shared by the platform launchers according to the generated libGDX configuration. Only original, licensed, or public-domain assets may be added. Record licenses and attribution alongside third-party assets.
@@ -150,11 +160,11 @@ CLI options override environment variables. The most useful settings are:
 | `--main-branch` | `ORCHESTRATOR_MAIN_BRANCH` | `main` |
 | `--remote` | `ORCHESTRATOR_REMOTE` | `origin` |
 | `--test-command` | `ORCHESTRATOR_TEST_COMMAND` | `./.githooks/pre-push` when present |
-| `--max-review-iterations` | `ORCHESTRATOR_MAX_REVIEW_ITERATIONS` | `3` |
+| `--max-review-iterations` | `ORCHESTRATOR_MAX_REVIEW_ITERATIONS` | `8` |
 | `--review-timeout` | `ORCHESTRATOR_REVIEW_TIMEOUT` | `1800` seconds |
 | `--checks-timeout` | `ORCHESTRATOR_CHECKS_TIMEOUT` | `1800` seconds |
 | `--poll-interval` | `ORCHESTRATOR_POLL_INTERVAL` | `30` seconds |
-| `--implementation-model` | `ORCHESTRATOR_IMPLEMENTATION_MODEL` | `gpt-5.6-sol` |
+| `--implementation-model` | `ORCHESTRATOR_IMPLEMENTATION_MODEL` | `gpt-5.6-terra` |
 | `--fix-model` | `ORCHESTRATOR_FIX_MODEL` | `gpt-5.6-luna` |
 | `--codex-args` | `ORCHESTRATOR_CODEX_ARGS` | automatic approval review (workspace-write), ephemeral session |
 | `--review-author` | `ORCHESTRATOR_REVIEW_AUTHORS` | common Codex GitHub bot logins |
@@ -183,10 +193,10 @@ automatically fixes.
 
 ### Codex usage-limit handling
 
-New task implementation runs use `gpt-5.6-sol`; review-fix runs use the cheaper
+New task implementation runs use `gpt-5.6-terra`; review-fix runs use the cheaper
 `gpt-5.6-luna`. These are the model IDs passed to `codex exec` and can be
-overridden independently. OpenAI describes Sol as the flagship model for complex
-coding and Luna as the cost-sensitive model for high-volume work.
+overridden independently. Terra is the configured implementation model, while
+Luna is reserved for cost-sensitive high-volume review-fix work.
 
 If Codex exits with a recognizable usage, quota, rate-limit, or five-hour-limit
 error, the orchestrator does not discard the task. It records `quota_wait` and a

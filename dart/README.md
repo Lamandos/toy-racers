@@ -174,6 +174,18 @@ Kotlin golden. `fuzzSmokeTest` runs the fixed-seed Kotlin-versus-Dart
 differential suite. Both use `dart` by default; use
 `-PdartExecutable=/path/to/dart` before the task name when needed.
 
+For each migration stage, run the focused regression gate from the repository
+root, substituting the changed category:
+
+```sh
+./gradlew dartMigrationStageCheck -Psubsystem=car --no-daemon
+```
+
+It runs the affected Dart unit tests and then the entire compatibility
+inventory, protecting every category that has already passed. Before merge,
+run `./gradlew preMergeRegressionCheck --no-daemon` to execute the complete
+Kotlin suite, Dart suite, and compatibility inventory.
+
 The coverage output is `coverage/lcov.info` and is intentionally ignored by
 Git. The repository CI runs analysis and the coverage-producing test command.
 
