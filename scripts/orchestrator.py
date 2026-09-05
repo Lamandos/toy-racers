@@ -1517,7 +1517,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-review-iterations",
         type=lambda value: parse_int(value, "max-review-iterations"),
         default=parse_int(
-            env_or_default("ORCHESTRATOR_MAX_REVIEW_ITERATIONS", "3"),
+            env_or_default("ORCHESTRATOR_MAX_REVIEW_ITERATIONS", "8"),
             "max-review-iterations",
         ),
     )

@@ -160,7 +160,7 @@ CLI options override environment variables. The most useful settings are:
 | `--main-branch` | `ORCHESTRATOR_MAIN_BRANCH` | `main` |
 | `--remote` | `ORCHESTRATOR_REMOTE` | `origin` |
 | `--test-command` | `ORCHESTRATOR_TEST_COMMAND` | `./.githooks/pre-push` when present |
-| `--max-review-iterations` | `ORCHESTRATOR_MAX_REVIEW_ITERATIONS` | `3` |
+| `--max-review-iterations` | `ORCHESTRATOR_MAX_REVIEW_ITERATIONS` | `8` |
 | `--review-timeout` | `ORCHESTRATOR_REVIEW_TIMEOUT` | `1800` seconds |
 | `--checks-timeout` | `ORCHESTRATOR_CHECKS_TIMEOUT` | `1800` seconds |
 | `--poll-interval` | `ORCHESTRATOR_POLL_INTERVAL` | `30` seconds |
