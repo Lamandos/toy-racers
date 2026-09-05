@@ -29,8 +29,14 @@ transitions use tick `0`; this is valid evidence and must not be changed to a
 one-based physical tick. Confirm the tick and label against both traces before
 copying a comparator report: the comparator zips sample arrays by index, so an
 inserted event sample can make its reported tick refer to the wrong observations.
-If traces are not aligned, record the insertion/deletion first and align them
-before recording a field-level divergence.
+Identity equality is required only before the candidate sample. If the
+candidate's tick or label differs, record that identity field as the first
+divergence; do not reject the candidate or search for an earlier insertion. If
+alignment leaves a genuinely unmatched sample, record `sample presence/order`
+as the divergent field, identify the side that emitted or omitted the event,
+and isolate the event-emission predicate. Do not pair an unmatched event with
+a later periodic sample. Align later samples only after recording this
+identity or presence/order divergence.
 
 Repeated tick-zero lifecycle samples also require the aligned sample index and
 exact transition or advance input. For example, `state-machine` emits four

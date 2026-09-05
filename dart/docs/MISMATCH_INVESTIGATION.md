@@ -31,9 +31,15 @@ last command is the shared comparator. It compares sample arrays by index, not
 by tick or label, so its first mismatch report is authoritative only after the
 expected and actual sample sequences have been aligned. Before trusting it,
 inspect both traces and record the ordered `(sample index, tick, label)`
-sequence. Every sample through the candidate mismatch must have the same tick
-and label; otherwise an extra Dart event can be paired with a later Kotlin
-periodic sample and falsely identify the failing tick.
+sequence. Require identity equality only for samples before the candidate. At
+the candidate, a different tick or label is itself the first contract
+mismatch; record the identity field and compare the event-emission or sampling
+decision that produced it. If alignment leaves a genuinely unmatched sample
+(an extra or missing checkpoint, lap, or finish event), record `sample
+presence/order` as the divergent field, identify which side emitted or omitted
+it, and isolate that event-emission predicate. Do not pair an unmatched Dart
+event with a later Kotlin periodic sample merely to obtain a field-level
+comparison.
 
 ## Required sequence
 
@@ -43,8 +49,11 @@ periodic sample and falsely identify the failing tick.
 2. **Find the first divergent sample.** Inspect and align both ordered sample
    sequences by tick and label, then run the shared comparator above and retain
    its report. Its sample label distinguishes lifecycle/event samples from a
-   normal physical-step sample. Resolve an insertion/deletion before treating
-   any later paired sample as a mismatch.
+   normal physical-step sample. Identity must match only before the candidate:
+   a candidate tick or label mismatch is the divergent identity field. If
+   alignment produces an unmatched sample, use `sample presence/order` as the
+   divergent field and investigate the event-emission predicate. Resolve the
+   insertion/deletion before treating any later paired sample as a mismatch.
 3. **Find the first divergent tick.** After alignment, if the trace is sparse, copy the scenario
    (and its adjacent input script, when present) to the scratch directory and
    set only `snapshotIntervalTicks` to `1`; replay both copies and compare
