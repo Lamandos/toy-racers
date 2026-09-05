@@ -103,9 +103,9 @@ For each tick, generate commands in the order throttle, brake, steering. Throttl
 values with six decimal places, so all controls remain in the normalized ranges `[0, 1]`, `[0, 1]`,
 and `[-1, 1]` respectively.
 
-The optional fixed-seed fuzz smoke task runs 100 generated 120-tick scenarios through both
-implementations. For every seed it writes the materialized `scenario.json` and Kotlin oracle trace
-to `core/build/differential-fuzz/seed-<unsigned-seed>/kotlin.json`, then runs the same scenario with
+The fixed-seed fuzz smoke task runs 100 generated 120-tick scenarios through both implementations.
+For every seed it writes the materialized `scenario.json` and Kotlin oracle trace to
+`core/build/differential-fuzz/seed-<unsigned-seed>/kotlin.json`, then runs the same scenario with
 the headless Dart runner. The existing Kotlin trace comparator checks the pair with the shared
 contract and unchanged tolerances. Passing Dart traces are discarded; on any failure `dart.json`
 remains beside the scenario and Kotlin trace for exact reproduction.
@@ -116,7 +116,7 @@ remains beside the scenario and Kotlin trace for exact reproduction.
 
 The command reports `100 / 100 PASS` only after every fixed seed matches. A mismatch reports the
 signed seed, first divergent tick, field, expected value, actual value, and delta. GitHub Actions
-runs it only when a workflow is manually dispatched with `run_fuzz_smoke` enabled.
+runs it as the independently visible `dart-fuzz` stage on every normal workflow.
 
 ## Dart stress and determinism
 

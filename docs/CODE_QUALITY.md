@@ -5,6 +5,14 @@ Java 21, Gradle 9.5.0, ktlint 1.8.0 (Gradle plugin 14.2.0), and detekt 1.23.8 ar
 repository. The Dart project uses the Flutter stable channel, `flutter_lints`, Flutter's built-in test
 runner, and built-in LCOV coverage output.
 
+GitHub Actions exposes the Dart and Kotlin reference gates independently as
+`kotlin-reference`, `dart-static-analysis`, `dart-unit`, `dart-compatibility`,
+`dart-fuzz`, and `dart-builds`. `dart-builds` uses native Ubuntu, Windows, and
+macOS runners to compile Android, web, Linux, Windows, macOS, and an unsigned
+simulator-compatible iOS target. Each matrix job writes its runtime/device
+limitation to the workflow summary; successful compilation is not treated as a
+device, interactive-input, or audible-output pass.
+
 ## Install Git hooks
 
 Run this once after cloning:
@@ -15,11 +23,12 @@ Run this once after cloning:
 
 The script is idempotent and sets `core.hooksPath` to `.githooks`. The pre-commit hook runs the Flutter asset pipeline
 unit tests and staged SHA-256 parity check, Kotlin style checks, detekt, the 500-line source-file gate, JVM unit tests,
-the desktop UI smoke flow, plus Flutter analysis and tests. The pre-push hook runs the same asset pipeline tests and
-parity check, then the complete `qualityCheck`, including behavioral compatibility fixtures, deterministic repeat
-tests, Android debug unit tests, the core coverage gate, mutation testing, and Flutter analysis plus LCOV-producing
-tests. Flutter stable must be available on `PATH`.
-The fixed-seed fuzz smoke and the 20-run full behavioral stability suite are intentionally opt-in.
+the desktop UI smoke flow, plus Dart format verification, Flutter analysis, and tests. The pre-push hook runs the same
+asset pipeline tests and parity check, then the complete `qualityCheck`, including behavioral compatibility fixtures,
+deterministic repeat tests, Android debug unit tests, the core coverage gate, mutation testing, and Dart format
+verification, Flutter analysis, LCOV-producing tests, the Dart full behavioral gate, and fixed-seed differential fuzz
+smoke. Flutter stable must be available on `PATH`. The 20-run full behavioral stability suite remains intentionally
+opt-in.
 
 On headless Linux, both hooks automatically use `xvfb-run --auto-servernum` for the desktop UI smoke flow. Install
 Xvfb before committing or pushing from that environment.
@@ -43,9 +52,11 @@ python3 tools/flutter_asset_pipeline.py check
 
 cd dart
 flutter pub get --enforce-lockfile
+dart format --output=none --set-exit-if-changed .
 flutter analyze --fatal-infos
 flutter test
 flutter test --coverage
+dart run tool/full_behavioral_gate.dart
 ```
 
 `behavioralTest` is the primary local behavioral suite. It verifies the versioned behavioral fixtures and both
@@ -53,8 +64,8 @@ golden-master formats, then runs the long-running deterministic repeat test. `co
 report and verifies overall Line and Branch coverage of at least 85%, plus at least 90% Line coverage in the AI, car,
 collision, race, surface, and track packages. `mutationTest` runs PIT against the four critical deterministic rule
 systems: car physics, collision response, race rules, and surface speed. It requires at least 70% killed mutations.
-`fuzzSmokeTest` runs only when invoked explicitly; the GitHub Actions fuzz job is available through **Run workflow**
-with `run_fuzz_smoke` enabled.
+`fuzzSmokeTest` runs on every normal GitHub Actions workflow to compare fixed-seed Kotlin and Dart traces. It remains
+available as an explicit local command for focused diagnosis.
 
 `behavioralStabilityTest` intentionally takes much longer than pull-request checks: it runs the complete inventory of
 legacy, file-per-scenario, full-race, and long-running fixtures twenty times sequentially and compares canonical JSON
@@ -77,6 +88,8 @@ Formatting is checked without modifying files. To apply safe formatting fixes ex
 
 ```sh
 ./gradlew ktlintFormat
+cd dart
+dart format .
 ```
 
 Flutter analysis is also read-only. Its configured rules are in `dart/analysis_options.yaml`; the
@@ -94,7 +107,8 @@ generated Flutter asset declarations in `dart/pubspec.yaml`. After changing a ca
 - test reports are under `<module>/build/reports/tests/`; rerun a focused test with
   `./gradlew core:test --tests 'fully.qualified.TestName'`.
 - `verifySourceFileLengths` reports every Kotlin or Java source file over 500 physical lines.
-- Flutter reports lint findings through `flutter analyze --fatal-infos`; Flutter test output and
+- Dart formatting is verified with `dart format --output=none --set-exit-if-changed .`.
+  Flutter reports lint findings through `flutter analyze --fatal-infos`; Flutter test output and
   coverage are produced with `flutter test --coverage` from `dart/`.
 
 Generated sources and build artifacts are excluded. `StartupHelper.kt` is also excluded from detekt because it is
