@@ -32,6 +32,15 @@ inserted event sample can make its reported tick refer to the wrong observations
 If traces are not aligned, record the insertion/deletion first and align them
 before recording a field-level divergence.
 
+For a tick-zero lifecycle divergence, isolate the exact transition rather than
+inventing a physical command: reproduce the scenario's preceding phase,
+countdown value/timer, pending start state, participant roster, and other
+lifecycle inputs, then advance exactly one lifecycle transition in both
+runtimes. Use a temporary state-injection or live-replay probe when the runner
+cannot start at that boundary. Compare raw pre-transition state and transition
+inputs before the emitted sample, and mark isolation inconclusive if the exact
+boundary cannot be reproduced.
+
 For one-tick isolation, canonical trace values are display values only: trace
 floats are formatted to six decimal places. Capture the exact Float32 pre-state
 from both live replays before the failing tick using raw Kotlin `Float.toBits`

@@ -84,6 +84,24 @@ periodic sample and falsely identify the failing tick.
    and restore `lapStartTime` and `bestLapTime` in `initialStates`; schema v1/v2
    cannot represent those timers.
 
+   For a tick-zero lifecycle mismatch (`loading`, `ready`, `countdown`, or the
+   `racing` transition), there is no physical command to replay and
+   `snapshotIntervalTicks: 1` cannot add observations inside the transition.
+   Isolate the lifecycle transition instead: retain the exact scenario setup,
+   stop immediately before the reported sample, and capture the preceding
+   phase, countdown value/timer, pending start state, participant roster, and
+   any other lifecycle state consumed by that transition. Reproduce that
+   boundary in both runtimes with the same setup and advance exactly one
+   lifecycle transition (not one physical tick); use the transition's event or
+   lifecycle sample as the isolated observation. If the runner cannot start at
+   that boundary, use a temporary local state-injection or live-replay probe to
+   stop before the transition and single-step it. Compare the raw
+   pre-transition state and transition inputs before comparing the emitted
+   sample, and label the result inconclusive if either runtime cannot reproduce
+   the exact preceding phase/countdown state. Do not invent a physical command
+   or change tick `0` to make the lifecycle mismatch fit the physical-tick
+   procedure.
+
    For accumulated drift, do not jump straight to a scratch scenario. First
    compare both runtimes' raw pre-states at the reported failing tick. If they
    differ, backtrack to the earliest tick with unequal raw pre-state (or add
