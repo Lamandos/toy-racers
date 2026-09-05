@@ -463,9 +463,10 @@ class Repository:
             raise OrchestratorError(
                 "Codex left no changes and the task branch has no commit ahead of main"
             )
-        # The configured test command already runs the repository's pre-push gate.
-        # Avoid running the same potentially expensive hook a second time here.
-        self.git_output(["push", "--no-verify", "--set-upstream", self.remote, branch])
+        push_args = ["push"]
+        if self.args.test_command.strip() == "./.githooks/pre-push":
+            push_args.append("--no-verify")
+        self.git_output([*push_args, "--set-upstream", self.remote, branch])
 
 
 class GitHub:

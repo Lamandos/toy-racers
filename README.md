@@ -193,10 +193,10 @@ automatically fixes.
 
 ### Codex usage-limit handling
 
-New task implementation runs use `gpt-5.6-sol`; review-fix runs use the cheaper
+New task implementation runs use `gpt-5.6-terra`; review-fix runs use the cheaper
 `gpt-5.6-luna`. These are the model IDs passed to `codex exec` and can be
-overridden independently. OpenAI describes Sol as the flagship model for complex
-coding and Luna as the cost-sensitive model for high-volume work.
+overridden independently. Terra is the configured implementation model, while
+Luna is reserved for cost-sensitive high-volume review-fix work.
 
 If Codex exits with a recognizable usage, quota, rate-limit, or five-hour-limit
 error, the orchestrator does not discard the task. It records `quota_wait` and a

@@ -36,11 +36,18 @@ final class FullBehavioralGate {
     final goldenBefore = _goldenContents();
     try {
       final inventory = BehavioralInventory.load(repositoryRoot, scratch);
-      final generated = <_GeneratedBehavioralFixture>[
-        for (final fixture in inventory.fixtures)
-          _generateFixture(fixture, scratch),
-      ];
-      final results = _compareFixtures(generated, scratch);
+      final generated = <_GeneratedBehavioralFixture>[];
+      final results = <BehavioralFixtureResult>[];
+      for (final fixture in inventory.fixtures) {
+        try {
+          generated.add(_generateFixture(fixture, scratch));
+        } on Object catch (error) {
+          results.add(
+            BehavioralFixtureResult(fixture: fixture, failure: '$error'),
+          );
+        }
+      }
+      results.addAll(_compareFixtures(generated, scratch));
       return BehavioralGateReport(
         results: results,
         unexpectedGoldenChanges: _changedGoldenFiles(goldenBefore),
@@ -85,8 +92,26 @@ final class FullBehavioralGate {
     } on Object catch (error) {
       return <BehavioralFixtureResult>[
         for (final item in generated)
-          BehavioralFixtureResult(fixture: item.fixture, failure: '$error'),
+          _compareFixtureIndividually(item, scratch, error),
       ];
+    }
+  }
+
+  BehavioralFixtureResult _compareFixtureIndividually(
+    _GeneratedBehavioralFixture item,
+    Directory scratch,
+    Object batchError,
+  ) {
+    try {
+      _compareWithKotlin(repositoryRoot, <_GeneratedBehavioralFixture>[
+        item,
+      ], scratch);
+      return BehavioralFixtureResult(fixture: item.fixture);
+    } on Object catch (error) {
+      return BehavioralFixtureResult(
+        fixture: item.fixture,
+        failure: '$error (batch comparison: $batchError)',
+      );
     }
   }
 

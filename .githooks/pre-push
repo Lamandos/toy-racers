@@ -4,7 +4,7 @@ set -eu
 repository_root=$(git rev-parse --show-toplevel)
 cd "$repository_root"
 
-echo "Running fast local Kotlin and Dart pre-push gates..."
+echo "Running full local Kotlin and Dart pre-push gates..."
 python3 tools/flutter_asset_pipeline.py check
 python3 tools/test_flutter_asset_pipeline.py
 
@@ -26,9 +26,9 @@ if [ "$(uname -s)" = "Linux" ] && [ -z "${DISPLAY:-}" ]; then
     echo "Headless Linux requires xvfb-run to execute desktop UI smoke tests."
     exit 1
   fi
-  xvfb-run --auto-servernum ./gradlew quickQualityCheck --no-daemon
+  xvfb-run --auto-servernum ./gradlew qualityCheck --no-daemon
 else
-  ./gradlew quickQualityCheck --no-daemon
+  ./gradlew qualityCheck --no-daemon
 fi
 
-echo "Full compatibility and fuzz gates run once in GitHub CI."
+echo "Full pre-push quality gate passed."

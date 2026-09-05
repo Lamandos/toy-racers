@@ -24,9 +24,9 @@ Run this once after cloning:
 The script is idempotent and sets `core.hooksPath` to `.githooks`. The pre-commit hook runs the Flutter asset pipeline
 unit tests and staged SHA-256 parity check, Kotlin style checks, detekt, the 500-line source-file gate, JVM unit tests,
 the desktop UI smoke flow, plus Dart format verification, Flutter analysis, and tests. The pre-push hook runs the asset
-pipeline checks, Dart format and analysis, the Flutter test suite, and `quickQualityCheck`. The complete
-`preMergeRegressionCheck` and fixed-seed differential fuzz smoke run once in GitHub CI rather than once during the
-orchestrator test phase and again from `git push`. Flutter stable must be available on `PATH`. The
+pipeline checks, Dart format and analysis, the Flutter test suite, and the complete `qualityCheck` gate. The fixed-seed
+differential fuzz smoke runs once in GitHub CI rather than once during the orchestrator test phase and again from
+`git push`. Flutter stable must be available on `PATH`. The
 `pre-merge-regression` GitHub Actions job remains the authoritative full aggregate gate. The 20-run full behavioral
 stability suite remains intentionally opt-in.
 
