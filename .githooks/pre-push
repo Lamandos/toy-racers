@@ -28,4 +28,7 @@ fi
   dart format --output=none --set-exit-if-changed .
   flutter analyze --fatal-infos
   flutter test --coverage
+  dart run tool/full_behavioral_gate.dart
 )
+
+./gradlew fuzzSmokeTest --no-daemon

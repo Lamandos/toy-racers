@@ -26,8 +26,9 @@ unit tests and staged SHA-256 parity check, Kotlin style checks, detekt, the 500
 the desktop UI smoke flow, plus Dart format verification, Flutter analysis, and tests. The pre-push hook runs the same
 asset pipeline tests and parity check, then the complete `qualityCheck`, including behavioral compatibility fixtures,
 deterministic repeat tests, Android debug unit tests, the core coverage gate, mutation testing, and Dart format
-verification plus Flutter analysis and LCOV-producing tests. Flutter stable must be available on `PATH`.
-The fixed-seed fuzz smoke runs in normal CI; the 20-run full behavioral stability suite remains intentionally opt-in.
+verification, Flutter analysis, LCOV-producing tests, the Dart full behavioral gate, and fixed-seed differential fuzz
+smoke. Flutter stable must be available on `PATH`. The 20-run full behavioral stability suite remains intentionally
+opt-in.
 
 On headless Linux, both hooks automatically use `xvfb-run --auto-servernum` for the desktop UI smoke flow. Install
 Xvfb before committing or pushing from that environment.
