@@ -1,0 +1,83 @@
+# Kotlin-to-Dart porting differences
+
+This is the evidence log for difficult, confirmed Kotlin-to-Dart behavioral
+divergences. The Kotlin implementation is the oracle unless the compatibility
+contract has been deliberately changed and reviewed. Do not use this log for a
+suspected divergence that has not yet been reproduced.
+
+## Recording rules
+
+Create one entry after the cause is known. Every entry must include all of the
+following fields; link paths relative to the repository root so another
+developer can repeat the investigation.
+
+```md
+## <short divergence title> — <resolved YYYY-MM-DD>
+
+- Scenario: `compatibility/scenarios/...`; command: `<replay command>`
+- Tick: `<physical tick, or 0 for a lifecycle sample>` (`<sample label>`); aligned sample index: `<index>`; transition/input: `<exact operation and input>`
+- Field: `<first field reported by the shared comparator>`
+- Root cause: <the first operation whose result differs>
+- Kotlin semantics: <source location and the relevant numeric/order semantics>
+- Incorrect Dart semantics: <source location and the behavior before the fix>
+- Fix: <Dart source location and concise correction>
+- Regression test: `<test path or command>`; `<passing scenario rerun command>`
+```
+
+Lifecycle samples emitted during loading, ready, countdown, or racing
+transitions use tick `0`; this is valid evidence and must not be changed to a
+one-based physical tick. Confirm the tick and label against both traces before
+copying a comparator report: the comparator zips sample arrays by index, so an
+inserted event sample can make its reported tick refer to the wrong observations.
+Identity equality is required only before the candidate sample. If the
+candidate's tick or label differs, record that identity field as the first
+divergence; do not reject the candidate or search for an earlier insertion. If
+alignment leaves a genuinely unmatched sample, record `sample presence/order`
+as the divergent field, identify the side that emitted or omitted the event,
+and isolate the event-emission predicate. Do not pair an unmatched event with
+a later periodic sample. Align later samples only after recording this
+identity or presence/order divergence.
+
+Repeated tick-zero lifecycle samples also require the aligned sample index and
+exact transition or advance input. For example, `state-machine` emits four
+`countdown` samples: countdown start, two one-second advances, and one
+fixed-delta advance. Tick and label alone do not identify the observation.
+
+For accumulated drift, compare raw pre-states first and isolate the next tick
+after the last equal pre-state—the tick that produces the first unequal
+post-state—not the downstream tick whose pre-state is already unequal. If the
+initial pre-states differ, investigate initialization.
+
+For a tick-zero lifecycle divergence, isolate the exact transition rather than
+inventing a physical command: reproduce the scenario's preceding phase,
+countdown value/timer, pending start state, participant roster, and other
+lifecycle inputs, then advance exactly one lifecycle transition in both
+runtimes. Use a temporary state-injection or live-replay probe when the runner
+cannot start at that boundary. Compare raw pre-transition state and transition
+inputs before the emitted sample, and mark isolation inconclusive if the exact
+boundary cannot be reproduced.
+
+For one-tick isolation, canonical trace values are display values only: trace
+floats are formatted to six decimal places. Capture the exact Float32 pre-state
+from both live replays before the failing tick using raw Kotlin `Float.toBits`
+and Dart `Float32.bits(value)` values or another round-trippable representation;
+`Float32.bits` is the repository's Dart raw-bit helper. Normalize signed Kotlin
+bit values and unsigned Dart bit values to eight-digit hexadecimal (or Kotlin
+`toUInt()`) before comparing them. If lap or finish timing
+can affect the tick, use a schema-v3 scratch scenario and restore
+`lapStartTime` and `bestLapTime` in `initialStates`, because schema v1/v2 cannot
+represent those timers. For accumulated drift, compare both runtimes' raw
+pre-states first and backtrack (or instrument the live replay) to the earliest
+unequal pre-state before isolating a tick; otherwise isolation can erase the
+history that caused the mismatch. A divergence is resolved only when that state
+reproduces it, the focused regression test passes, and the original scenario is
+rerun successfully.
+
+`Regression test` must name both a focused, reproducible test and the scenario
+rerun that passed after the fix. An entry is not resolved until both commands
+have passed. Do not remove historical entries: they explain intentionally
+non-obvious Float32, ordering, lifecycle, and collision decisions.
+
+## Entries
+
+No difficult divergences have been recorded yet.
