@@ -1308,15 +1308,20 @@ class Orchestrator:
 
         current_status = str(self.task_record(task).get("status"))
         if current_status == "review_limit_reached":
-            iteration = int(self.task_record(task).get("review_iteration") or 0)
+            record = self.task_record(task)
+            iteration = int(record.get("review_iteration") or 0)
             if iteration >= self.args.max_review_iterations:
                 raise OrchestratorError(
                     f"Task {task.task_id} reached {iteration} Codex review iterations. "
                     "Inspect review_findings in the state file and resume with a larger "
                     "--max-review-iterations value to continue."
                 )
-            self.transition(task, "pushed")
-            current_status = "pushed"
+            # The saved findings are the outstanding fix. Re-enter the normal
+            # fix path so resuming with a larger iteration limit changes the
+            # commit before asking Codex for another review.
+            self.transition(task, "fixing")
+            self.finish_pending_review_fix(task, branch)
+            current_status = str(self.task_record(task).get("status"))
         if current_status in {"pr_open", "reviewing", "pushed"}:
             self.run_review_loop(task, pr_number, branch)
             self.transition(task, "checks")
