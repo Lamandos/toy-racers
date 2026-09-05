@@ -15,6 +15,46 @@ It verifies the versioned legacy fixture set, the file-per-scenario compatibilit
 deterministic repeat test. GitHub Actions runs these mandatory checks in separate jobs; `qualityCheck`, used by the
 pre-push hook, runs them together.
 
+## Migration regression rule
+
+Once a Dart compatibility category has passed, it is green and must remain
+green for every later migration stage. A stage must run the Dart unit tests for
+the subsystem it changes, that subsystem's compatibility category, and every
+previously green compatibility category. The stage gate enforces this by
+running its focused unit-test mapping followed by the complete checked-in Dart
+compatibility inventory; running the complete inventory is intentional because
+it is safer than asking an author to reconstruct the already-green set.
+
+From the repository root, after `flutter pub get --enforce-lockfile` in
+`dart/`, run:
+
+```sh
+./gradlew dartMigrationStageCheck -Psubsystem=car --no-daemon
+```
+
+Registered subsystem names are `car`, `collision`, `race`, `track`, `surface`,
+`ai`, and `full_race`. The command reports the affected subsystem, the focused
+Dart unit-test result, and a `PASS` or `FAIL` line for each compatibility
+category. A failing category remains visible in the command output, so do not
+replace this command with a one-scenario replay.
+
+Future task authors must choose the changed subsystem name, keep its focused
+test mapping in `dart/tool/migration_regression_gate.dart` current when adding
+or moving tests, and run the command before declaring the stage green. Do not
+remove an existing protected category or regenerate a Kotlin golden merely to
+clear a Dart mismatch; investigate the reported category and add a focused
+regression test when behavior changes intentionally.
+
+Before merge, run the aggregate gate:
+
+```sh
+./gradlew preMergeRegressionCheck --no-daemon
+```
+
+It runs the complete Kotlin `qualityCheck` suite, the entire Dart and Flutter
+test suite, and the complete Dart compatibility inventory. The pre-push hook
+and the `pre-merge-regression` GitHub Actions job run the same aggregate gate.
+
 For release acceptance, run the full 115-fixture inventory twenty times sequentially:
 
 ```sh

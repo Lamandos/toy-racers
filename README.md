@@ -75,6 +75,12 @@ differential suite. Both commands use `dart` by default; pass
 `-PdartExecutable=/path/to/dart` before the task name when Dart is not on
 `PATH`.
 
+For a migration stage, run the focused regression gate with its affected
+compatibility category, for example
+`./gradlew dartMigrationStageCheck -Psubsystem=car --no-daemon`. Before merge,
+run `./gradlew preMergeRegressionCheck --no-daemon`; it covers the complete
+Kotlin suite, Dart suite, and Dart compatibility inventory.
+
 ## Assets
 
 Runtime assets will live in `assets/`, which is shared by the platform launchers according to the generated libGDX configuration. Only original, licensed, or public-domain assets may be added. Record licenses and attribution alongside third-party assets.

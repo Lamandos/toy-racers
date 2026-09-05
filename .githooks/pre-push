@@ -4,18 +4,9 @@ set -eu
 repository_root=$(git rev-parse --show-toplevel)
 cd "$repository_root"
 
-echo "Running full Kotlin and Flutter quality gates, coverage, mutation testing, and desktop UI smoke..."
+echo "Running the pre-merge Kotlin, Dart, and compatibility regression gates..."
 python3 tools/flutter_asset_pipeline.py check
 python3 tools/test_flutter_asset_pipeline.py
-if [ "$(uname -s)" = "Linux" ] && [ -z "${DISPLAY:-}" ]; then
-  if ! command -v xvfb-run >/dev/null 2>&1; then
-    echo "Headless Linux requires xvfb-run to execute desktop UI smoke tests."
-    exit 1
-  fi
-  xvfb-run --auto-servernum ./gradlew qualityCheck --no-daemon
-else
-  ./gradlew qualityCheck --no-daemon
-fi
 
 if ! command -v flutter >/dev/null 2>&1; then
   echo "Flutter stable is required to run Dart quality checks."
@@ -27,8 +18,16 @@ fi
   flutter pub get --enforce-lockfile
   dart format --output=none --set-exit-if-changed .
   flutter analyze --fatal-infos
-  flutter test --coverage
-  dart run tool/full_behavioral_gate.dart
 )
+
+if [ "$(uname -s)" = "Linux" ] && [ -z "${DISPLAY:-}" ]; then
+  if ! command -v xvfb-run >/dev/null 2>&1; then
+    echo "Headless Linux requires xvfb-run to execute desktop UI smoke tests."
+    exit 1
+  fi
+  xvfb-run --auto-servernum ./gradlew preMergeRegressionCheck --no-daemon
+else
+  ./gradlew preMergeRegressionCheck --no-daemon
+fi
 
 ./gradlew fuzzSmokeTest --no-daemon
