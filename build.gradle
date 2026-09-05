@@ -172,6 +172,21 @@ tasks.register('fuzzSmokeTest') {
   dependsOn ':core:differentialFuzzSmokeTest'
 }
 
+tasks.register('dartCompatibilityTest', Exec) {
+  group = 'verification'
+  description = 'Replays the complete Dart compatibility inventory against Kotlin goldens.'
+  workingDir rootProject.file('dart')
+  def dartExecutable = providers.gradleProperty('dartExecutable').orElse('dart')
+  executable dartExecutable.get()
+  args 'run', 'tool/full_behavioral_gate.dart'
+  inputs.dir(rootProject.file('compatibility/scenarios'))
+  inputs.dir(rootProject.file('compatibility/golden'))
+  inputs.dir(rootProject.file('compatibility/schemas'))
+  inputs.dir(rootProject.file('dart/lib'))
+  inputs.dir(rootProject.file('dart/tool'))
+  outputs.upToDateWhen { false }
+}
+
 tasks.register('dartStressDeterminismTest') {
   group = 'verification'
   description = 'Runs Dart long-running determinism and Kotlin comparison stress checks.'
