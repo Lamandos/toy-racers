@@ -34,10 +34,17 @@ before recording a field-level divergence.
 
 For one-tick isolation, canonical trace values are display values only: trace
 floats are formatted to six decimal places. Capture the exact Float32 pre-state
-before the failing tick using raw `Float.toBits`/`Float32.toBits` values or
-another round-trippable representation. A divergence is resolved only when
-that state reproduces it, the focused regression test passes, and the original
-scenario is rerun successfully.
+from both live replays before the failing tick using raw Kotlin `Float.toBits`
+and Dart `Float32.bits(value)` values or another round-trippable representation;
+`Float32.bits` is the repository's Dart raw-bit helper. If lap or finish timing
+can affect the tick, use a schema-v3 scratch scenario and restore
+`lapStartTime` and `bestLapTime` in `initialStates`, because schema v1/v2 cannot
+represent those timers. For accumulated drift, compare both runtimes' raw
+pre-states first and backtrack (or instrument the live replay) to the earliest
+unequal pre-state before isolating a tick; otherwise isolation can erase the
+history that caused the mismatch. A divergence is resolved only when that state
+reproduces it, the focused regression test passes, and the original scenario is
+rerun successfully.
 
 `Regression test` must name both a focused, reproducible test and the scenario
 rerun that passed after the fix. An entry is not resolved until both commands

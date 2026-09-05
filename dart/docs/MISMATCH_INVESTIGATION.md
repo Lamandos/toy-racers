@@ -62,9 +62,21 @@ periodic sample and falsely identify the failing tick.
    local diagnostics to expose it; do not claim isolation from an inferred
    state. The canonical trace is not sufficient for reconstruction: its
    Float32 values are rendered to six decimal places. Capture the exact
-   pre-tick binary32 values before the failing tick as raw `Float.toBits`/
-   `Float32.toBits` values or another round-trippable representation, and
-   restore those values in the isolated run.
+   pre-tick binary32 values from both live replays before the failing tick as
+   raw Kotlin `Float.toBits` and Dart `Float32.bits(value)` values (or another
+   round-trippable representation), and restore those values in the isolated
+   run. `Float32.bits` is the repository's Dart raw-bit helper. If lap or
+   finish timing can affect the tick, the scratch scenario must use schema v3
+   and restore `lapStartTime` and `bestLapTime` in `initialStates`; schema v1/v2
+   cannot represent those timers.
+
+   For accumulated drift, do not jump straight to a scratch scenario. First
+   compare both runtimes' raw pre-states at the reported failing tick. If they
+   differ, backtrack to the earliest tick with unequal raw pre-state (or add
+   temporary live-replay instrumentation there) and isolate that tick instead.
+   A scratch scenario that starts from only one runtime's rounded or inferred
+   state can erase the history that caused the mismatch and produce a false
+   result.
 6. **Compare inputs and pre-state.** List the raw scenario command, applied
    normalized command, `inputTweaks`, fixed delta (`Float32(1 / 60)`), and each
    relevant pre-state value. Verify IDs, participant order, track/surface,
