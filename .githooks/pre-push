@@ -4,7 +4,7 @@ set -eu
 repository_root=$(git rev-parse --show-toplevel)
 cd "$repository_root"
 
-echo "Running the pre-merge Kotlin, Dart, and compatibility regression gates..."
+echo "Running fast local Kotlin and Dart pre-push gates..."
 python3 tools/flutter_asset_pipeline.py check
 python3 tools/test_flutter_asset_pipeline.py
 
@@ -18,6 +18,7 @@ fi
   flutter pub get --enforce-lockfile
   dart format --output=none --set-exit-if-changed .
   flutter analyze --fatal-infos
+  flutter test
 )
 
 if [ "$(uname -s)" = "Linux" ] && [ -z "${DISPLAY:-}" ]; then
@@ -25,9 +26,9 @@ if [ "$(uname -s)" = "Linux" ] && [ -z "${DISPLAY:-}" ]; then
     echo "Headless Linux requires xvfb-run to execute desktop UI smoke tests."
     exit 1
   fi
-  xvfb-run --auto-servernum ./gradlew preMergeRegressionCheck --no-daemon
+  xvfb-run --auto-servernum ./gradlew quickQualityCheck --no-daemon
 else
-  ./gradlew preMergeRegressionCheck --no-daemon
+  ./gradlew quickQualityCheck --no-daemon
 fi
 
-./gradlew fuzzSmokeTest --no-daemon
+echo "Full compatibility and fuzz gates run once in GitHub CI."

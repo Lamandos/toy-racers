@@ -43,6 +43,23 @@ void main() {
     );
   });
 
+  test('passes the configured Dart executable to compatibility checks', () {
+    final commands = <_Command>[];
+    final status = executeMigrationRegressionGate(
+      const <String>['--subsystem', 'car'],
+      commandRunner: (executable, arguments, workingDirectory) {
+        commands.add(_Command(executable, arguments, workingDirectory));
+        return const GateCommandResult(exitCode: 0);
+      },
+      workingDirectory: Directory.current,
+      dartExecutable: '/custom/flutter/bin/dart',
+    );
+
+    expect(status, 0);
+
+    expect(commands[1].executable, '/custom/flutter/bin/dart');
+  });
+
   test('reports the affected subsystem and compatibility failure', () {
     final gate = MigrationRegressionGate(
       MigrationSubsystem.named('collision')!,

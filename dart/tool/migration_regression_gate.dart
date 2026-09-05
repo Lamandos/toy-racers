@@ -104,19 +104,21 @@ final class MigrationRegressionGate {
     this.subsystem, {
     GateCommandRunner? commandRunner,
     Directory? workingDirectory,
+    this.dartExecutable = 'dart',
   }) : _commandRunner = commandRunner ?? _runProcess,
        _workingDirectory = workingDirectory ?? Directory.current;
 
   final MigrationSubsystem subsystem;
   final GateCommandRunner _commandRunner;
   final Directory _workingDirectory;
+  final String dartExecutable;
 
   MigrationRegressionReport run() {
     final unitTests = _commandRunner('flutter', <String>[
       'test',
       ...subsystem.unitTests,
     ], _workingDirectory);
-    final compatibility = _commandRunner('dart', const <String>[
+    final compatibility = _commandRunner(dartExecutable, const <String>[
       'run',
       'tool/full_behavioral_gate.dart',
     ], _workingDirectory);
@@ -208,6 +210,7 @@ int executeMigrationRegressionGate(
   IOSink? errorSink,
   GateCommandRunner? commandRunner,
   Directory? workingDirectory,
+  String dartExecutable = 'dart',
 }) {
   try {
     final subsystem = _parseSubsystem(arguments);
@@ -215,6 +218,7 @@ int executeMigrationRegressionGate(
       subsystem,
       commandRunner: commandRunner,
       workingDirectory: workingDirectory,
+      dartExecutable: dartExecutable,
     ).run();
     outputSink?.writeln(report.format());
     return report.passed ? 0 : 1;
@@ -244,6 +248,7 @@ void main(List<String> arguments) {
     arguments,
     outputSink: stdout,
     errorSink: stderr,
+    dartExecutable: Platform.resolvedExecutable,
   );
   if (status != 0) {
     exitCode = status;

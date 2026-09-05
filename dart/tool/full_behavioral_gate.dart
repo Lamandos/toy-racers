@@ -15,7 +15,9 @@ import 'behavior_runner.dart';
 /// status before presentation-layer work can proceed.
 final class FullBehavioralGate {
   FullBehavioralGate(this.repositoryRoot, {BehaviorTraceComparator? comparator})
-    : _comparator = comparator ?? _compareWithKotlin,
+    // Keep the public test seam named `comparator`; the backing field is private.
+    // ignore: prefer_initializing_formals
+    : _comparator = comparator,
       _fileRunner = BehaviorRunner(tmxSource: _readTmx(repositoryRoot)),
       _legacyRunner = BehaviorRunner(
         tmxSource: _readTmx(repositoryRoot),
@@ -23,7 +25,7 @@ final class FullBehavioralGate {
       );
 
   final Directory repositoryRoot;
-  final BehaviorTraceComparator _comparator;
+  final BehaviorTraceComparator? _comparator;
   final BehaviorRunner _fileRunner;
   final BehaviorRunner _legacyRunner;
 
@@ -34,9 +36,11 @@ final class FullBehavioralGate {
     final goldenBefore = _goldenContents();
     try {
       final inventory = BehavioralInventory.load(repositoryRoot, scratch);
-      final results = <BehavioralFixtureResult>[
-        for (final fixture in inventory.fixtures) _runFixture(fixture, scratch),
+      final generated = <_GeneratedBehavioralFixture>[
+        for (final fixture in inventory.fixtures)
+          _generateFixture(fixture, scratch),
       ];
+      final results = _compareFixtures(generated, scratch);
       return BehavioralGateReport(
         results: results,
         unexpectedGoldenChanges: _changedGoldenFiles(goldenBefore),
@@ -46,24 +50,55 @@ final class FullBehavioralGate {
     }
   }
 
-  BehavioralFixtureResult _runFixture(
+  _GeneratedBehavioralFixture _generateFixture(
     BehavioralFixture fixture,
     Directory scratch,
   ) {
     final actual = File.fromUri(
       scratch.uri.resolve('actual/${fixture.outputPath}'),
     );
+    actual.parent.createSync(recursive: true);
+    actual.writeAsStringSync(
+      CompatibilityTraceJson.encode(
+        _runnerFor(fixture).replay(fixture.scenario),
+      ),
+    );
+    return _GeneratedBehavioralFixture(fixture, actual);
+  }
+
+  List<BehavioralFixtureResult> _compareFixtures(
+    List<_GeneratedBehavioralFixture> generated,
+    Directory scratch,
+  ) {
+    final comparator = _comparator;
+    if (comparator != null) {
+      return <BehavioralFixtureResult>[
+        for (final item in generated) _compareFixture(item, comparator),
+      ];
+    }
     try {
-      actual.parent.createSync(recursive: true);
-      actual.writeAsStringSync(
-        CompatibilityTraceJson.encode(
-          _runnerFor(fixture).replay(fixture.scenario),
-        ),
-      );
-      _comparator(repositoryRoot, fixture.expectedGolden, actual);
-      return BehavioralFixtureResult(fixture: fixture);
+      _compareWithKotlin(repositoryRoot, generated, scratch);
+      return <BehavioralFixtureResult>[
+        for (final item in generated)
+          BehavioralFixtureResult(fixture: item.fixture),
+      ];
     } on Object catch (error) {
-      return BehavioralFixtureResult(fixture: fixture, failure: '$error');
+      return <BehavioralFixtureResult>[
+        for (final item in generated)
+          BehavioralFixtureResult(fixture: item.fixture, failure: '$error'),
+      ];
+    }
+  }
+
+  BehavioralFixtureResult _compareFixture(
+    _GeneratedBehavioralFixture item,
+    BehaviorTraceComparator comparator,
+  ) {
+    try {
+      comparator(repositoryRoot, item.fixture.expectedGolden, item.actual);
+      return BehavioralFixtureResult(fixture: item.fixture);
+    } on Object catch (error) {
+      return BehavioralFixtureResult(fixture: item.fixture, failure: '$error');
     }
   }
 
@@ -109,15 +144,27 @@ final class FullBehavioralGate {
 
   static void _compareWithKotlin(
     Directory repositoryRoot,
-    File expected,
-    File actual,
+    List<_GeneratedBehavioralFixture> generated,
+    Directory scratch,
   ) {
+    final manifest = File.fromUri(
+      scratch.uri.resolve('comparison-manifest.json'),
+    );
+    manifest.writeAsStringSync(
+      jsonEncode(<Map<String, String>>[
+        for (final item in generated)
+          <String, String>{
+            'label': item.fixture.label,
+            'expected': item.fixture.expectedGolden.absolute.path,
+            'actual': item.actual.absolute.path,
+          },
+      ]),
+    );
     final wrapperName = Platform.isWindows ? 'gradlew.bat' : 'gradlew';
     final wrapper = File.fromUri(repositoryRoot.uri.resolve(wrapperName));
     final result = Process.runSync(wrapper.path, <String>[
       ':core:compareBehaviorTraces',
-      '-Pexpected=${expected.absolute.path}',
-      '-Pactual=${actual.absolute.path}',
+      '-Pmanifest=${manifest.absolute.path}',
       '--quiet',
     ], workingDirectory: repositoryRoot.path);
     if (result.exitCode != 0) {
@@ -132,6 +179,13 @@ final class FullBehavioralGate {
     ].where((value) => value.isNotEmpty).join('\n');
     return output.isEmpty ? 'Kotlin trace comparator failed.' : output;
   }
+}
+
+final class _GeneratedBehavioralFixture {
+  const _GeneratedBehavioralFixture(this.fixture, this.actual);
+
+  final BehavioralFixture fixture;
+  final File actual;
 }
 
 /// A completed comparison; [failure] is populated only for a deterministic mismatch.

@@ -81,6 +81,10 @@ compatibility category, for example
 run `./gradlew preMergeRegressionCheck --no-daemon`; it covers the complete
 Kotlin suite, Dart suite, and Dart compatibility inventory.
 
+The local pre-push hook intentionally runs the fast suite; GitHub CI runs the
+complete compatibility and fuzz gates once. The orchestrator uses `git push
+--no-verify` after its explicit test phase to avoid executing the hook twice.
+
 ## Assets
 
 Runtime assets will live in `assets/`, which is shared by the platform launchers according to the generated libGDX configuration. Only original, licensed, or public-domain assets may be added. Record licenses and attribution alongside third-party assets.
@@ -160,7 +164,7 @@ CLI options override environment variables. The most useful settings are:
 | `--review-timeout` | `ORCHESTRATOR_REVIEW_TIMEOUT` | `1800` seconds |
 | `--checks-timeout` | `ORCHESTRATOR_CHECKS_TIMEOUT` | `1800` seconds |
 | `--poll-interval` | `ORCHESTRATOR_POLL_INTERVAL` | `30` seconds |
-| `--implementation-model` | `ORCHESTRATOR_IMPLEMENTATION_MODEL` | `gpt-5.6-sol` |
+| `--implementation-model` | `ORCHESTRATOR_IMPLEMENTATION_MODEL` | `gpt-5.6-terra` |
 | `--fix-model` | `ORCHESTRATOR_FIX_MODEL` | `gpt-5.6-luna` |
 | `--codex-args` | `ORCHESTRATOR_CODEX_ARGS` | automatic approval review (workspace-write), ephemeral session |
 | `--review-author` | `ORCHESTRATOR_REVIEW_AUTHORS` | common Codex GitHub bot logins |
