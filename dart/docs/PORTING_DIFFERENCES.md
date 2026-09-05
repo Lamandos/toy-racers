@@ -15,7 +15,7 @@ developer can repeat the investigation.
 ## <short divergence title> — <resolved YYYY-MM-DD>
 
 - Scenario: `compatibility/scenarios/...`; command: `<replay command>`
-- Tick: `<one-based physical tick>` (`<sample label>`)
+- Tick: `<physical tick, or 0 for a lifecycle sample>` (`<sample label>`)
 - Field: `<first field reported by the shared comparator>`
 - Root cause: <the first operation whose result differs>
 - Kotlin semantics: <source location and the relevant numeric/order semantics>
@@ -23,6 +23,21 @@ developer can repeat the investigation.
 - Fix: <Dart source location and concise correction>
 - Regression test: `<test path or command>`; `<passing scenario rerun command>`
 ```
+
+Lifecycle samples emitted during loading, ready, countdown, or racing
+transitions use tick `0`; this is valid evidence and must not be changed to a
+one-based physical tick. Confirm the tick and label against both traces before
+copying a comparator report: the comparator zips sample arrays by index, so an
+inserted event sample can make its reported tick refer to the wrong observations.
+If traces are not aligned, record the insertion/deletion first and align them
+before recording a field-level divergence.
+
+For one-tick isolation, canonical trace values are display values only: trace
+floats are formatted to six decimal places. Capture the exact Float32 pre-state
+before the failing tick using raw `Float.toBits`/`Float32.toBits` values or
+another round-trippable representation. A divergence is resolved only when
+that state reproduces it, the focused regression test passes, and the original
+scenario is rerun successfully.
 
 `Regression test` must name both a focused, reproducible test and the scenario
 rerun that passed after the fix. An entry is not resolved until both commands

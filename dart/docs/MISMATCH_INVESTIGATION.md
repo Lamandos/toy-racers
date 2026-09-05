@@ -27,24 +27,31 @@ mkdir -p build/mismatch/<scenario>
 ```
 
 Replace the example path and `<scenario>` with the actual failing fixture. The
-last command is the shared comparator: its first mismatch report is the source
-of truth for tick, sample label, participant, field, values, and delta.
+last command is the shared comparator. It compares sample arrays by index, not
+by tick or label, so its first mismatch report is authoritative only after the
+expected and actual sample sequences have been aligned. Before trusting it,
+inspect both traces and record the ordered `(sample index, tick, label)`
+sequence. Every sample through the candidate mismatch must have the same tick
+and label; otherwise an extra Dart event can be paired with a later Kotlin
+periodic sample and falsely identify the failing tick.
 
 ## Required sequence
 
 1. **Find the scenario.** Record the exact scenario path (or the retained fuzz
    `scenario.json`), schema version, seed, and both trace paths. Do not replace
    it with an approximate hand-written input stream.
-2. **Find the first divergent sample.** Run the shared comparator above and
-   retain its report. Its sample label distinguishes lifecycle/event samples
-   from a normal physical-step sample.
-3. **Find the first divergent tick.** If the trace is sparse, copy the scenario
+2. **Find the first divergent sample.** Inspect and align both ordered sample
+   sequences by tick and label, then run the shared comparator above and retain
+   its report. Its sample label distinguishes lifecycle/event samples from a
+   normal physical-step sample. Resolve an insertion/deletion before treating
+   any later paired sample as a mismatch.
+3. **Find the first divergent tick.** After alignment, if the trace is sparse, copy the scenario
    (and its adjacent input script, when present) to the scratch directory and
    set only `snapshotIntervalTicks` to `1`; replay both copies and compare
    them. This creates an observation after every physical tick without changing
    the commands, seed, track, or initial state.
-4. **Find the first divergent field.** Use the comparator's first reported
-   field and participant. Confirm that all earlier samples and fields compare;
+4. **Find the first divergent field.** Within the aligned sample, use the
+   comparator's first reported field and participant. Confirm that all earlier samples and fields compare;
    do not choose a more visible downstream position or race-result difference.
 5. **Reproduce one tick in isolation.** Create a scratch scenario containing
    the pre-tick state and only the failing command. Include an `initialStates`
@@ -53,11 +60,18 @@ of truth for tick, sample label, participant, field, values, and delta.
    `snapshotIntervalTicks: 1`. Replay it through both runners. If the public
    scenario state cannot express an influencing internal value, add temporary
    local diagnostics to expose it; do not claim isolation from an inferred
-   state.
+   state. The canonical trace is not sufficient for reconstruction: its
+   Float32 values are rendered to six decimal places. Capture the exact
+   pre-tick binary32 values before the failing tick as raw `Float.toBits`/
+   `Float32.toBits` values or another round-trippable representation, and
+   restore those values in the isolated run.
 6. **Compare inputs and pre-state.** List the raw scenario command, applied
    normalized command, `inputTweaks`, fixed delta (`Float32(1 / 60)`), and each
    relevant pre-state value. Verify IDs, participant order, track/surface,
-   checkpoint/lap/finish state, and Float32 narrowing before any physics.
+   checkpoint/lap/finish state, and Float32 narrowing before any physics. Do
+   not call six-decimal trace values an exact pre-state; if exact capture was
+   unavailable, label isolation inconclusive and return to the live run with
+   instrumentation.
 7. **Compare intermediate calculations.** Instrument the smallest affected
    Kotlin and Dart functions at the same named boundaries. Capture operands and
    results in execution order: normalization, surface lookup, steering,
