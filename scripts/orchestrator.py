@@ -1056,6 +1056,11 @@ class Orchestrator:
                 self.logger.info("[%s] Codex review is clean", task.task_id)
                 return
             if next_iteration >= self.args.max_review_iterations:
+                self.transition(
+                    task,
+                    "review_limit_reached",
+                    review_findings=result.findings,
+                )
                 raise OrchestratorError(
                     f"Codex review still has actionable findings after {next_iteration} "
                     f"iterations for {task.task_id}:\n{result.findings}"
@@ -1227,6 +1232,16 @@ class Orchestrator:
             pr_number = self.ensure_pull_request(task, branch)
 
         current_status = str(self.task_record(task).get("status"))
+        if current_status == "review_limit_reached":
+            iteration = int(self.task_record(task).get("review_iteration") or 0)
+            if iteration >= self.args.max_review_iterations:
+                raise OrchestratorError(
+                    f"Task {task.task_id} reached {iteration} Codex review iterations. "
+                    "Inspect review_findings in the state file and resume with a larger "
+                    "--max-review-iterations value to continue."
+                )
+            self.transition(task, "pushed")
+            current_status = "pushed"
         if current_status in {"pr_open", "reviewing", "pushed"}:
             self.run_review_loop(task, pr_number, branch)
             self.transition(task, "checks")

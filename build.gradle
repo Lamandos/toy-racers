@@ -205,6 +205,7 @@ tasks.register('dartMigrationStageCheck', Exec) {
   description = 'Runs focused Dart tests and every protected compatibility category for one migration subsystem.'
   workingDir rootProject.file('dart')
   def dartExecutable = providers.gradleProperty('dartExecutable').orElse('dart')
+  def flutterExecutable = providers.gradleProperty('flutterExecutable').orElse('flutter')
   def subsystem = providers.gradleProperty('subsystem')
   executable dartExecutable.get()
   doFirst {
@@ -213,7 +214,11 @@ tasks.register('dartMigrationStageCheck', Exec) {
         'dartMigrationStageCheck requires -Psubsystem=<compatibility-category>',
       )
     }
-    args 'run', 'tool/migration_regression_gate.dart', '--subsystem', subsystem.get()
+    args(
+      'run', 'tool/migration_regression_gate.dart',
+      '--subsystem', subsystem.get(),
+      '--flutter-executable', flutterExecutable.get(),
+    )
   }
   inputs.dir(rootProject.file('compatibility/scenarios'))
   inputs.dir(rootProject.file('compatibility/golden'))

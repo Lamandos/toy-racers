@@ -500,6 +500,7 @@ jobs:
 
   pre-merge-regression:
     name: pre-merge-regression
+    if: ${{ always() }}
     needs:
       - quality
       - unit-tests
@@ -516,6 +517,17 @@ jobs:
     timeout-minutes: 150
 
     steps:
+      - name: Require successful prerequisite jobs
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |-
+          if jq -e 'all(.[]; .result == "success")' <<< "$NEEDS_JSON" >/dev/null; then
+            exit 0
+          fi
+          echo "One or more prerequisite jobs did not succeed:"
+          jq -r 'to_entries[] | select(.value.result != "success") | "- \(.key): \(.value.result)"' <<< "$NEEDS_JSON"
+          exit 1
+
       - name: Check out source
         uses: actions/checkout@v6
 

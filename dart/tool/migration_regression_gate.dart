@@ -105,6 +105,7 @@ final class MigrationRegressionGate {
     GateCommandRunner? commandRunner,
     Directory? workingDirectory,
     this.dartExecutable = 'dart',
+    this.flutterExecutable = 'flutter',
   }) : _commandRunner = commandRunner ?? _runProcess,
        _workingDirectory = workingDirectory ?? Directory.current;
 
@@ -112,9 +113,10 @@ final class MigrationRegressionGate {
   final GateCommandRunner _commandRunner;
   final Directory _workingDirectory;
   final String dartExecutable;
+  final String flutterExecutable;
 
   MigrationRegressionReport run() {
-    final unitTests = _commandRunner('flutter', <String>[
+    final unitTests = _commandRunner(flutterExecutable, <String>[
       'test',
       ...subsystem.unitTests,
     ], _workingDirectory);
@@ -211,14 +213,16 @@ int executeMigrationRegressionGate(
   GateCommandRunner? commandRunner,
   Directory? workingDirectory,
   String dartExecutable = 'dart',
+  String flutterExecutable = 'flutter',
 }) {
   try {
-    final subsystem = _parseSubsystem(arguments);
+    final parsed = _parseArguments(arguments);
     final report = MigrationRegressionGate(
-      subsystem,
+      parsed.subsystem,
       commandRunner: commandRunner,
       workingDirectory: workingDirectory,
       dartExecutable: dartExecutable,
+      flutterExecutable: parsed.flutterExecutable ?? flutterExecutable,
     ).run();
     outputSink?.writeln(report.format());
     return report.passed ? 0 : 1;
@@ -228,19 +232,33 @@ int executeMigrationRegressionGate(
   }
 }
 
-MigrationSubsystem _parseSubsystem(List<String> arguments) {
-  if (arguments.length != 2 || arguments.first != '--subsystem') {
+({MigrationSubsystem subsystem, String? flutterExecutable}) _parseArguments(
+  List<String> arguments,
+) {
+  if (arguments.length != 2 && arguments.length != 4 ||
+      arguments.first != '--subsystem' ||
+      arguments.length == 4 && arguments[2] != '--flutter-executable') {
     throw ArgumentError(
       'Usage: migration_regression_gate.dart --subsystem '
       '<${MigrationSubsystem.all.map((item) => item.name).join('|')}>',
     );
   }
-  return MigrationSubsystem.named(arguments[1]) ??
+  final subsystem =
+      MigrationSubsystem.named(arguments[1]) ??
       (throw ArgumentError.value(
         arguments[1],
         'subsystem',
         'must name a registered compatibility category',
       ));
+  final flutterExecutable = arguments.length == 4 ? arguments[3].trim() : null;
+  if (flutterExecutable != null && flutterExecutable.isEmpty) {
+    throw ArgumentError.value(
+      flutterExecutable,
+      'flutterExecutable',
+      'must not be empty',
+    );
+  }
+  return (subsystem: subsystem, flutterExecutable: flutterExecutable);
 }
 
 void main(List<String> arguments) {

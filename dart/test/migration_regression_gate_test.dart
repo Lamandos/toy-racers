@@ -60,6 +60,26 @@ void main() {
     expect(commands[1].executable, '/custom/flutter/bin/dart');
   });
 
+  test('passes the configured Flutter executable to focused unit tests', () {
+    final commands = <_Command>[];
+    final status = executeMigrationRegressionGate(
+      const <String>[
+        '--subsystem',
+        'car',
+        '--flutter-executable',
+        '/custom/flutter/bin/flutter',
+      ],
+      commandRunner: (executable, arguments, workingDirectory) {
+        commands.add(_Command(executable, arguments, workingDirectory));
+        return const GateCommandResult(exitCode: 0);
+      },
+      workingDirectory: Directory.current,
+    );
+
+    expect(status, 0);
+    expect(commands.first.executable, '/custom/flutter/bin/flutter');
+  });
+
   test('reports the affected subsystem and compatibility failure', () {
     final gate = MigrationRegressionGate(
       MigrationSubsystem.named('collision')!,
