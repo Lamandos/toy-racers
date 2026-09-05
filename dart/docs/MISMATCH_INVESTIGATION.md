@@ -56,10 +56,21 @@ periodic sample and falsely identify the failing tick.
 5. **Reproduce one tick in isolation.** Prefer a single-step mode on the
    original live replay at the failing tick. This preserves state that a
    scratch scenario cannot describe. If a scratch scenario is more useful,
-   create it with the pre-tick state and only the failing command. Include an
+   create it with the pre-tick state and only the failing command. When
+   accumulated drift first appears in tick `N`, the causal operation is the
+   tick whose pre-state was last equal, not the later tick whose pre-state is
+   first unequal: single-step the last equal pre-state's next tick and compare
+   its post-state. If the initial pre-states already differ, isolate
+   initialization instead. Include an
    `initialStates` record for every participant whose *public* state can affect
    that tick, preserve the original track and race progress, use `ticks: 1`,
    and set `snapshotIntervalTicks: 1`. Replay it through both runners.
+
+   If the failing tick has an `inputTweaks` entry in a schema-v2/v3 scenario,
+   remap both the raw input segment and its applicable tweak from the original
+   tick to tick `1` in the scratch scenario. Preserve their raw values and let
+   the runner perform normalization; replacing the command with an already
+   normalized value bypasses the pipeline under investigation.
 
    `initialStates` is not sufficient to establish isolation for stateful AI or
    recovery. Before claiming that the isolated tick reproduces the mismatch,
@@ -102,10 +113,18 @@ periodic sample and falsely identify the failing tick.
    or change tick `0` to make the lifecycle mismatch fit the physical-tick
    procedure.
 
+   The lifecycle runner may emit repeated tick-zero samples. For example,
+   `state-machine` emits four `countdown` samples for the countdown start, two
+   one-second advances, and one fixed-delta advance. Record the aligned sample
+   index and the exact transition or advance input for every repeated
+   `(tick: 0, label: countdown)` observation; tick and label alone do not
+   identify the operation.
+
    For accumulated drift, do not jump straight to a scratch scenario. First
    compare both runtimes' raw pre-states at the reported failing tick. If they
-   differ, backtrack to the earliest tick with unequal raw pre-state (or add
-   temporary live-replay instrumentation there) and isolate that tick instead.
+   differ, backtrack to the last equal pre-state and isolate the next tick (or
+   add temporary live-replay instrumentation there), rather than isolating the
+   downstream tick whose pre-state is already unequal.
    A scratch scenario that starts from only one runtime's rounded or inferred
    state can erase the history that caused the mismatch and produce a false
    result.
@@ -113,7 +132,10 @@ periodic sample and falsely identify the failing tick.
    normalized command, `inputTweaks`, fixed delta
    (`Float32.fixedDeltaSeconds`, equivalent to `Float32.divide(1, 60)`), and each
    relevant pre-state value. Verify IDs, participant order, track/surface,
-   checkpoint/lap/finish state, and Float32 narrowing before any physics. Do
+   checkpoint/lap/finish state, and Float32 narrowing before any physics. When
+   comparing raw bits, normalize signed Kotlin `Float.toBits()` and unsigned
+   Dart `Float32.bits(value)` to the same eight-digit hexadecimal form (or
+   Kotlin `toUInt()`) before deciding that the bit patterns differ. Do
    not call six-decimal trace values an exact pre-state; if exact capture was
    unavailable, label isolation inconclusive and return to the live run with
    instrumentation.
@@ -136,8 +158,10 @@ periodic sample and falsely identify the failing tick.
     fails before the fix and asserts the identified behavior. Retain or add a
     scenario-level regression when the issue crosses the replay boundary.
 11. **Run the scenario again.** Recreate both traces and run the shared
-    comparator using the original scenario. Run the focused regression test as
-    well. Only then record the result in
+    comparator using the original scenario, but write to distinct
+    `kotlin-after.json` and `dart-after.json` paths (or archive the failing
+    pair first). Do not overwrite the before-fix traces needed by steps 1–8.
+    Run the focused regression test as well. Only then record the result in
     [`PORTING_DIFFERENCES.md`](PORTING_DIFFERENCES.md) using every required
     field; a mismatch is not resolved without both a reproducible regression
     test and a passing scenario rerun.

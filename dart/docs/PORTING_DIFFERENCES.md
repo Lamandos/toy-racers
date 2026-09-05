@@ -15,7 +15,7 @@ developer can repeat the investigation.
 ## <short divergence title> — <resolved YYYY-MM-DD>
 
 - Scenario: `compatibility/scenarios/...`; command: `<replay command>`
-- Tick: `<physical tick, or 0 for a lifecycle sample>` (`<sample label>`)
+- Tick: `<physical tick, or 0 for a lifecycle sample>` (`<sample label>`); aligned sample index: `<index>`; transition/input: `<exact operation and input>`
 - Field: `<first field reported by the shared comparator>`
 - Root cause: <the first operation whose result differs>
 - Kotlin semantics: <source location and the relevant numeric/order semantics>
@@ -32,6 +32,16 @@ inserted event sample can make its reported tick refer to the wrong observations
 If traces are not aligned, record the insertion/deletion first and align them
 before recording a field-level divergence.
 
+Repeated tick-zero lifecycle samples also require the aligned sample index and
+exact transition or advance input. For example, `state-machine` emits four
+`countdown` samples: countdown start, two one-second advances, and one
+fixed-delta advance. Tick and label alone do not identify the observation.
+
+For accumulated drift, compare raw pre-states first and isolate the next tick
+after the last equal pre-state—the tick that produces the first unequal
+post-state—not the downstream tick whose pre-state is already unequal. If the
+initial pre-states differ, investigate initialization.
+
 For a tick-zero lifecycle divergence, isolate the exact transition rather than
 inventing a physical command: reproduce the scenario's preceding phase,
 countdown value/timer, pending start state, participant roster, and other
@@ -45,7 +55,9 @@ For one-tick isolation, canonical trace values are display values only: trace
 floats are formatted to six decimal places. Capture the exact Float32 pre-state
 from both live replays before the failing tick using raw Kotlin `Float.toBits`
 and Dart `Float32.bits(value)` values or another round-trippable representation;
-`Float32.bits` is the repository's Dart raw-bit helper. If lap or finish timing
+`Float32.bits` is the repository's Dart raw-bit helper. Normalize signed Kotlin
+bit values and unsigned Dart bit values to eight-digit hexadecimal (or Kotlin
+`toUInt()`) before comparing them. If lap or finish timing
 can affect the tick, use a schema-v3 scratch scenario and restore
 `lapStartTime` and `bestLapTime` in `initialStates`, because schema v1/v2 cannot
 represent those timers. For accumulated drift, compare both runtimes' raw
