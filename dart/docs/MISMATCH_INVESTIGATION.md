@@ -53,14 +53,28 @@ periodic sample and falsely identify the failing tick.
 4. **Find the first divergent field.** Within the aligned sample, use the
    comparator's first reported field and participant. Confirm that all earlier samples and fields compare;
    do not choose a more visible downstream position or race-result difference.
-5. **Reproduce one tick in isolation.** Create a scratch scenario containing
-   the pre-tick state and only the failing command. Include an `initialStates`
-   record for every participant whose state can affect that tick, preserve the
-   original track and race progress, use `ticks: 1`, and set
-   `snapshotIntervalTicks: 1`. Replay it through both runners. If the public
-   scenario state cannot express an influencing internal value, add temporary
-   local diagnostics to expose it; do not claim isolation from an inferred
-   state. The canonical trace is not sufficient for reconstruction: its
+5. **Reproduce one tick in isolation.** Prefer a single-step mode on the
+   original live replay at the failing tick. This preserves state that a
+   scratch scenario cannot describe. If a scratch scenario is more useful,
+   create it with the pre-tick state and only the failing command. Include an
+   `initialStates` record for every participant whose *public* state can affect
+   that tick, preserve the original track and race progress, use `ticks: 1`,
+   and set `snapshotIntervalTicks: 1`. Replay it through both runners.
+
+   `initialStates` is not sufficient to establish isolation for stateful AI or
+   recovery. Before claiming that the isolated tick reproduces the mismatch,
+   restore every hidden value that can affect execution, using a temporary
+   local state-injection probe or the original live replay. At minimum this
+   includes `ReferenceAiDriver` random state, smoothed steering, mistake and
+   recovery timers, target waypoint/path-follower state, recovery-controller
+   state, and respawn state; for each `RaceParticipant` it includes
+   `_lastSafeState` (and any other mutable recovery state). A fresh
+   `ReferenceAiDriver` or `RaceParticipant` with only `initialStates` is not an
+   isolated reproduction: it resets those values and may choose different AI
+   input or a different respawn position. If hidden-state capture and restore
+   is unavailable, label isolation inconclusive and return to the live replay;
+   do not infer or reconstruct hidden state from a canonical trace. The
+   canonical trace is not sufficient for reconstruction: its
    Float32 values are rendered to six decimal places. Capture the exact
    pre-tick binary32 values from both live replays before the failing tick as
    raw Kotlin `Float.toBits` and Dart `Float32.bits(value)` values (or another
