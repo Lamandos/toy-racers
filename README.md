@@ -45,8 +45,11 @@ Resolve Flutter dependencies, then run the Dart test suite from the repository
 root:
 
 ```sh
-cd dart && flutter pub get --enforce-lockfile
-cd dart && flutter test
+(
+  cd dart
+  flutter pub get --enforce-lockfile
+  flutter test
+)
 ```
 
 To replay one behavior scenario, the input is the shared scenario JSON and the
