@@ -68,6 +68,14 @@ DURATION_PART_RE = re.compile(
     r"(?P<amount>\d+(?:\.\d+)?)\s*(?P<unit>hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s)",
     re.IGNORECASE,
 )
+ABSOLUTE_RETRY_RE = re.compile(
+    r"try\s+again\s+at\s+(?P<hour>\d{1,2}):(?P<minute>\d{2})\s*(?P<period>am|pm)",
+    re.IGNORECASE,
+)
+REVIEW_QUOTA_RE = re.compile(
+    r"(?:reached|hit)\s+your\s+Codex\s+usage\s+limits?\s+for\s+code\s+reviews?",
+    re.IGNORECASE,
+)
 FAILURE_BUCKETS = {"fail", "cancel"}
 SUCCESS_BUCKETS = {"pass", "skipping"}
 
@@ -92,6 +100,7 @@ class PlanTask:
 class ReviewResult:
     clean: bool
     findings: str = ""
+    quota_limited: bool = False
 
 
 def utc_now() -> str:
@@ -707,6 +716,25 @@ class Orchestrator:
                 return max(1, round(amount * 60))
             return max(1, round(amount))
 
+        absolute_match = ABSOLUTE_RETRY_RE.search(output)
+        if absolute_match:
+            now = datetime.now().astimezone()
+            hour = int(absolute_match.group("hour")) % 12
+            if absolute_match.group("period").lower() == "pm":
+                hour += 12
+            candidate = now.replace(
+                hour=hour,
+                minute=int(absolute_match.group("minute")),
+                second=0,
+                microsecond=0,
+            )
+            seconds = (candidate - now).total_seconds()
+            # CLI reset times are always near-term. A clock time more than
+            # twelve hours ahead refers to yesterday and has already elapsed.
+            if 0 < seconds <= 12 * 60 * 60:
+                return max(1, round(seconds))
+            return 1
+
         duration_matches = list(DURATION_PART_RE.finditer(output))
         if duration_matches and re.search(
             r"(?:reset|available|again|limit)", output, re.IGNORECASE
@@ -741,12 +769,35 @@ class Orchestrator:
 
     def resume_quota_wait(self, task: PlanTask) -> None:
         record = self.task_record(task)
-        resume_epoch = float(record.get("quota_resume_epoch") or time.time())
+        parsed_resume_epoch = time.time() + self.retry_seconds_from_output(
+            str(record.get("quota_message") or "")
+        ) + self.args.limit_buffer_seconds
+        stored_resume_epoch = float(record.get("quota_resume_epoch") or parsed_resume_epoch)
+        resume_epoch = min(stored_resume_epoch, parsed_resume_epoch)
         self.wait_until(task, resume_epoch, "Codex usage limit is active")
         previous_status = str(record.get("quota_previous_status") or "implementing")
+        if previous_status == "fixing" and REVIEW_QUOTA_RE.search(
+            str(record.get("review_findings") or "")
+        ):
+            previous_status = "pushed"
+            record["review_iteration"] = max(
+                0, int(record.get("review_iteration") or 0) - 1
+            )
         self.transition(
             task,
             previous_status,
+            quota_resumed_at=utc_now(),
+            quota_resume_at=None,
+            quota_resume_epoch=None,
+        )
+
+    def resume_review_quota_wait(self, task: PlanTask) -> None:
+        record = self.task_record(task)
+        resume_epoch = float(record.get("quota_resume_epoch") or time.time())
+        self.wait_until(task, resume_epoch, "Codex code-review limit is active")
+        self.transition(
+            task,
+            "pushed",
             quota_resumed_at=utc_now(),
             quota_resume_at=None,
             quota_resume_epoch=None,
@@ -982,6 +1033,12 @@ class Orchestrator:
             body = str(latest_comment.get("body") or "").strip()
             if self.review_body_is_clean(body):
                 return ReviewResult(clean=True)
+            if REVIEW_QUOTA_RE.search(body):
+                return ReviewResult(
+                    clean=False,
+                    findings=f"Codex PR comment:\n{body}",
+                    quota_limited=True,
+                )
             return ReviewResult(
                 clean=False,
                 findings=f"Codex PR comment:\n{body or '(empty finding)'}",
@@ -1055,6 +1112,21 @@ class Orchestrator:
             if result.clean:
                 self.logger.info("[%s] Codex review is clean", task.task_id)
                 return
+            if result.quota_limited:
+                retry_at = time.time() + self.args.limit_window_seconds
+                self.transition(
+                    task,
+                    "review_quota_wait",
+                    review_iteration=max(0, next_iteration - 1),
+                    review_findings=result.findings,
+                    quota_resume_epoch=retry_at,
+                    quota_resume_at=datetime.fromtimestamp(
+                        retry_at, timezone.utc
+                    ).isoformat(),
+                )
+                self.wait_until(task, retry_at, "Codex code-review limit is active")
+                self.transition(task, "pushed")
+                continue
             if next_iteration >= self.args.max_review_iterations:
                 self.transition(
                     task,
@@ -1214,6 +1286,9 @@ class Orchestrator:
         record = self.task_record(task)
         if str(record.get("status") or "") == "quota_wait":
             self.resume_quota_wait(task)
+            record = self.task_record(task)
+        if str(record.get("status") or "") == "review_quota_wait":
+            self.resume_review_quota_wait(task)
             record = self.task_record(task)
         branch = self.branch_name(task)
         self.logger.info("[%s] starting task %d: %s", task.task_id, task.index + 1, task.title)
