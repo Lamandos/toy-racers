@@ -26,7 +26,7 @@ the race lifecycle, participant state, fixed-step updates, physics, collision,
 surface effects, AI, checkpoints, laps, finishing, and deterministic snapshots.
 `Float32` deliberately narrows arithmetic at reference-compatible boundaries.
 
-`lib/game/`, `lib/audio/`, and `main.dart` are presentation code. They may
+`lib/game/`, `lib/audio/`, and `lib/main.dart` are presentation code. They may
 depend on Flutter and Flame, but copy observations from simulation rather than
 changing simulation state outside its public commands.
 

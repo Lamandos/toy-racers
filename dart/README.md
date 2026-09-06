@@ -214,8 +214,9 @@ scenario with a matching golden, while excluding referenced input scripts. It
 prints the total passed inventory and `PASS` or `FAIL` for car, collision,
 race, track, surface, AI, and full-race scenarios. It does not regenerate or
 modify golden masters, invokes the shared Kotlin trace comparator, and returns
-a non-zero status for any deterministic mismatch. Do not begin Flame
-integration until this command reports no failures.
+a non-zero status for any deterministic mismatch. Flame integration is already
+present under `lib/game/`; use this gate to verify the simulation and
+compatibility boundary as presentation work evolves.
 
 ## Stress and determinism gate
 
