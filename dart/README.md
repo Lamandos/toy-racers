@@ -11,17 +11,17 @@ parser, and every transitive package used by this bootstrap.
 ## Migration boundary
 
 Issue #40 treats the Kotlin/libGDX implementation as the behavioral oracle.
-This bootstrap contains no gameplay rendering, UI, audio, or input
-implementation. The project now has a deliberately small simulation
-architecture in
+The migrated implementation has a deliberately separated simulation and
+presentation architecture. Pure gameplay lives in
 [`lib/simulation/`](lib/simulation/). It establishes the pure-Dart ownership
 boundaries and binary32 data contracts, including the reference-compatible
 `CarPhysics` integrator. `TrackLoader` now reads the canonical TMX sources
 through an injected pure-Dart text source and supplies both built-in tracks,
 their collision and road contours, world coordinates, race metadata, and
 surface lookup. Collision response, surface speed effects, race rules, AI
-behaviour, and complete compatibility replay execution still must be
-implemented incrementally against the Kotlin golden masters.
+behaviour, and compatibility replay execution are ported and exercised against
+the Kotlin golden masters. See the migration report for current evidence and
+remaining limitations.
 
 `CompatibilityScenarioParser` reads the shared scenario v1-v3 and input-script
 v1 documents directly. `CompatibilityTraceJson` writes the shared snapshot v2
@@ -45,18 +45,17 @@ The scenario input is
 canonical trace is written to
 `dart/build/behavior/straight_acceleration.json` from the repository root.
 
-The runner already owns parsing, input-script resolution, initial-state
-injection, one `1 / 60` fixed step per requested tick, lifecycle/event
-sampling, and canonical JSON output. The reference-compatible car-physics
-implementation is active in the runner. Track data is available to the pure
-simulation through `TrackLoader`; connecting it to the replay pipeline waits
-for collision, surface, race-rule, and AI migrations, so generated traces are
-structurally valid but are not yet expected to match Kotlin golden masters.
+The runner owns parsing, input-script resolution, initial-state injection, one
+`1 / 60` fixed step per requested tick, lifecycle/event sampling, and canonical
+JSON output. The reference-compatible simulation, track, race, collision,
+surface, AI, and replay implementations are active. Recorded compatibility
+evidence is 113/113 passing scenarios; see the migration report for scope and
+known anomalies.
 
 New gameplay code must begin in `lib/simulation/` as pure Dart. Simulation
 modules may not import Flutter, Flame, or `dart:ui`; they may not use wall-clock
-time or a render loop. Flutter and Flame belong only in the later presentation
-layer after the deterministic simulation gate passes.
+time or a render loop. Flutter and Flame remain presentation layers over the
+deterministic simulation boundary.
 
 ## Flutter UI command boundary
 
@@ -96,6 +95,12 @@ Read these contracts before adding simulation code:
 - [`../compatibility/README.md`](../compatibility/README.md)
 - [`../docs/BEHAVIORAL_TEST_STRATEGY.md`](../docs/BEHAVIORAL_TEST_STRATEGY.md)
 - [`MIGRATION_BASELINE.md`](MIGRATION_BASELINE.md)
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for Dart layer boundaries,
+  fixed-step/input flow, assets, and snapshots
+- [`docs/MIGRATION_REPORT.md`](docs/MIGRATION_REPORT.md) for the current
+  migration evidence and open limitations
+- [`docs/PLATFORM_SUPPORT.md`](docs/PLATFORM_SUPPORT.md) for per-target build,
+  input, audio, and runtime evidence
 - [`docs/MISMATCH_INVESTIGATION.md`](docs/MISMATCH_INVESTIGATION.md) for the
   required evidence-first Kotlin-to-Dart mismatch workflow
 - [`docs/PORTING_DIFFERENCES.md`](docs/PORTING_DIFFERENCES.md) for confirmed
@@ -209,8 +214,9 @@ scenario with a matching golden, while excluding referenced input scripts. It
 prints the total passed inventory and `PASS` or `FAIL` for car, collision,
 race, track, surface, AI, and full-race scenarios. It does not regenerate or
 modify golden masters, invokes the shared Kotlin trace comparator, and returns
-a non-zero status for any deterministic mismatch. Do not begin Flame
-integration until this command reports no failures.
+a non-zero status for any deterministic mismatch. Flame integration is already
+present under `lib/game/`; use this gate to verify the simulation and
+compatibility boundary as presentation work evolves.
 
 ## Stress and determinism gate
 

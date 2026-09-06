@@ -5,6 +5,12 @@ divergences. The Kotlin implementation is the oracle unless the compatibility
 contract has been deliberately changed and reviewed. Do not use this log for a
 suspected divergence that has not yet been reproduced.
 
+Use [`MISMATCH_INVESTIGATION.md`](MISMATCH_INVESTIGATION.md) to create the
+evidence. Resolved divergence records are retained under [Entries](#entries)
+below; there are currently no recorded difficult divergences. The migration
+status and its links to this log are in
+[`MIGRATION_REPORT.md`](MIGRATION_REPORT.md).
+
 ## Recording rules
 
 Create one entry after the cause is known. Every entry must include all of the
