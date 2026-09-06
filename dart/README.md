@@ -168,6 +168,7 @@ flutter pub get --enforce-lockfile
 flutter analyze --fatal-infos
 flutter test
 flutter test --coverage
+dart run tool/coverage_gate.dart --lcov coverage/lcov.info
 ```
 
 After resolving dependencies, run either complete compatibility workflow from
@@ -196,7 +197,8 @@ run `./gradlew preMergeRegressionCheck --no-daemon` to execute the complete
 Kotlin suite, Dart suite, and compatibility inventory.
 
 The coverage output is `coverage/lcov.info` and is intentionally ignored by
-Git. The repository CI runs analysis and the coverage-producing test command.
+Git. The repository CI rejects a result below 95% line coverage in each
+critical pure-Dart module: AI, car physics, collision, and race rules.
 
 ## Full behavioral gate
 
@@ -235,6 +237,22 @@ Its success output includes `Dart determinism: 20 / 20 identical` and
 available in GitHub Actions through **Run workflow** with
 `run_dart_stress_determinism` enabled; it is too long for the normal pull
 request checks. It never changes scenarios, golden masters, or tolerances.
+
+## Full behavioral stability gate
+
+The release gate first runs the complete 113-fixture Dart compatibility suite
+against the Kotlin goldens. It then replays all 113 fixtures twenty times and
+requires every canonical Dart trace to match its first replay byte-for-byte:
+
+```sh
+./gradlew dartBehavioralStabilityTest --no-daemon
+```
+
+The command reports `Dart behavioral stability: 20 / 20 identical (113
+fixtures each).` GitHub Actions provides the same release gate through
+**Run workflow** with `run_behavioral_stability` enabled. It is intentionally
+outside normal pull-request checks because of its run time; a successful run is
+the recorded evidence that the Dart behavioral test flaky rate is 0%.
 
 ## Performance sanity checks
 

@@ -86,6 +86,41 @@ void main() {
     expect(negativeZero, negativeZero.copy());
   });
 
+  test('CarState hash identity preserves every binary32 state field', () {
+    final state = CarState(
+      x: 1,
+      y: 2,
+      rotationDegrees: 3,
+      longitudinalSpeed: 4,
+      velocityX: 5,
+      velocityY: 6,
+      angularVelocity: 7,
+      lateralSpeed: 8,
+      driftAmount: 9,
+    );
+
+    expect(state.hashCode, state.copy().hashCode);
+    expect(CarState(x: -0.0).hashCode, isNot(CarState().hashCode));
+  });
+
+  test('CarPerformance reports and applies every profile multiplier', () {
+    final performance = CarPerformance(
+      acceleration: 1,
+      maxSpeed: 1,
+      handling: 1,
+    );
+    final base = CarConfig(
+      acceleration: 20,
+      maxForwardSpeed: 30,
+      steeringSpeed: 100,
+    );
+
+    expect(performance.total, 3);
+    expect(performance.applyTo(base).acceleration, 20);
+    expect(performance.applyTo(base).maxForwardSpeed, 30);
+    expect(performance.applyTo(base).steeringSpeed, 100);
+  });
+
   test('uses the reference radians conversion for large headings', () {
     final state = CarState(rotationDegrees: 3.8907556e24);
 

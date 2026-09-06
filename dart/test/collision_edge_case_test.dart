@@ -76,6 +76,34 @@ void main() {
       },
     );
 
+    test('world edge resolves every ordered boundary direction', () {
+      final cases = <({CarState state, CollisionNormal normal})>[
+        (
+          state: CarState(x: 101, y: 6, velocityX: 10),
+          normal: const CollisionNormal(-1, 0),
+        ),
+        (
+          state: CarState(x: 6, y: -1, velocityY: -10),
+          normal: const CollisionNormal(0, 1),
+        ),
+        (
+          state: CarState(x: 6, y: 101, velocityY: 10),
+          normal: const CollisionNormal(0, -1),
+        ),
+      ];
+
+      for (final scenario in cases) {
+        final result = resolveTrackCollisionForTest(
+          collisionSystem,
+          scenario.state,
+          unitCircleConfig,
+        );
+
+        expect(result.contacts.single.normalX, scenario.normal.x);
+        expect(result.contacts.single.normalY, scenario.normal.y);
+      }
+    });
+
     test('inside rectangle resolves by nearest side in fixed tie order', () {
       final obstacle = TrackRectangle(20, 20, 4, 4);
       final cases =

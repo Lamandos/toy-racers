@@ -55,15 +55,16 @@ It runs the complete Kotlin `qualityCheck` suite, the entire Dart and Flutter
 test suite, and the complete Dart compatibility inventory. The pre-push hook
 and the `pre-merge-regression` GitHub Actions job run the same aggregate gate.
 
-For release acceptance, run the full 115-fixture inventory twenty times sequentially:
+For release acceptance, first verify the 113-fixture Dart inventory against
+Kotlin goldens, then replay it twenty times with exact canonical trace checks:
 
 ```sh
-./gradlew behavioralStabilityTest --no-daemon
+./gradlew dartBehavioralStabilityTest --no-daemon
 ```
 
-This deliberately long task compares the canonical JSON trace of every legacy, file-per-scenario, full-race, and
-long-running replay on every run. GitHub Actions exposes the same task through **Run workflow** with
-`run_behavioral_stability` enabled.
+This deliberately long task compares the normalized Dart JSON trace of every
+legacy and file-per-scenario replay on every run. GitHub Actions exposes the
+same task through **Run workflow** with `run_behavioral_stability` enabled.
 
 ## Repository golden masters
 

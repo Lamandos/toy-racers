@@ -21,9 +21,12 @@ and presentation-only audio lifecycle/mixing.
 The latest recorded full behavioral gate reports **113 / 113 PASS** across
 car, collision, race, track, surface, AI, and full-race scenarios. The stress
 gate's recorded success is **20 / 20 identical** Dart replays and **2 / 2
-PASS** Kotlin-versus-Dart stress traces. On 2026-09-05, the complete Flutter
-suite recorded **238 tests passed**. These are recorded results, not a claim
-that the commands were rerun by this documentation task.
+PASS** Kotlin-versus-Dart stress traces. On 2026-09-06, the complete Flutter
+suite recorded **254 tests passed**. Its critical pure-Dart line coverage was
+AI **95.10%**, car **97.97%**, collision **95.88%**, and race **97.60%**.
+The 20-run full behavioral stability result is recorded only after the manual
+`dartBehavioralStabilityTest` release gate completes; it is not inferred from
+individual test runs.
 
 Reproduce the main gates from the repository root:
 

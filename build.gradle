@@ -200,6 +200,36 @@ tasks.register('dartUnitTest', Exec) {
   outputs.upToDateWhen { false }
 }
 
+tasks.register('dartCoverageCheck', Exec) {
+  group = 'verification'
+  description = 'Verifies 95% line coverage for critical pure-Dart simulation modules.'
+  dependsOn tasks.named('dartUnitTest')
+  workingDir rootProject.file('dart')
+  def dartExecutable = providers.gradleProperty('dartExecutable').orElse('dart')
+  executable dartExecutable.get()
+  args 'run', 'tool/coverage_gate.dart', '--lcov', 'coverage/lcov.info'
+  inputs.dir(rootProject.file('dart/lib/simulation'))
+  inputs.file(rootProject.file('dart/coverage/lcov.info'))
+  inputs.file(rootProject.file('dart/tool/coverage_gate.dart'))
+  outputs.upToDateWhen { false }
+}
+
+tasks.register('dartBehavioralStabilityTest', Exec) {
+  group = 'verification'
+  description = 'Replays the full Dart behavioral inventory twenty times for exact trace stability.'
+  dependsOn tasks.named('dartCompatibilityTest')
+  workingDir rootProject.file('dart')
+  def dartExecutable = providers.gradleProperty('dartExecutable').orElse('dart')
+  executable dartExecutable.get()
+  args 'run', 'tool/dart_behavioral_stability.dart', '--repository-root', rootProject.projectDir.absolutePath
+  inputs.dir(rootProject.file('compatibility/scenarios'))
+  inputs.dir(rootProject.file('compatibility/golden'))
+  inputs.dir(rootProject.file('core/src/test/resources/compat'))
+  inputs.dir(rootProject.file('dart/lib'))
+  inputs.dir(rootProject.file('dart/tool'))
+  outputs.upToDateWhen { false }
+}
+
 tasks.register('dartMigrationStageCheck', Exec) {
   group = 'verification'
   description = 'Runs focused Dart tests and every protected compatibility category for one migration subsystem.'
@@ -286,7 +316,7 @@ tasks.register('qualityCheck') {
 tasks.register('preMergeRegressionCheck') {
   group = 'verification'
   description = 'Runs the entire Kotlin suite, entire Dart suite, and complete Dart compatibility inventory.'
-  dependsOn tasks.named('qualityCheck'), tasks.named('dartUnitTest'), tasks.named('dartCompatibilityTest')
+  dependsOn tasks.named('qualityCheck'), tasks.named('dartCoverageCheck'), tasks.named('dartCompatibilityTest')
 }
 
 tasks.register('verifyCompatibilityGoldens') {
