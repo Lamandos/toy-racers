@@ -172,6 +172,10 @@ jobs:
         working-directory: dart
         run: flutter test --coverage
 
+      - name: Verify critical pure-Dart simulation coverage
+        working-directory: dart
+        run: dart run tool/coverage_gate.dart --lcov coverage/lcov.info
+
       - name: Upload Dart coverage report
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
@@ -607,7 +611,7 @@ jobs:
           retention-days: 7
 
   behavioral-stability:
-    name: Behavioral suite stability (20 runs)
+    name: Dart behavioral suite stability (20 runs)
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_behavioral_stability }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
@@ -628,16 +632,15 @@ jobs:
           cache-provider: basic
           validate-wrappers: true
 
-      - name: Repeat full behavioral fixture inventory twenty times
-        run: ./gradlew behavioralStabilityTest --no-daemon
-
-      - name: Upload behavioral stability report
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+      - name: Set up Flutter stable
+        uses: subosito/flutter-action@v2
         with:
-          name: behavioral-stability-report
-          path: |
-            core/build/reports/tests/behavioralStabilityTest/**
-            core/build/test-results/behavioralStabilityTest/**
-          if-no-files-found: warn
-          retention-days: 7
+          channel: stable
+          cache: true
+
+      - name: Resolve locked Dart dependencies
+        working-directory: dart
+        run: flutter pub get --enforce-lockfile
+
+      - name: Repeat full Dart behavioral inventory twenty times
+        run: ./gradlew dartBehavioralStabilityTest --no-daemon

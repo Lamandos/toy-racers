@@ -43,9 +43,11 @@ Xvfb before committing or pushing from that environment.
 ./gradlew fuzzSmokeTest
 ./gradlew dartMigrationStageCheck -Psubsystem=car
 ./gradlew preMergeRegressionCheck
+./gradlew dartCoverageCheck
 ./gradlew coverageReport
 ./gradlew mutationTest
 ./gradlew behavioralStabilityTest
+./gradlew dartBehavioralStabilityTest
 ./gradlew ktlintCheck
 ./gradlew detekt
 ./gradlew test
@@ -58,6 +60,7 @@ dart format --output=none --set-exit-if-changed .
 flutter analyze --fatal-infos
 flutter test
 flutter test --coverage
+dart run tool/coverage_gate.dart --lcov coverage/lcov.info
 dart run tool/full_behavioral_gate.dart
 ```
 
@@ -69,11 +72,20 @@ systems: car physics, collision response, race rules, and surface speed. It requ
 `fuzzSmokeTest` runs on every normal GitHub Actions workflow to compare fixed-seed Kotlin and Dart traces. It remains
 available as an explicit local command for focused diagnosis.
 
+`dartCoverageCheck` runs `flutter test --coverage` and rejects LCOV line
+coverage below 95% in each critical pure-Dart simulation module: AI, car,
+collision, and race. The pre-push hook, `preMergeRegressionCheck`, and the
+`dart-unit` GitHub Actions job run this check after generating coverage.
+
 `behavioralStabilityTest` intentionally takes much longer than pull-request checks: it runs the complete inventory of
 legacy, file-per-scenario, full-race, and long-running fixtures twenty times sequentially and compares canonical JSON
-from every replay. Reserve up to six hours for the manual GitHub Actions job (or use a sufficiently provisioned local
-machine) before a release. Run it through **Run workflow** with `run_behavioral_stability` enabled; a successful
-invocation is the evidence for a 0% flaky result across 20 full suite runs.
+from every Kotlin replay. `dartBehavioralStabilityTest` first verifies the
+113-fixture Dart inventory against Kotlin goldens, then compares exact
+normalized Dart traces from twenty complete replays. Reserve up to six hours
+for the manual GitHub Actions job (or use a sufficiently provisioned local
+machine) before a release. Run it through **Run workflow** with
+`run_behavioral_stability` enabled; a successful invocation is the evidence
+for a 0% Dart behavioral-test flaky rate across 20 full suite runs.
 
 For Dart migration stages, use `dartMigrationStageCheck` with the affected
 compatibility category. It runs the registered focused Dart tests and then the
@@ -104,7 +116,8 @@ dart format .
 ```
 
 Flutter analysis is also read-only. Its configured rules are in `dart/analysis_options.yaml`; the
-coverage command writes ignored output to `dart/coverage/lcov.info`.
+coverage command writes ignored output to `dart/coverage/lcov.info`, which
+`dartCoverageCheck` validates for the four critical simulation modules.
 
 `tools/flutter_asset_pipeline.py check` validates that `dart/assets/` is the exact generated SHA-256 mirror of
 the canonical `assets/` tree and the repository-level `SOURCES.md` attribution record. It also validates the

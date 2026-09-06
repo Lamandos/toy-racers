@@ -18,7 +18,8 @@ fi
   flutter pub get --enforce-lockfile
   dart format --output=none --set-exit-if-changed .
   flutter analyze --fatal-infos
-  flutter test
+  flutter test --coverage
+  dart run tool/coverage_gate.dart --lcov coverage/lcov.info
 )
 
 if [ "$(uname -s)" = "Linux" ] && [ -z "${DISPLAY:-}" ]; then
