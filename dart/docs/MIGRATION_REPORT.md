@@ -63,6 +63,16 @@ local interactive runtime verification in the recorded environment. Audible
 output has not been verified on any target. See the platform matrix for the
 precise status.
 
+The 113/113 behavioral result also has deliberate boundaries. The headless
+scenarios do not represent live render-delta accumulation or asynchronous input
+timing; non-default countdown durations and lap counts are unsupported by the
+current fixture boundary; and the public snapshot adapter cannot restore or
+compare mid-race accumulator remainder, next finish position, or AI continuation
+state. Ordered per-physical-step contact traces are also not fully exposed.
+These limits mean the behavioral pass establishes deterministic scenario
+compatibility, not complete runtime equivalence. The authoritative list is in
+[`docs/BEHAVIORAL_TEST_REPORT.md`](../../docs/BEHAVIORAL_TEST_REPORT.md).
+
 ## Performance result
 
 The bounded six-car simulation probe, memory/collection bounds, state-identity

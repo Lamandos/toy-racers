@@ -65,10 +65,12 @@ changing it; this materializes `dart/assets/`, its checksum manifest, and the
 generated `pubspec.yaml` asset entries. Do not edit that mirror directly.
 
 `TrackLoader` reads the bundled canonical TMX text through an injected text
-source and converts it into portable track geometry, road/surface data,
-checkpoints, start grid, and race metadata. Presentation loads rasters through
-Flutter's asset bundle (`RasterAssetLoader`); rendering assets never determine
-simulation geometry.
+source and derives collision shapes plus the inner and outer road contours.
+Checkpoints, bounds, start grid, racing lines, and other race metadata are
+code-defined constants in the track definitions; they are not regenerated from
+Tiled edits to the TMX. Presentation loads rasters through Flutter's asset
+bundle (`RasterAssetLoader`); rendering assets never determine simulation
+geometry.
 
 ## Snapshot adapter and compatibility boundary
 
