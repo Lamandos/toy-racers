@@ -35,9 +35,11 @@ changing simulation state outside its public commands.
 Flame calls `ToyRacersGame.update` with a variable render delta.
 `FixedTimestepScheduler` caps and accumulates that delta, then invokes
 `RaceSession.advanceFixedStep()` in chronological order at the reference
-`1 / 60` interval. Its remainder is used only as an interpolation factor for
-visual components. Pause, finish, and restart reset the accumulator, so elapsed
-presentation time cannot become deferred gameplay ticks.
+`1 / 60` interval. The retained remainder is added to the next render delta and
+therefore schedules later fixed ticks; it also yields the interpolation factor
+for visual components. Pause, finish, and restart reset the accumulator, so
+elapsed presentation time cannot become deferred gameplay ticks after those
+state transitions.
 
 Keyboard and touch adapters maintain presentation-side input state. The
 combined `PlayerInputAdapter` normalizes it to one `PlayerInput`, which the

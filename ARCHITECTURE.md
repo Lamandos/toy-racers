@@ -8,8 +8,10 @@ Kotlin/libGDX reference implementation  <-->  shared compatibility contracts
 ```
 
 The Kotlin/libGDX code in the core and platform modules is the reference
-implementation and behavioral oracle. Its scenarios, golden traces, schemas,
-and comparator live in the repository-level `compatibility/` area. The Dart
+implementation and behavioral oracle. Its scenarios, golden traces, and
+schemas live in the repository-level `compatibility/` area. The shared
+comparator contract is defined there, while the comparator implementation and
+CLI live in `core/src/main/kotlin/com/example/toyracers/compat/`. The Dart
 migration is an independent Flutter project in `dart/`; it consumes those
 shared contracts and is compared to Kotlin rather than replacing or depending
 on Kotlin at runtime.

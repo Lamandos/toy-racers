@@ -40,8 +40,16 @@ separates compile evidence from runtime and audible-output evidence.
 
 ## Known anomalies and limitations
 
-No confirmed difficult Kotlin-to-Dart divergence is currently recorded; the
-evidence-log template and future records are in
+The compatibility goldens intentionally preserve five surprising oracle
+behaviors: scenario seeds do not affect gameplay randomness; the player can
+finish while AI cars are still running; finishing discards the accumulator
+remainder and later ticks from that `advance` call; AI track contacts are
+omitted from aggregate impact speed; and an explicitly seeded test fixture can
+contain inconsistent velocity and speed components. These are recorded in the
+[behavioral test report](../../docs/BEHAVIORAL_TEST_REPORT.md) and are not
+silently treated as new Dart defects. No additional confirmed difficult
+Kotlin-to-Dart divergence is currently recorded; the evidence-log template and
+future records are in
 [`PORTING_DIFFERENCES.md`](PORTING_DIFFERENCES.md). A broad Chrome test command
 previously hung after 27 tests; the isolated browser suites were used instead
 and are documented in [`PLATFORM_SUPPORT.md`](PLATFORM_SUPPORT.md).
