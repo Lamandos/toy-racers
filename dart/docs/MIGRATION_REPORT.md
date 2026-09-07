@@ -136,9 +136,19 @@ because Flutter generates their runners.
 
 ### Gate E — Clean checkout
 
-Pending final clean-checkout verification of this report commit. It must run
-the documented commands, show empty diffs for compatibility/golden and
-compatibility/schemas, and contain no tracked generated artifacts.
+PASS — a detached clean worktree of commit e945f34 restored the lockfile with
+flutter pub get --enforce-lockfile, then completed Flutter analysis and 255
+tests, the coverage gate, Kotlin quality and test suites, Dart compatibility,
+100-seed fuzz, stress/determinism, and 20-run behavioral stability. It ended
+with empty compatibility/golden and compatibility/schemas diffs and no tracked
+generated artifacts.
+
+Kotlin Android tasks need a configured Android SDK in a clean checkout. Set
+ANDROID_HOME to the installed SDK directory, or provide the equivalent ignored
+local.properties sdk.dir value, before running Gradle:
+
+    export ANDROID_HOME=/path/to/Android/sdk
+    ./gradlew qualityCheck --no-daemon
 
 ## Final migration result
 
@@ -199,8 +209,8 @@ compatibility/schemas, and contain no tracked generated artifacts.
     Ready to replace Kotlin/libGDX version:
     NO
 
-The migration is FAIL only because Cross-platform Gate D and the clean-checkout
-confirmation are incomplete. It is not a behavioral compatibility failure.
+The migration is FAIL only because Cross-platform Gate D is incomplete. It is
+not a behavioral compatibility failure.
 
 ## Supporting evidence
 
@@ -226,7 +236,7 @@ The latest recorded full behavioral gate reports **113 / 113 PASS** across
 car, collision, race, track, surface, AI, and full-race scenarios. The stress
 gate's recorded success is **20 / 20 identical** Dart replays and **2 / 2
 PASS** Kotlin-versus-Dart stress traces. On 2026-09-06, the complete Flutter
-suite recorded **254 tests passed**. Its critical pure-Dart line coverage was
+suite recorded **255 tests passed**. Its critical pure-Dart line coverage was
 AI **95.10%**, car **97.97%**, collision **95.88%**, and race **97.60%**.
 The 20-run full behavioral stability result is recorded only after the manual
 `dartBehavioralStabilityTest` release gate completes; it is not inferred from
