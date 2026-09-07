@@ -1,4 +1,218 @@
-# Dart migration report
+# Dart/Flame Migration Report
+
+Recorded: 2026-09-06. Kotlin/libGDX is the behavioral oracle; the runners use
+the shared compatibility schemas, scenarios, goldens, and comparator.
+
+Behavioral scenarios:
+
+Passed: 113 / 113 (100%)
+
+Failed: 0
+
+Skipped: 0
+
+Full races:
+
+Passed: 10 / 10 (100%)
+
+Differential fuzz seeds:
+
+Passed: 100 / 100 (100%)
+
+Stress:
+
+1,000 ticks: PASS
+
+5,000 ticks: PASS
+
+Determinism:
+
+20-run result: PASS — 20 / 20 identical complete 113-fixture replays, plus
+20 / 20 byte-identical 5,000-tick stress traces.
+
+Golden files modified: 0
+
+Comparator tolerance modified: 0
+
+Dart line coverage:
+
+Simulation: 3,082 / 3,324 lines (92.72%)
+
+Critical simulation modules: AI 95.10%, car 97.97%, collision 95.88%, race
+97.60%. Every critical module is at or above 95%.
+
+flutter analyze:
+
+Errors: 0
+
+Warnings: 0
+
+Platforms:
+
+Android: PASS — flutter build apk --debug completed locally on 2026-09-06.
+
+iOS: BLOCKED (documented) — full Xcode and CocoaPods are unavailable. See
+[PLATFORM_SUPPORT.md](PLATFORM_SUPPORT.md#ios).
+
+Web: PASS — flutter build web --release completed locally on 2026-09-06; the
+Wasm dry run also succeeded.
+
+Windows: BLOCKED (documented) — a Windows host is required. See
+[PLATFORM_SUPPORT.md](PLATFORM_SUPPORT.md#windows).
+
+macOS: BLOCKED (documented) — the host has Command Line Tools, not full Xcode.
+See [PLATFORM_SUPPORT.md](PLATFORM_SUPPORT.md#macos).
+
+Linux: BLOCKED (documented) — a Linux host and GTK toolchain are required. See
+[PLATFORM_SUPPORT.md](PLATFORM_SUPPORT.md#linux).
+
+UI smoke tests:
+
+PASS — flutter test test/ui_smoke_test.dart covers menu, selections, race
+controls, pause/resume, and results. Kotlin desktop UI smoke also passed via
+./gradlew qualityCheck --no-daemon.
+
+Known behavioral differences:
+
+None confirmed. Five deliberately preserved Kotlin oracle properties are
+documented in [BEHAVIORAL_TEST_REPORT.md](../../docs/BEHAVIORAL_TEST_REPORT.md):
+scenario seeds currently do not alter gameplay randomness; a player may finish
+while AI cars race; finishing discards the current accumulator remainder and
+later ticks; AI track contacts are omitted from aggregate impact speed; and a
+seeded fixture may contain inconsistent velocity and speed components. These
+are shared contract behavior, not Dart deviations.
+
+Known visual differences:
+
+No confirmed render-behavior difference in automated Flutter tests. This is
+not a pixel-perfect claim: widget composition, not rendering goldens, is
+checked, and interactive iOS, Windows, macOS, and Linux evidence is absent.
+
+Known audio differences:
+
+No confirmed controller or lifecycle difference. Audible device output has not
+been verified, so decoder, routing, and speaker-output equivalence are open.
+
+Remaining limitations:
+
+- Android and Web are the only locally built targets. iOS, Windows, macOS, and
+  Linux are documented host/toolchain blocks, not supported targets.
+- TASK-028 has no representative native desktop and physical-mobile rendering
+  performance result; see [PERFORMANCE.md](PERFORMANCE.md).
+- Compatibility proves deterministic fixed-step scenarios, not live
+  render-delta accumulation, asynchronous input timing, non-default fixtures,
+  or every mid-race internal adapter state.
+
+## Acceptance gates
+
+### Gate A — Pure Dart simulation
+
+PASS — every car, collision, track, surface, race, AI, and full-race scenario
+passes; stress and determinism pass; goldens and comparator tolerance are
+unchanged.
+
+Pure Dart behavioral compatibility: PASS
+
+### Gate B — Differential testing
+
+PASS — 100 reproducible fixed seeds ran against Kotlin and Dart with no
+ignored mismatch. The runner retains a failing seed for reproduction.
+
+Kotlin ↔ Dart differential testing: PASS
+
+### Gate C — Flame game
+
+PASS — Flutter widget, Flame adapter, input, application, audio-controller,
+and UI-smoke tests exercise track and car rendering, camera synchronization,
+player input, AI synchronization, HUD, countdown, results, and pause.
+
+Flame gameplay frontend: PASS
+
+### Gate D — Cross-platform
+
+BLOCKED — Android and Web build locally. The remaining four native targets
+have documented host/toolchain blocks and are not counted as supported merely
+because Flutter generates their runners.
+
+### Gate E — Clean checkout
+
+PASS — a detached clean worktree of commit e945f34 restored the lockfile with
+flutter pub get --enforce-lockfile, then completed Flutter analysis and 255
+tests, the coverage gate, Kotlin quality and test suites, Dart compatibility,
+100-seed fuzz, stress/determinism, and 20-run behavioral stability. It ended
+with empty compatibility/golden and compatibility/schemas diffs and no tracked
+generated artifacts.
+
+Kotlin Android tasks need a configured Android SDK in a clean checkout. Set
+ANDROID_HOME to the installed SDK directory, or provide the equivalent ignored
+local.properties sdk.dir value, before running Gradle:
+
+    export ANDROID_HOME=/path/to/Android/sdk
+    ./gradlew qualityCheck --no-daemon
+
+## Final migration result
+
+    Toy Racers Dart/Flame migration: FAIL
+
+    Pure Dart behavioral compatibility:
+    113 / 113 scenarios
+
+    Full races:
+    10 / 10
+
+    Differential fuzz:
+    100 / 100
+
+    Stress:
+    1,000 ticks: PASS
+    5,000 ticks: PASS
+
+    Determinism:
+    20 / 20 identical
+
+    Golden files changed:
+    NO
+
+    Comparator tolerance changed:
+    NO
+
+    Dart simulation coverage:
+    92.72%
+
+    Flutter analyze:
+    0 errors
+    0 warnings
+
+    Tests:
+    Kotlin: PASS
+    Dart unit: PASS
+    Compatibility: PASS
+    Flutter UI: PASS
+
+    Platform builds:
+    Android: PASS
+    iOS: BLOCKED (documented)
+    Web: PASS
+    Windows: BLOCKED (documented)
+    macOS: BLOCKED (documented)
+    Linux: BLOCKED (documented)
+
+    Known behavioral differences:
+    None confirmed; documented oracle quirks are preserved.
+
+    Known visual differences:
+    No confirmed automated difference; native interactive coverage is incomplete.
+
+    Known audio differences:
+    No confirmed controller difference; audible output is unverified.
+
+    Ready to replace Kotlin/libGDX version:
+    NO
+
+The migration is FAIL only because Cross-platform Gate D is incomplete. It is
+not a behavioral compatibility failure.
+
+## Supporting evidence
 
 ## Scope
 
@@ -22,7 +236,7 @@ The latest recorded full behavioral gate reports **113 / 113 PASS** across
 car, collision, race, track, surface, AI, and full-race scenarios. The stress
 gate's recorded success is **20 / 20 identical** Dart replays and **2 / 2
 PASS** Kotlin-versus-Dart stress traces. On 2026-09-06, the complete Flutter
-suite recorded **254 tests passed**. Its critical pure-Dart line coverage was
+suite recorded **255 tests passed**. Its critical pure-Dart line coverage was
 AI **95.10%**, car **97.97%**, collision **95.88%**, and race **97.60%**.
 The 20-run full behavioral stability result is recorded only after the manual
 `dartBehavioralStabilityTest` release gate completes; it is not inferred from
