@@ -13,24 +13,28 @@ final class VirtualPresentationViewport extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final surfaceSize = constraints.biggest;
-      final content = _usesAuthoredSize(surfaceSize)
-          ? FittedBox(
-              fit: BoxFit.contain,
-              alignment: Alignment.center,
-              child: SizedBox.fromSize(size: designSize, child: child),
-            )
-          : child;
-      return ColoredBox(
-        color: const Color(0xff121e2e),
-        child: SafeArea(child: ClipRect(child: content)),
-      );
-    },
+  Widget build(BuildContext context) => ColoredBox(
+    color: const Color(0xff121e2e),
+    child: SafeArea(
+      child: LayoutBuilder(
+        builder: (context, constraints) => ClipRect(
+          child: FittedBox(
+            fit: BoxFit.contain,
+            alignment: Alignment.center,
+            child: SizedBox.fromSize(
+              size: _contentSize(constraints.biggest),
+              child: child,
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
-  bool _usesAuthoredSize(Size surfaceSize) =>
-      surfaceSize.width >= designSize.width &&
-      surfaceSize.height >= designSize.height;
+  Size _contentSize(Size availableSize) =>
+      _usesAuthoredSize(availableSize) ? designSize : availableSize;
+
+  bool _usesAuthoredSize(Size availableSize) =>
+      availableSize.width >= designSize.width &&
+      availableSize.height >= designSize.height;
 }
