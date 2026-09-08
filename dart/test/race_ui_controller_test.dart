@@ -20,6 +20,9 @@ void main() {
     );
 
     expect(find.text('POSITION'), findsOneWidget);
+    expect(find.text('YOU'), findsOneWidget);
+    expect(find.text('RACER 2'), findsOneWidget);
+    expect(find.text('LAP 3/3'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey<String>('pause-race')));
 
     await tester.pumpWidget(

@@ -88,6 +88,11 @@ changes are intentionally allocation-only:
   resize that component. Checkpoint endpoints and paints are projected once
   when their component is created. The render topology regression runs 1,000
   visual synchronizations and requires the same car map and child order.
+- The race minimap owns one `RepaintBoundary`, so its dynamic markers do not
+  rebuild the text HUD. Its outer and inner road paths are projected once per
+  immutable track; a minimap frame creates only a bounded participant snapshot,
+  lightweight painter, and one player marker path. This preserves Kotlin's per-frame
+  marker movement without making the full Flutter overlay repaint at 60 Hz.
 - The profile probe retains at most the requested number of engine timings
   (300 by default). Its web fallback retains exactly one more timestamp than
   the requested interval count and stops scheduling callbacks on completion or
@@ -190,5 +195,6 @@ substantially slower in this environment.
 
 The performance test covers RSS scoring, collection bounds, repeated-run state
 identity, binary32 state copying, fixed render topology, and rendering report
-thresholds. The full behavioral gate is the required compatibility safeguard;
-goldens must never be regenerated to make an optimization pass.
+thresholds. The full behavioral gate is the required
+compatibility safeguard; goldens must never be regenerated to make an
+optimization pass.

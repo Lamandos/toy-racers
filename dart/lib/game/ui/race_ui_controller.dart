@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:toy_racers/simulation.dart';
 
+import 'race_minimap_state.dart';
+
 /// Read-only race data rendered by Flutter widgets.
 ///
 /// A fresh value is created by the Flame adapter whenever a presentation frame
@@ -89,4 +91,14 @@ abstract interface class RaceUiController {
 
   void togglePause();
   void restartRace();
+}
+
+/// Read-only visual stream used only by the HUD minimap.
+///
+/// It is deliberately separate from [RaceUiController.presentationFrame]: the
+/// text HUD can update below the render cadence while car markers retain the
+/// same interpolated motion as the world renderer.
+abstract interface class RaceMinimapController {
+  RaceMinimapState get minimapState;
+  ValueListenable<int> get minimapFrame;
 }

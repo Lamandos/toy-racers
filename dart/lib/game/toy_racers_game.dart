@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
@@ -17,6 +18,7 @@ import 'presentation_update_throttle.dart';
 import 'rendering/race_car_models.dart';
 import 'race_world.dart';
 import 'ui/race_ui_controller.dart';
+import 'ui/race_minimap_state.dart';
 
 /// Supplies the latest normalized player command to the simulation adapter.
 typedef PlayerInputProvider = PlayerInput Function();
@@ -28,7 +30,7 @@ typedef PlayerInputProvider = PlayerInput Function();
 /// Flame's render deltas, then updates visual components and camera framing.
 final class ToyRacersGame extends FlameGame<RaceWorld>
     with KeyboardEvents
-    implements RaceUiController {
+    implements RaceUiController, RaceMinimapController {
   static const String touchControlsOverlayId = 'touch-controls';
   static const String raceHudOverlayId = 'race-hud';
   static const String countdownOverlayId = 'race-countdown';
@@ -60,7 +62,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
                  RaceCarModels.opponentsFor(playerCarModel),
            ),
          ),
-         camera: CameraComponent.withFixedResolution(width: 1280, height: 720),
+         camera: CameraComponent(),
        );
 
   final RaceSession session;
@@ -88,6 +90,11 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
       );
   @override
   final ValueNotifier<int> presentationFrame = ValueNotifier<int>(0);
+  late final RaceMinimapTrack _minimapTrack = RaceMinimapTrack.fromTrack(
+    session.track,
+  );
+  @override
+  final ValueNotifier<int> minimapFrame = ValueNotifier<int>(0);
 
   double interpolationFactor = 0;
   PlayerInput _latestInput = PlayerInput.none;
@@ -98,6 +105,16 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
 
   @override
   RaceUiState get uiState => RaceUiState.fromSession(session);
+
+  @override
+  RaceMinimapState get minimapState => RaceMinimapState(
+    track: _minimapTrack,
+    participants: <RaceMinimapParticipant>[
+      for (final opponent in session.opponents)
+        _minimapParticipant(opponent, RaceMinimapParticipantRole.opponent),
+      _minimapParticipant(session.player, RaceMinimapParticipantRole.player),
+    ],
+  );
 
   /// The application binds its shared presentation audio before [onLoad].
   void attachAudio(GameAudioController audio) {
@@ -154,6 +171,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     _synchronizePresentationOverlays();
     world.synchronizeVisualState(interpolationFactor);
     _followPlayerCamera(0);
+    _publishMinimapFrame();
     _publishPresentationFrame(force: true);
   }
 
@@ -245,6 +263,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     }
     world.synchronizeVisualState(interpolationFactor);
     _resetPlayerCamera();
+    _publishMinimapFrame();
     _publishPresentationFrame(force: true);
   }
 
@@ -312,6 +331,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     interpolationFactor = frame.interpolationFactor;
     world.synchronizeVisualState(interpolationFactor);
     _followPlayerCamera(frameDelta);
+    _publishMinimapFrame();
     super.update(dt);
     _publishPresentationFrame(frameDelta: frameDelta);
   }
@@ -439,6 +459,23 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     if (force || _hudUpdateThrottle.isDue(frameDelta)) {
       presentationFrame.value++;
     }
+  }
+
+  void _publishMinimapFrame() {
+    minimapFrame.value++;
+  }
+
+  RaceMinimapParticipant _minimapParticipant(
+    RaceParticipant participant,
+    RaceMinimapParticipantRole role,
+  ) {
+    final visualState = world.cars[participant.id]!.visualState;
+    return RaceMinimapParticipant(
+      x: visualState.position.x,
+      y: session.track.worldBounds.maxY - visualState.position.y,
+      rotationDegrees: -visualState.angle * 180 / math.pi,
+      role: role,
+    );
   }
 
   static const double _hudUpdateIntervalSeconds = 1 / 10;

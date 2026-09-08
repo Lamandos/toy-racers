@@ -467,6 +467,23 @@ void main() {
     },
   );
 
+  testWidgets('camera matches the Kotlin ExtendViewport framing', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(800, 600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final game = ToyRacersGame(session: _session(playerY: 95));
+
+    await tester.pumpWidget(GameWidget<ToyRacersGame>(game: game));
+    await game.toBeLoaded();
+    await tester.pump();
+
+    expect(game.camera.visibleWorldRect.width, closeTo(24, 0.000001));
+    expect(game.camera.visibleWorldRect.height, closeTo(18, 0.000001));
+    expect(game.camera.viewfinder.position.y, closeTo(9, 0.000001));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('loads the bundled default session into a Flame GameWidget', (
     tester,
   ) async {
