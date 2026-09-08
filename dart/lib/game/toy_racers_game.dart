@@ -13,6 +13,7 @@ import 'fixed_timestep_scheduler.dart';
 import 'input/keyboard_input_controller.dart';
 import 'input/player_input_adapter.dart';
 import 'input/touch_input_controller.dart';
+import 'presentation_update_throttle.dart';
 import 'rendering/race_car_models.dart';
 import 'race_world.dart';
 import 'ui/race_ui_controller.dart';
@@ -79,6 +80,12 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
   final RaceCameraController _cameraController;
   GameAudioController _audio;
   final FixedTimestepScheduler _fixedTimestep = FixedTimestepScheduler();
+  final PresentationUpdateThrottle _hudUpdateThrottle =
+      PresentationUpdateThrottle(intervalSeconds: _hudUpdateIntervalSeconds);
+  final PresentationUpdateThrottle _audioMixUpdateThrottle =
+      PresentationUpdateThrottle(
+        intervalSeconds: _audioMixUpdateIntervalSeconds,
+      );
   @override
   final ValueNotifier<int> presentationFrame = ValueNotifier<int>(0);
 
@@ -147,7 +154,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     _synchronizePresentationOverlays();
     world.synchronizeVisualState(interpolationFactor);
     _followPlayerCamera(0);
-    _publishPresentationFrame();
+    _publishPresentationFrame(force: true);
   }
 
   @override
@@ -161,6 +168,8 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
   void pauseEngine() {
     touchInputController.clear();
     _fixedTimestep.reset();
+    _hudUpdateThrottle.reset();
+    _audioMixUpdateThrottle.reset();
     super.pauseEngine();
   }
 
@@ -168,6 +177,8 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
   void onDetach() {
     touchInputController.clear();
     _fixedTimestep.reset();
+    _hudUpdateThrottle.reset();
+    _audioMixUpdateThrottle.reset();
     unawaited(_audio.stopRaceLoops());
     super.onDetach();
   }
@@ -197,12 +208,12 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
         _fixedTimestep.reset();
         unawaited(_audio.pauseRace());
         _synchronizePresentationOverlays();
-        _publishPresentationFrame();
+        _publishPresentationFrame(force: true);
       case RacePhase.paused:
         session.resume();
         unawaited(_audio.resumeRace());
         _synchronizePresentationOverlays();
-        _publishPresentationFrame();
+        _publishPresentationFrame(force: true);
       case RacePhase.loading ||
           RacePhase.ready ||
           RacePhase.countdown ||
@@ -218,6 +229,8 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     session.restart();
     touchInputController.clear();
     _fixedTimestep.reset();
+    _hudUpdateThrottle.reset();
+    _audioMixUpdateThrottle.reset();
     interpolationFactor = 0;
     _latestInput = PlayerInput.none;
     _lastCountdownNumber = -1;
@@ -232,7 +245,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     }
     world.synchronizeVisualState(interpolationFactor);
     _resetPlayerCamera();
-    _publishPresentationFrame();
+    _publishPresentationFrame(force: true);
   }
 
   /// Enables or disables the touch overlay for the current platform.
@@ -293,14 +306,14 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
         ),
       );
     }
-    _updateRaceAudio();
+    _updateRaceAudio(frameDelta);
     _showResultsWhenFadeCompletes();
     _synchronizePresentationOverlays();
     interpolationFactor = frame.interpolationFactor;
     world.synchronizeVisualState(interpolationFactor);
     _followPlayerCamera(frameDelta);
     super.update(dt);
-    _publishPresentationFrame();
+    _publishPresentationFrame(frameDelta: frameDelta);
   }
 
   bool _isRacing() => session.raceState.phase == RacePhase.racing;
@@ -341,7 +354,10 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     }
   }
 
-  void _updateRaceAudio() {
+  void _updateRaceAudio(double frameDelta) {
+    if (!_audioMixUpdateThrottle.isDue(frameDelta)) {
+      return;
+    }
     final state = session.player.carState;
     unawaited(
       _audio.updateRace(
@@ -419,7 +435,14 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     }
   }
 
-  void _publishPresentationFrame() => presentationFrame.value++;
+  void _publishPresentationFrame({double frameDelta = 0, bool force = false}) {
+    if (force || _hudUpdateThrottle.isDue(frameDelta)) {
+      presentationFrame.value++;
+    }
+  }
+
+  static const double _hudUpdateIntervalSeconds = 1 / 10;
+  static const double _audioMixUpdateIntervalSeconds = 1 / 20;
 
   static RaceSession _defaultSession({
     required Track track,

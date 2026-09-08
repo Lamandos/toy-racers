@@ -15,7 +15,7 @@ final class TrackComponent extends Component {
   final Track track;
   final RaceWorldProjection projection;
   final Rect _destinationRectangle;
-  final Paint _imagePaint = Paint()..filterQuality = FilterQuality.high;
+  final Paint _imagePaint = Paint()..filterQuality = FilterQuality.medium;
   Image? _image;
   Rect? _sourceRectangle;
 

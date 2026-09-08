@@ -58,7 +58,7 @@ final class CarComponent extends PositionComponent {
   final CarModel carModel;
   final RaceWorldProjection _projection;
   Rect _destinationRectangle;
-  final Paint _spritePaint = Paint()..filterQuality = FilterQuality.high;
+  final Paint _spritePaint = Paint()..filterQuality = FilterQuality.medium;
   CarVisualState _visualState;
   Image? _sprite;
   Rect? _sourceRectangle;
