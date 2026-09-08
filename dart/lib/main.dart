@@ -8,6 +8,7 @@ import 'package:toy_racers/simulation.dart';
 
 import 'audio/game_audio_controller.dart';
 import 'audio/audio_settings.dart';
+import 'presentation/virtual_presentation_viewport.dart';
 import 'game/ui/audio_settings_view.dart';
 import 'game/input/touch_controls_overlay.dart';
 import 'game/race_results_overlay.dart';
@@ -31,7 +32,9 @@ Future<void> main() async {
   ]);
   final audio = GameAudioController.production();
   await audio.prepare();
-  runApp(ToyRacersApplication(audio: audio));
+  runApp(
+    VirtualPresentationViewport(child: ToyRacersApplication(audio: audio)),
+  );
 }
 
 /// Flutter navigation shell around the Flame race presentation.

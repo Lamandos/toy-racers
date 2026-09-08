@@ -88,6 +88,10 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
       PresentationUpdateThrottle(
         intervalSeconds: _audioMixUpdateIntervalSeconds,
       );
+  final PresentationUpdateThrottle _minimapUpdateThrottle =
+      PresentationUpdateThrottle(
+        intervalSeconds: _minimapUpdateIntervalSeconds,
+      );
   @override
   final ValueNotifier<int> presentationFrame = ValueNotifier<int>(0);
   late final RaceMinimapTrack _minimapTrack = RaceMinimapTrack.fromTrack(
@@ -171,7 +175,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     _synchronizePresentationOverlays();
     world.synchronizeVisualState(interpolationFactor);
     _followPlayerCamera(0);
-    _publishMinimapFrame();
+    _publishMinimapFrame(force: true);
     _publishPresentationFrame(force: true);
   }
 
@@ -188,6 +192,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     _fixedTimestep.reset();
     _hudUpdateThrottle.reset();
     _audioMixUpdateThrottle.reset();
+    _minimapUpdateThrottle.reset();
     super.pauseEngine();
   }
 
@@ -263,7 +268,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     }
     world.synchronizeVisualState(interpolationFactor);
     _resetPlayerCamera();
-    _publishMinimapFrame();
+    _publishMinimapFrame(force: true);
     _publishPresentationFrame(force: true);
   }
 
@@ -331,7 +336,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     interpolationFactor = frame.interpolationFactor;
     world.synchronizeVisualState(interpolationFactor);
     _followPlayerCamera(frameDelta);
-    _publishMinimapFrame();
+    _publishMinimapFrame(frameDelta: frameDelta);
     super.update(dt);
     _publishPresentationFrame(frameDelta: frameDelta);
   }
@@ -461,8 +466,10 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     }
   }
 
-  void _publishMinimapFrame() {
-    minimapFrame.value++;
+  void _publishMinimapFrame({double frameDelta = 0, bool force = false}) {
+    if (force || _minimapUpdateThrottle.isDue(frameDelta)) {
+      minimapFrame.value++;
+    }
   }
 
   RaceMinimapParticipant _minimapParticipant(
@@ -480,6 +487,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
 
   static const double _hudUpdateIntervalSeconds = 1 / 10;
   static const double _audioMixUpdateIntervalSeconds = 1 / 20;
+  static const double _minimapUpdateIntervalSeconds = 1 / 30;
 
   static RaceSession _defaultSession({
     required Track track,
