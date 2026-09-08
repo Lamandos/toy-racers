@@ -1,10 +1,10 @@
 import 'package:flutter/widgets.dart';
 
-/// Scales the presentation target uniformly to the available surface.
+/// Presents the game at its authored size when the surface can contain it.
 ///
-/// Keeping the child at the authored size makes screen-space HUD geometry
-/// deterministic while [FittedBox] handles desktop, web, and landscape phone
-/// dimensions without stretching either axis.
+/// Smaller surfaces keep their real constraints so responsive layouts and
+/// Flame's aspect-aware camera can adapt before any presentation scaling is
+/// applied. Larger surfaces use the authored 16:9 composition.
 final class VirtualPresentationViewport extends StatelessWidget {
   const VirtualPresentationViewport({required this.child, super.key});
 
@@ -13,14 +13,24 @@ final class VirtualPresentationViewport extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => ColoredBox(
-    color: const Color(0xff121e2e),
-    child: ClipRect(
-      child: FittedBox(
-        fit: BoxFit.contain,
-        alignment: Alignment.center,
-        child: SizedBox.fromSize(size: designSize, child: child),
-      ),
-    ),
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final surfaceSize = constraints.biggest;
+      final content = _usesAuthoredSize(surfaceSize)
+          ? FittedBox(
+              fit: BoxFit.contain,
+              alignment: Alignment.center,
+              child: SizedBox.fromSize(size: designSize, child: child),
+            )
+          : child;
+      return ColoredBox(
+        color: const Color(0xff121e2e),
+        child: SafeArea(child: ClipRect(child: content)),
+      );
+    },
   );
+
+  bool _usesAuthoredSize(Size surfaceSize) =>
+      surfaceSize.width >= designSize.width &&
+      surfaceSize.height >= designSize.height;
 }
