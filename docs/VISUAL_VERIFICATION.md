@@ -32,7 +32,9 @@ baseline. GPU drivers, font rasterizers,
 Flutter engines, and libGDX/OpenGL differ across supported platforms, so a
 pixel-perfect Kotlin-to-Flutter baseline would be unstable. Instead, the test
 requires the authored track and car images, the mounted Flame components,
-race HUD/state overlays, pause and results actions, selected race data, and
-the expected screen hierarchy. This makes the screenshots a focused
+race HUD/state overlays including its standings, lap-progress segments and
+minimap, pause and results actions, selected race data, and the expected screen
+hierarchy. The standalone minimap test additionally verifies the Kotlin-sized
+projection coordinates and a live marker repaint. This makes the screenshots a focused
 rendering/composition gate while deterministic gameplay remains solely
 covered by the compatibility scenarios.

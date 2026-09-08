@@ -31,6 +31,8 @@ final class RaceCameraController {
         'Camera shake decay speed must be positive and finite.',
       );
     }
+    _effectiveVisibleWorldWidth = visibleWorldWidth;
+    _effectiveVisibleWorldHeight = visibleWorldHeight;
   }
 
   final double visibleWorldWidth;
@@ -41,12 +43,22 @@ final class RaceCameraController {
   Vector2? _centre;
   double _shakeAmount = 0;
   double _shakeTime = 0;
+  double _effectiveVisibleWorldWidth = 0;
+  double _effectiveVisibleWorldHeight = 0;
 
   void configure(CameraComponent camera) {
     camera.viewfinder.visibleGameSize = Vector2(
       visibleWorldWidth,
       visibleWorldHeight,
     );
+    final zoom = camera.viewfinder.zoom;
+    final viewportSize = camera.viewport.size;
+    final width = viewportSize.x / zoom;
+    final height = viewportSize.y / zoom;
+    if (width.isFinite && height.isFinite && width > 0 && height > 0) {
+      _effectiveVisibleWorldWidth = width;
+      _effectiveVisibleWorldHeight = height;
+    }
   }
 
   /// Clears presentation state and snaps the camera to the current player.
@@ -107,8 +119,18 @@ final class RaceCameraController {
   }
 
   Vector2 _boundedPosition(Vector2 target, Rect bounds) => Vector2(
-    _boundedAxis(target.x, bounds.left, bounds.right, visibleWorldWidth),
-    _boundedAxis(target.y, bounds.top, bounds.bottom, visibleWorldHeight),
+    _boundedAxis(
+      target.x,
+      bounds.left,
+      bounds.right,
+      _effectiveVisibleWorldWidth,
+    ),
+    _boundedAxis(
+      target.y,
+      bounds.top,
+      bounds.bottom,
+      _effectiveVisibleWorldHeight,
+    ),
   );
 
   Vector2 _nextCentre(Vector2 desired, double deltaSeconds) {

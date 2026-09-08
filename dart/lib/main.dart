@@ -261,10 +261,8 @@ final class _RacePresentation extends StatelessWidget {
                 onPause: game.onTouchPause,
                 onRestart: game.onTouchRestart,
               ),
-          ToyRacersGame.raceHudOverlayId: (context, game) => RaceHudOverlay(
-            controller: game,
-            showDesktopControls: !showTouchControls,
-          ),
+          ToyRacersGame.raceHudOverlayId: (context, game) =>
+              RaceHudOverlay(controller: game),
           ToyRacersGame.countdownOverlayId: (context, game) =>
               RaceCountdownOverlay(controller: game),
           ToyRacersGame.pauseOverlayId: (context, game) =>

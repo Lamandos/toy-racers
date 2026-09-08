@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
 import 'package:toy_racers/game/race_results_overlay.dart';
 import 'package:toy_racers/game/toy_racers_game.dart';
+import 'package:toy_racers/game/ui/race_minimap.dart';
 import 'package:toy_racers/main.dart';
 import 'package:toy_racers/simulation.dart';
 
@@ -44,6 +45,9 @@ void main() {
     await tester.pump();
     expect(game.session.raceState.phase, RacePhase.countdown);
     expect(find.text('POSITION'), findsOneWidget);
+    expect(find.byType(RaceMinimap), findsOneWidget);
+    expect(find.text('YOU'), findsOneWidget);
+    expect(find.text('RACER 2'), findsOneWidget);
     await _capture(tester, 'race_start');
 
     game.session.advanceLifecycle(

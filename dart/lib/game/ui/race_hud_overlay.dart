@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:toy_racers/simulation.dart';
 
 import 'game_controls.dart';
+import 'race_minimap.dart';
 import 'race_ui_controller.dart';
 
 /// Screen-space race instruments; the simulation remains the sole data owner.
@@ -34,25 +35,55 @@ final class RaceHudOverlay extends StatelessWidget {
     },
   );
 
-  Widget _regularHud(RaceUiState state) => Stack(
-    children: <Widget>[
-      Positioned(left: 18, top: 18, child: _positionPanel(state)),
-      Positioned(
-        top: 18,
-        left: 0,
-        right: 0,
-        child: Center(child: _timingPanel(state)),
-      ),
-      Positioned(top: 18, right: 18, child: _pauseButton()),
-      if (showDesktopControls)
-        const Positioned(
-          bottom: 12,
+  Widget _regularHud(RaceUiState state) {
+    final minimapController = _minimapController;
+    return Stack(
+      children: <Widget>[
+        Positioned(
+          left: 22,
+          top: 22,
+          child: SizedBox(
+            width: 220,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                _positionPanel(state),
+                const SizedBox(height: 12),
+                _standings(state),
+              ],
+            ),
+          ),
+        ),
+        Positioned(
+          top: 22,
           left: 0,
           right: 0,
-          child: Center(child: _DesktopControlsHint()),
+          child: Center(child: _centerInstruments(state)),
         ),
-    ],
-  );
+        Positioned(
+          top: 22,
+          right: 22,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: <Widget>[
+              _pauseButton(),
+              if (minimapController != null) ...<Widget>[
+                const SizedBox(height: 14),
+                RaceMinimap(controller: minimapController),
+              ],
+            ],
+          ),
+        ),
+        if (showDesktopControls)
+          const Positioned(
+            bottom: 12,
+            left: 0,
+            right: 0,
+            child: Center(child: _DesktopControlsHint()),
+          ),
+      ],
+    );
+  }
 
   Widget _compactHud(RaceUiState state) => Stack(
     children: <Widget>[
@@ -93,38 +124,103 @@ final class RaceHudOverlay extends StatelessWidget {
     ],
   );
 
-  Widget _positionPanel(RaceUiState state) => _HudPanel(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        const Text('POSITION', style: _captionStyle),
-        Text(
-          '${state.position}/${state.competitorCount}',
-          style: const TextStyle(
-            color: Color(0xff8ed4ff),
-            fontSize: 36,
-            fontWeight: FontWeight.w900,
+  RaceMinimapController? get _minimapController =>
+      controller is RaceMinimapController
+      ? controller as RaceMinimapController
+      : null;
+
+  Widget _positionPanel(RaceUiState state) => SizedBox(
+    height: 132,
+    child: _HudPanel(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          const Text('POSITION', style: _captionStyle),
+          const SizedBox(height: 4),
+          Text(
+            '${state.position}/${state.competitorCount}',
+            style: const TextStyle(
+              color: Color(0xff8ed4ff),
+              fontSize: 36,
+              fontWeight: FontWeight.w900,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'LAP ${state.displayedLap}/${state.requiredLaps}',
-          style: _valueStyle,
-        ),
-      ],
+        ],
+      ),
     ),
   );
+
+  Widget _standings(RaceUiState state) => Column(
+    children: <Widget>[
+      for (var index = 1; index <= state.competitorCount; index++)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: _StandingRow(
+            position: index,
+            isPlayer: index == state.position,
+          ),
+        ),
+    ],
+  );
+
+  Widget _centerInstruments(RaceUiState state) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: <Widget>[
+      Text('LAP ${state.displayedLap}/${state.requiredLaps}', style: _lapStyle),
+      const SizedBox(height: 4),
+      _lapProgress(state),
+      const SizedBox(height: 12),
+      _timingPanel(state),
+      const SizedBox(height: 8),
+      Text(
+        'BEST  ${state.bestLapTime == null ? '--:--.---' : _formatTime(state.bestLapTime!)}',
+        style: _captionStyle,
+      ),
+    ],
+  );
+
+  Widget _lapProgress(RaceUiState state) {
+    final completedSegments =
+        (state.displayedLap / state.requiredLaps * _lapSegmentCount)
+            .floor()
+            .clamp(1, _lapSegmentCount);
+    return SizedBox(
+      width: 380,
+      height: 16,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xeb141f2b),
+          border: Border.all(color: const Color(0xff20b8ff)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(3),
+          child: Row(
+            children: <Widget>[
+              for (var index = 0; index < _lapSegmentCount; index++)
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right: index == _lapSegmentCount - 1 ? 0 : 4,
+                    ),
+                    child: ColoredBox(
+                      color: index < completedSegments
+                          ? const Color(0xff20b8ff)
+                          : const Color(0xeb141f2b),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _timingPanel(RaceUiState state) => _HudPanel(
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         Text('TIME  ${_formatTime(state.totalRaceTime)}', style: _valueStyle),
-        const SizedBox(height: 4),
-        Text(
-          'BEST  ${state.bestLapTime == null ? '--:--.---' : _formatTime(state.bestLapTime!)}',
-          style: _captionStyle,
-        ),
       ],
     ),
   );
@@ -287,6 +383,47 @@ const TextStyle _valueStyle = TextStyle(
   fontSize: 18,
   fontWeight: FontWeight.w800,
 );
+
+const TextStyle _lapStyle = TextStyle(
+  color: Color(0xff8ed4ff),
+  fontSize: 24,
+  fontWeight: FontWeight.w900,
+);
+
+const int _lapSegmentCount = 6;
+
+final class _StandingRow extends StatelessWidget {
+  const _StandingRow({required this.position, required this.isPlayer});
+
+  final int position;
+  final bool isPlayer;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: isPlayer ? const Color(0xf0054799) : const Color(0xdb040912),
+    ),
+    child: SizedBox(
+      height: 31,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          children: <Widget>[
+            SizedBox(width: 26, child: Text('$position', style: _captionStyle)),
+            Text(
+              isPlayer ? 'YOU' : 'RACER $position',
+              style: TextStyle(
+                color: isPlayer ? const Color(0xffffffff) : _captionStyle.color,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
 
 final class _DesktopControlsHint extends StatelessWidget {
   const _DesktopControlsHint({this.compact = false});

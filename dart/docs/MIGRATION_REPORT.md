@@ -84,9 +84,12 @@ are shared contract behavior, not Dart deviations.
 
 Known visual differences:
 
-No confirmed render-behavior difference in automated Flutter tests. This is
-not a pixel-perfect claim: widget composition, not rendering goldens, is
-checked, and interactive iOS, Windows, macOS, and Linux evidence is absent.
+The race camera uses the Kotlin `ExtendViewport` rule, and the HUD includes
+the original standings, lap segments, and minimap geometry/markers. Automated
+Flutter checks cover those structural elements, minimap projection coordinates,
+and live marker repaints. This is not
+a pixel-perfect claim: widget composition, not rendering goldens, is checked,
+and interactive iOS, Windows, macOS, and Linux evidence is absent.
 
 Known audio differences:
 
@@ -227,8 +230,9 @@ The simulation covers fixed-step car physics, Float32-compatible arithmetic,
 track/TMX loading, collision response, surfaces, race lifecycle and rules,
 checkpoints/laps/results, deterministic AI, scenario replay, and canonical
 compatibility traces. The presentation includes Flutter menu/selection/settings
-screens, Flame race rendering and camera, keyboard and touch input, overlays,
-and presentation-only audio lifecycle/mixing.
+screens, Flame race rendering with an `ExtendViewport`-equivalent camera,
+keyboard and touch input, HUD standings, lap progress, a screen-space minimap,
+overlays, and presentation-only audio lifecycle/mixing.
 
 ## Test evidence
 
