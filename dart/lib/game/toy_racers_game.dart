@@ -141,6 +141,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
   static Future<ToyRacersGame> loadRace({
     required TrackId trackId,
     required CarModel playerCarModel,
+    AiDifficulty opponentDifficulty = AiDifficulty.normal,
     Future<String> Function(String assetPath)? assetTextLoader,
   }) async {
     final loadText = assetTextLoader ?? rootBundle.loadString;
@@ -158,6 +159,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
         track: track,
         playerCarModel: playerCarModel,
         opponentModels: opponents,
+        opponentDifficulty: opponentDifficulty,
       ),
       playerCarModel: playerCarModel,
       opponentCarModels: opponents,
@@ -493,6 +495,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
     required Track track,
     required CarModel playerCarModel,
     required List<CarModel> opponentModels,
+    required AiDifficulty opponentDifficulty,
   }) {
     return RaceSession(
       track: track,
@@ -508,6 +511,7 @@ final class ToyRacersGame extends FlameGame<RaceWorld>
             carState: _stateAt(track.startGrid[index + 1]),
             carConfig: opponentModels[index].performance.applyTo(),
             aiDriver: ReferenceAiDriver(
+              difficulty: opponentDifficulty,
               racingLine: track.racingLine,
               initialPosition: track.startGrid[index + 1].position,
               config: AiConfig(waypointRadius: track.racingLineWaypointRadius),

@@ -19,11 +19,16 @@ void main() {
     await tester.pumpWidget(
       ToyRacersApplication(
         showTouchControls: false,
-        raceGameLoader: ({required trackId, required playerCarModel}) {
-          selectedTrack = trackId;
-          selectedCar = playerCarModel;
-          return Future<ToyRacersGame>.value(game);
-        },
+        raceGameLoader:
+            ({
+              required trackId,
+              required playerCarModel,
+              opponentDifficulty = AiDifficulty.normal,
+            }) {
+              selectedTrack = trackId;
+              selectedCar = playerCarModel;
+              return Future<ToyRacersGame>.value(game);
+            },
       ),
     );
 

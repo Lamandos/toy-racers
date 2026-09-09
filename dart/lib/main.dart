@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flame/game.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -10,18 +9,17 @@ import 'audio/game_audio_controller.dart';
 import 'audio/audio_settings.dart';
 import 'presentation/virtual_presentation_viewport.dart';
 import 'game/ui/audio_settings_view.dart';
-import 'game/input/touch_controls_overlay.dart';
-import 'game/race_results_overlay.dart';
+import 'game/race_game_view.dart';
 import 'game/toy_racers_game.dart';
 import 'game/ui/car_selection_view.dart';
 import 'game/ui/game_controls.dart';
 import 'game/ui/main_menu_view.dart';
-import 'game/ui/race_hud_overlay.dart';
 import 'game/ui/track_selection_view.dart';
 
 typedef RaceGameLoader = Future<ToyRacersGame> Function({
   required TrackId trackId,
   required CarModel playerCarModel,
+  AiDifficulty opponentDifficulty,
 });
 
 Future<void> main() async {
@@ -68,6 +66,7 @@ final class _ToyRacersApplicationState extends State<ToyRacersApplication>
     with WidgetsBindingObserver {
   _ToyRacersScreen _screen = _ToyRacersScreen.mainMenu;
   CarModel _selectedCar = CarModel.redStripe;
+  AiDifficulty _selectedDifficulty = AiDifficulty.normal;
   Future<ToyRacersGame>? _race;
   ToyRacersGame? _activeGame;
   late final GameAudioController _audio;
@@ -118,6 +117,10 @@ final class _ToyRacersApplicationState extends State<ToyRacersApplication>
           ),
           _ToyRacersScreen.carSelection => CarSelectionView(
             selected: _selectedCar,
+            difficulty: _selectedDifficulty,
+            onDifficultySelected: (difficulty) => setState(() {
+              _selectedDifficulty = difficulty;
+            }),
             onSelected: _selectCar,
             onContinue: _showTrackSelection,
             onBack: _showMainMenu,
@@ -179,7 +182,11 @@ final class _ToyRacersApplicationState extends State<ToyRacersApplication>
     final race = Future<ToyRacersGame>.sync(
       () =>
           widget._legacyGameLoader?.call() ??
-          widget.raceGameLoader(trackId: trackId, playerCarModel: _selectedCar),
+          widget.raceGameLoader(
+            trackId: trackId,
+            playerCarModel: _selectedCar,
+            opponentDifficulty: _selectedDifficulty,
+          ),
     );
     race.ignore();
     setState(() {
@@ -254,26 +261,10 @@ final class _RacePresentation extends StatelessWidget {
       }
       final game = snapshot.requireData;
       onGameReady(game);
-      game.configureTouchControls(showTouchControls);
-      return GameWidget<ToyRacersGame>(
+      return RaceGameView(
         game: game,
-        overlayBuilderMap: <String, OverlayWidgetBuilder<ToyRacersGame>>{
-          ToyRacersGame.touchControlsOverlayId: (context, game) =>
-              TouchControlsOverlay(
-                controller: game.touchInputController,
-                onPause: game.onTouchPause,
-                onRestart: game.onTouchRestart,
-              ),
-          ToyRacersGame.raceHudOverlayId: (context, game) =>
-              RaceHudOverlay(controller: game),
-          ToyRacersGame.countdownOverlayId: (context, game) =>
-              RaceCountdownOverlay(controller: game),
-          ToyRacersGame.pauseOverlayId: (context, game) =>
-              RacePauseOverlay(controller: game, onQuitToMenu: onExitRace),
-          ToyRacersGame.resultsOverlayId: (context, game) =>
-              RaceResultsOverlay(controller: game, onMainMenu: onExitRace),
-        },
-        initialActiveOverlays: <String>[ToyRacersGame.raceHudOverlayId],
+        showTouchControls: showTouchControls,
+        onExitRace: onExitRace,
       );
     },
   );

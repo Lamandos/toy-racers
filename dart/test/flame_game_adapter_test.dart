@@ -250,15 +250,18 @@ void main() {
     },
   );
 
-  test('a bounded frame spike preserves fixed tick input order', () async {
-    final regularFrames = await _runRenderPattern(
-      List<double>.filled(15, CarPhysics.fixedDeltaSeconds),
-    );
-    final frameSpike = await _runRenderPattern(<double>[1]);
+  test(
+    'a frame spike caps catch-up and preserves executed input order',
+    () async {
+      final regularFrames = await _runRenderPattern(
+        List<double>.filled(4, CarPhysics.fixedDeltaSeconds),
+      );
+      final frameSpike = await _runRenderPattern(<double>[1]);
 
-    expect(frameSpike, regularFrames);
-    expect(frameSpike.simulationTick, 15);
-  });
+      expect(frameSpike, regularFrames);
+      expect(frameSpike.simulationTick, 4);
+    },
+  );
 
   test('pause drops accumulated render time before resuming', () async {
     final session = _racingSession();

@@ -1,5 +1,25 @@
 # Performance sanity report
 
+## Full presentation follow-up (2026-09-09)
+
+The profile probe now mounts the production HUD, minimap, platform controls,
+and race audio, and reports both engine thread timing and actual vsync cadence.
+It can select either built-in track with `TOY_RACERS_TRACK`.
+
+On the Intel macOS host in profile mode, the six-car bathroom race completed
+300 frames at 60.00 FPS with no frames over the 20 ms cadence budget. UI p90
+and p99 were 5,453 and 7,758 microseconds; raster p90 and p99 were 1,014 and
+1,246 microseconds. The same living-room probe passed at 59.02 FPS with one
+slow frame. Both runs used the production audio path.
+
+The correction removes per-frame platform position queries from every game
+audio voice and avoids repeated volume/pitch writes when a mix value has not
+changed. It also skips the polygon closest-edge calculation after a
+conservative binary32 bounds check proves an outside collision circle cannot
+touch the polygon. The 300-tick six-car simulation probe improved from 192 to
+440 ticks/s with the same `a6bdf2a3688e80a7` state fingerprint. The complete
+113-fixture Kotlin comparison remains unchanged.
+
 ## Float32 allocation follow-up (2026-09-09)
 
 Replacing `Float32List.fromList(<double>[value]).single` with a local

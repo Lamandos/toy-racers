@@ -7,6 +7,7 @@ import '../track/track_point.dart';
 import 'collision_config.dart';
 import 'collision_geometry.dart';
 import 'collision_result.dart';
+import 'polygon_collision_bounds.dart';
 
 export 'collision_result.dart';
 
@@ -42,6 +43,8 @@ final class DefaultCollisionSystem implements CollisionSystem {
   static const int _maxResolutionPasses = 4;
 
   final CollisionConfig _config;
+  final Expando<PolygonCollisionBounds> _polygonBounds =
+      Expando<PolygonCollisionBounds>();
 
   @override
   CollisionResult resolveTrackCollision({
@@ -256,12 +259,18 @@ final class DefaultCollisionSystem implements CollisionSystem {
     TrackPolygon obstacle,
     List<CollisionContact> contacts,
   ) {
+    final inside = obstacle.contains(state.x, state.y);
+    final bounds = _polygonBounds[obstacle] ??= PolygonCollisionBounds(
+      obstacle,
+    );
+    if (!inside && bounds.excludes(state.x, state.y, radius)) {
+      return;
+    }
     final center = TrackPoint(state.x, state.y);
     final closest = CollisionGeometry.closestPolygonEdge(center, obstacle);
     final offsetX = Float32.subtract(state.x, closest.point.x);
     final offsetY = Float32.subtract(state.y, closest.point.y);
     final distance = CollisionGeometry.hypot(offsetX, offsetY);
-    final inside = obstacle.contains(center.x, center.y);
     if (!inside && distance >= radius) {
       return;
     }

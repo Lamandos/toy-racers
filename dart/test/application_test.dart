@@ -39,13 +39,20 @@ void main() {
     final game = Completer<ToyRacersGame>();
     TrackId? selectedTrack;
     CarModel? selectedCar;
+    AiDifficulty? selectedDifficulty;
     await tester.pumpWidget(
       ToyRacersApplication(
-        raceGameLoader: ({required trackId, required playerCarModel}) {
-          selectedTrack = trackId;
-          selectedCar = playerCarModel;
-          return game.future;
-        },
+        raceGameLoader:
+            ({
+              required trackId,
+              required playerCarModel,
+              opponentDifficulty = AiDifficulty.normal,
+            }) {
+              selectedTrack = trackId;
+              selectedCar = playerCarModel;
+              selectedDifficulty = opponentDifficulty;
+              return game.future;
+            },
       ),
     );
 
@@ -53,6 +60,12 @@ void main() {
     await tester.tap(find.byKey(const ValueKey<String>('main-menu-play')));
     await tester.pumpAndSettle();
     expect(find.text('SELECT CAR'), findsOneWidget);
+
+    await tester.ensureVisible(
+      find.byKey(const ValueKey<String>('difficulty-hard')),
+    );
+    await tester.tap(find.byKey(const ValueKey<String>('difficulty-hard')));
+    await tester.pump();
 
     await tester.tap(find.byKey(const ValueKey<String>('car-yellow-sport')));
     await tester.pump();
@@ -65,6 +78,7 @@ void main() {
 
     expect(selectedTrack, TrackId.bathroom);
     expect(selectedCar, CarModel.yellowSport);
+    expect(selectedDifficulty, AiDifficulty.hard);
     expect(find.byType(SizedBox), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -101,10 +115,15 @@ void main() {
     TrackId? selectedTrack;
     await tester.pumpWidget(
       ToyRacersApplication(
-        raceGameLoader: ({required trackId, required playerCarModel}) {
-          selectedTrack = trackId;
-          return race.future;
-        },
+        raceGameLoader:
+            ({
+              required trackId,
+              required playerCarModel,
+              opponentDifficulty = AiDifficulty.normal,
+            }) {
+              selectedTrack = trackId;
+              return race.future;
+            },
       ),
     );
 
@@ -145,9 +164,14 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ToyRacersApplication(
-        raceGameLoader: ({required trackId, required playerCarModel}) async {
-          throw StateError('missing track');
-        },
+        raceGameLoader:
+            ({
+              required trackId,
+              required playerCarModel,
+              opponentDifficulty = AiDifficulty.normal,
+            }) async {
+              throw StateError('missing track');
+            },
       ),
     );
 
@@ -178,10 +202,15 @@ void main() {
 
     await tester.pumpWidget(
       ToyRacersApplication(
-        raceGameLoader: ({required trackId, required playerCarModel}) {
-          started = true;
-          return race.future;
-        },
+        raceGameLoader:
+            ({
+              required trackId,
+              required playerCarModel,
+              opponentDifficulty = AiDifficulty.normal,
+            }) {
+              started = true;
+              return race.future;
+            },
       ),
     );
     await tester.tap(find.byKey(const ValueKey<String>('main-menu-play')));

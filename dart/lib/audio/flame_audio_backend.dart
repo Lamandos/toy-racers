@@ -5,6 +5,10 @@ import 'audio_backend.dart';
 
 /// Flame Audio implementation used by the Flutter and Flame presentation.
 final class FlameAudioBackend implements GameAudioBackend {
+  FlameAudioBackend({AudioPlayer Function()? playerFactory})
+    : _playerFactory = playerFactory ?? AudioPlayer.new;
+
+  final AudioPlayer Function() _playerFactory;
   bool _initialized = false;
 
   @override
@@ -13,6 +17,9 @@ final class FlameAudioBackend implements GameAudioBackend {
       return;
     }
     await FlameAudio.bgm.initialize();
+    // The game never consumes playback-position streams. The default updater
+    // otherwise polls the platform once per rendered frame for every voice.
+    FlameAudio.bgm.audioPlayer.positionUpdater = null;
     _initialized = true;
   }
 
@@ -25,7 +32,7 @@ final class FlameAudioBackend implements GameAudioBackend {
     GameAudioAsset asset, {
     required double volume,
   }) async {
-    await FlameAudio.play(asset.path, volume: volume);
+    await _playAsset(asset, volume, ReleaseMode.release);
   }
 
   @override
@@ -34,9 +41,37 @@ final class FlameAudioBackend implements GameAudioBackend {
     required double volume,
     required double pitch,
   }) async {
-    final player = await FlameAudio.loop(asset.path, volume: volume);
+    final player = await _playAsset(asset, volume, ReleaseMode.loop);
     await player.setPlaybackRate(pitch);
     return _FlameAudioLoop(player);
+  }
+
+  Future<AudioPlayer> _playAsset(
+    GameAudioAsset asset,
+    double volume,
+    ReleaseMode releaseMode,
+  ) async {
+    final player = _playerFactory()
+      ..audioCache = FlameAudio.audioCache
+      // Disable before play: replacing an already running updater races its
+      // in-flight position query against disposal of its event stream.
+      ..positionUpdater = null;
+    try {
+      await player.setAudioContext(
+        AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers)
+            .build(),
+      );
+      await player.setReleaseMode(releaseMode);
+      await player.play(
+        AssetSource(asset.path),
+        volume: volume,
+        mode: PlayerMode.lowLatency,
+      );
+      return player;
+    } on Object {
+      await player.dispose();
+      rethrow;
+    }
   }
 
   @override
