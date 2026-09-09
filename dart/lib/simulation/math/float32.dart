@@ -140,6 +140,11 @@ final class Float32 {
 
   static double _narrowArithmeticResult(double value) => _round(value);
 
-  static double _round(double value) =>
-      Float32List.fromList(<double>[value]).single;
+  static double _round(double value) {
+    // Keep the conversion local, but avoid copying a temporary List on every
+    // scalar operation in physics and AI.
+    final storage = Float32List(1);
+    storage[0] = value;
+    return storage[0];
+  }
 }

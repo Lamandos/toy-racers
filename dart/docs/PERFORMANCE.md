@@ -1,5 +1,24 @@
 # Performance sanity report
 
+## Float32 allocation follow-up (2026-09-09)
+
+Replacing `Float32List.fromList(<double>[value]).single` with a local
+one-element `Float32List`, indexed write, and indexed read removes the
+intermediate ordinary list from each scalar rounding operation. Storage is
+still local; no shared mutable scratch buffer or arithmetic changes are used.
+
+On this Intel macOS host, identical JIT runs of
+`dart run tool/performance_sanity.dart --warmup-ticks 100 --measured-ticks 300
+--sample-every-ticks 100` took 5,558 ms before and 1,556 ms after the change
+(53 versus 192 ticks/s, approximately 3.6 times faster). Both produced state
+fingerprint `a6bdf2a3688e80a7`. These are simulation timings, not rendered FPS.
+The runner's `PASS` currently scores memory only, not frame throughput.
+
+A 60-frame profile probe on the connected Android 13 device (2201117PG,
+Impeller OpenGLES) timed out collecting timings after 45 seconds. This does
+not establish rendering performance or resolve the reported cross-platform
+two-second frame stalls. A normal release APK was built for further testing.
+
 This report records the TASK-028 checks run on 2026-09-02 and revalidated on
 2026-09-05 after the Dart correctness and UI smoke work. Performance changes
 are accepted only when the Kotlin compatibility goldens remain unchanged. The

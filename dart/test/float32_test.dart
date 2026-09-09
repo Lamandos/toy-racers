@@ -1,8 +1,34 @@
+import 'dart:math';
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:toy_racers/simulation.dart';
 
 void main() {
   group('Float32', () {
+    test('matches typed binary32 conversion across exponents and signs', () {
+      final random = Random(42);
+      final values = <double>[
+        0,
+        -0.0,
+        pow(2, -149).toDouble(),
+        pow(2, -150).toDouble(),
+        3 * pow(2, -150).toDouble(),
+        3.4028234663852886e38,
+        for (var index = 0; index < 2000; index++)
+          (random.nextDouble() * 2 - 1) * pow(2, random.nextInt(278) - 150),
+      ];
+      for (final value in values) {
+        final expected = Float32List.fromList(<double>[value]).single;
+        final actual = Float32.narrow(value);
+        expect(actual, expected, reason: 'input: $value');
+        expect(actual.isNegative, expected.isNegative);
+      }
+      expect(Float32.divide(1, 0), double.infinity);
+      expect(Float32.divide(0, 0).isNaN, isTrue);
+      expect(Float32.multiply(3.4028234663852886e38, 2), double.infinity);
+    });
+
     test(
       'round-trips positive zero and preserves negative zero until normalized',
       () {
