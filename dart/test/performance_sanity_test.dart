@@ -150,7 +150,7 @@ void main() {
     expect(unstable.toJson()['result'], 'FAIL');
   });
 
-  test('web cadence report applies the same slow-frame fraction', () {
+  test('cadence report measures FPS and applies the slow-frame fraction', () {
     final stable = FrameCadenceReport.fromTimestamps(
       _timestamps(<int>[...List<int>.filled(19, 16000), 25000]),
     );
@@ -160,6 +160,10 @@ void main() {
 
     expect(stable.stable, isTrue);
     expect(stable.slowFrames, 1);
+    expect(
+      stable.averageFps,
+      closeTo(20 * 1000000 / (19 * 16000 + 25000), 0.0001),
+    );
     expect(unstable.stable, isFalse);
     expect(unstable.toJson()['measurement'], 'frameCadence');
   });

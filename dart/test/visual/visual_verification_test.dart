@@ -117,8 +117,11 @@ Future<void> _pumpApplication(WidgetTester tester, ToyRacersGame game) =>
       _ScreenshotBoundary(
         child: ToyRacersApplication(
           showTouchControls: false,
-          raceGameLoader: ({required trackId, required playerCarModel}) =>
-              Future<ToyRacersGame>.value(game),
+          raceGameLoader: ({
+            required trackId,
+            required playerCarModel,
+            opponentDifficulty = AiDifficulty.normal,
+          }) => Future<ToyRacersGame>.value(game),
         ),
       ),
     );

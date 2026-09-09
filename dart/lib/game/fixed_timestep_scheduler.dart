@@ -23,6 +23,8 @@ final class FixedTimestepResult {
 /// chronological order at the reference `1 / 60` physics interval. Gameplay
 /// state remains entirely owned by [RaceSession].
 final class FixedTimestepScheduler {
+  /// Bound catch-up work so a slow frame cannot monopolize the next frame.
+  static const int maximumStepsPerFrame = 4;
   double _accumulatorSeconds = 0;
 
   /// Discards remaining render time, for example on pause or race restart.
@@ -58,7 +60,8 @@ final class FixedTimestepScheduler {
       Float32.narrow(simulationDeltaSeconds),
     );
     var physicalSteps = 0;
-    while (_accumulatorSeconds >= CarPhysics.fixedDeltaSeconds) {
+    while (_accumulatorSeconds >= CarPhysics.fixedDeltaSeconds &&
+        physicalSteps < maximumStepsPerFrame) {
       onFixedStep();
       physicalSteps++;
       _accumulatorSeconds = Float32.subtract(
@@ -69,6 +72,11 @@ final class FixedTimestepScheduler {
         reset();
         return _result(physicalSteps);
       }
+    }
+    // Under overload, discard whole overdue ticks but retain interpolation.
+    // Executed ticks keep the same dt and input order as the simulation oracle.
+    if (_accumulatorSeconds >= CarPhysics.fixedDeltaSeconds) {
+      _accumulatorSeconds %= CarPhysics.fixedDeltaSeconds;
     }
     return _result(physicalSteps);
   }

@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:toy_racers/presentation/virtual_presentation_viewport.dart';
 
 void main() {
-  testWidgets('preserves compact constraints on phone-sized surfaces', (
+  testWidgets('scales authored layout down on phone-sized surfaces', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(640, 360));
@@ -24,7 +24,7 @@ void main() {
     );
     expect(
       tester.getSize(find.byKey(const ValueKey<String>('presentation-child'))),
-      const Size(640, 360),
+      VirtualPresentationViewport.designSize,
     );
   });
 
@@ -49,9 +49,7 @@ void main() {
     );
   });
 
-  testWidgets('preserves responsive constraints on smaller surfaces', (
-    tester,
-  ) async {
+  testWidgets('fits authored layout on smaller surfaces', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -66,13 +64,11 @@ void main() {
 
     expect(
       tester.getSize(find.byKey(const ValueKey<String>('presentation-child'))),
-      const Size(800, 600),
+      VirtualPresentationViewport.designSize,
     );
   });
 
-  testWidgets('uses compact constraints when safe area reduces the surface', (
-    tester,
-  ) async {
+  testWidgets('fits authored layout inside the safe area', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1280, 720));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -90,7 +86,7 @@ void main() {
 
     expect(
       tester.getSize(find.byKey(const ValueKey<String>('presentation-child'))),
-      const Size(1280, 696),
+      VirtualPresentationViewport.designSize,
     );
   });
 

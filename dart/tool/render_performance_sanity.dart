@@ -2,12 +2,16 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 
-import 'package:flame/game.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:toy_racers/game/toy_racers_game.dart';
+import 'package:toy_racers/audio/game_audio_controller.dart';
+import 'package:toy_racers/game/race_game_view.dart';
+import 'package:toy_racers/game/ui/game_controls.dart';
+import 'package:toy_racers/simulation.dart';
+import 'package:toy_racers/presentation/virtual_presentation_viewport.dart';
 
 /// Profile-mode frame-timing probe for the production six-car race renderer.
 ///
@@ -19,10 +23,29 @@ Future<void> main() async {
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
-  final game = await ToyRacersGame.loadDefault();
-  runApp(_PerformanceRace(game: game));
+  const trackName = String.fromEnvironment(
+    'TOY_RACERS_TRACK',
+    defaultValue: 'livingRoom',
+  );
+  final game = await ToyRacersGame.loadRace(
+    trackId: TrackId.values.byName(trackName),
+    playerCarModel: CarModel.redStripe,
+  );
+  const enableAudio = bool.fromEnvironment(
+    'TOY_RACERS_AUDIO',
+    defaultValue: true,
+  );
+  final audio = GameAudioController.production();
+  await audio.prepare();
+  game.attachAudio(enableAudio ? audio : GameAudioController.silent());
+  runApp(
+    GameAudioScope(
+      audio: audio,
+      child: _PerformanceRace(game: game),
+    ),
+  );
   WidgetsBinding.instance.addPostFrameCallback((_) {
-    unawaited(_measureAfterLoad(game));
+    unawaited(_measureAfterLoad(game).whenComplete(audio.dispose));
   });
 }
 
@@ -34,11 +57,26 @@ Future<void> _measureAfterLoad(ToyRacersGame game) async {
       elapsedSeconds: game.session.raceState.countdownDurationSeconds,
     );
     await Future<void>.delayed(_warmupDuration);
-    final report = kIsWeb
-        ? await FrameCadenceProbe(targetFrameCount: _targetFrameCount).run()
-        : await RenderingPerformanceProbe(targetFrameCount: _targetFrameCount)
-              .run();
-    debugPrint('$reportPrefix${jsonEncode(report.toJson())}');
+    final reports = await Future.wait<RenderingPerformanceResult>([
+      FrameCadenceProbe(targetFrameCount: _targetFrameCount).run(),
+      if (!kIsWeb)
+        RenderingPerformanceProbe(targetFrameCount: _targetFrameCount).run(),
+    ]);
+    final measurements = reports.map((report) => report.toJson()).toList();
+    final payload = <String, Object>{
+      'schemaVersion': 2,
+      'result': measurements.every((report) => report['result'] == 'PASS')
+          ? 'PASS'
+          : 'FAIL',
+      'track': game.session.track.id,
+      'audioEnabled': const bool.fromEnvironment(
+        'TOY_RACERS_AUDIO',
+        defaultValue: true,
+      ),
+      'presentation': 'production HUD, minimap and platform controls',
+      'measurements': measurements,
+    };
+    debugPrint('$reportPrefix${jsonEncode(payload)}');
   } on Object catch (error, stackTrace) {
     debugPrint(
       '$reportPrefix${jsonEncode(<String, Object>{'schemaVersion': 1, 'result': 'FAIL', 'error': '$error', 'stackTrace': '$stackTrace'})}',
@@ -59,9 +97,14 @@ final class _PerformanceRace extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Directionality(
     textDirection: TextDirection.ltr,
-    child: ColoredBox(
-      color: const Color(0xff121e2e),
-      child: GameWidget<ToyRacersGame>(game: game),
+    child: VirtualPresentationViewport(
+      child: RaceGameView(
+        game: game,
+        showTouchControls:
+            defaultTargetPlatform == TargetPlatform.android ||
+            defaultTargetPlatform == TargetPlatform.iOS,
+        onExitRace: () {},
+      ),
     ),
   );
 }
@@ -194,7 +237,8 @@ final class RenderingPerformanceReport implements RenderingPerformanceResult {
   }
 }
 
-/// Browser fallback because Flutter Web does not report engine frame timings.
+/// Measures actual frame cadence on every target, including platform stalls
+/// that may not be included in engine build and raster durations.
 final class FrameCadenceProbe {
   FrameCadenceProbe({this.targetFrameCount = _targetFrameCount}) {
     if (targetFrameCount <= 0) {
@@ -234,13 +278,14 @@ final class FrameCadenceProbe {
   }
 }
 
-/// Vsync cadence summary used when per-thread frame timings are unavailable.
+/// Vsync cadence summary, reported alongside native per-thread frame timings.
 final class FrameCadenceReport implements RenderingPerformanceResult {
   FrameCadenceReport._({
     required this.frameCount,
     required this.intervalMicrosP90,
     required this.intervalMicrosP99,
     required this.slowFrames,
+    required this.averageFps,
   });
 
   factory FrameCadenceReport.fromTimestamps(List<Duration> timestamps) {
@@ -257,6 +302,10 @@ final class FrameCadenceReport implements RenderingPerformanceResult {
     ]..sort();
     return FrameCadenceReport._(
       frameCount: intervals.length,
+      averageFps:
+          intervals.length *
+          Duration.microsecondsPerSecond /
+          (timestamps.last - timestamps.first).inMicroseconds,
       intervalMicrosP90: _percentile(intervals, 0.90),
       intervalMicrosP99: _percentile(intervals, 0.99),
       slowFrames: intervals
@@ -269,6 +318,7 @@ final class FrameCadenceReport implements RenderingPerformanceResult {
   final int intervalMicrosP90;
   final int intervalMicrosP99;
   final int slowFrames;
+  final double averageFps;
 
   bool get stable => slowFrames / frameCount <= _allowedSlowFrameFraction;
 
@@ -277,7 +327,8 @@ final class FrameCadenceReport implements RenderingPerformanceResult {
     'schemaVersion': 1,
     'result': stable ? 'PASS' : 'FAIL',
     'measurement': 'frameCadence',
-    'target': 'web',
+    'target': kIsWeb ? 'web' : defaultTargetPlatform.name,
+    'averageFps': averageFps,
     'buildMode': kReleaseMode
         ? 'release'
         : kProfileMode

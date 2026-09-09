@@ -1,10 +1,7 @@
 import 'package:flutter/widgets.dart';
 
-/// Presents the game at its authored size when the surface can contain it.
-///
-/// Smaller surfaces keep their real constraints so responsive layouts and
-/// Flame's aspect-aware camera can adapt before any presentation scaling is
-/// applied. Larger surfaces use the authored 16:9 composition.
+/// Fits the authored 16:9 composition into the safe area at every window size.
+/// Layout and hit testing share the same transform, like Kotlin's FitViewport.
 final class VirtualPresentationViewport extends StatelessWidget {
   const VirtualPresentationViewport({required this.child, super.key});
 
@@ -21,20 +18,10 @@ final class VirtualPresentationViewport extends StatelessWidget {
           child: FittedBox(
             fit: BoxFit.contain,
             alignment: Alignment.center,
-            child: SizedBox.fromSize(
-              size: _contentSize(constraints.biggest),
-              child: child,
-            ),
+            child: SizedBox.fromSize(size: designSize, child: child),
           ),
         ),
       ),
     ),
   );
-
-  Size _contentSize(Size availableSize) =>
-      _usesAuthoredSize(availableSize) ? designSize : availableSize;
-
-  bool _usesAuthoredSize(Size availableSize) =>
-      availableSize.width >= designSize.width &&
-      availableSize.height >= designSize.height;
 }

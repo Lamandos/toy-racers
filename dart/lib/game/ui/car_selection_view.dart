@@ -9,6 +9,8 @@ final class CarSelectionView extends StatelessWidget {
   CarSelectionView({
     required this.selected,
     required this.onSelected,
+    this.difficulty = AiDifficulty.normal,
+    this.onDifficultySelected,
     VoidCallback? onContinue,
     VoidCallback? onStart,
     required this.onBack,
@@ -17,6 +19,8 @@ final class CarSelectionView extends StatelessWidget {
        onContinue = onContinue ?? onStart!;
 
   final CarModel selected;
+  final AiDifficulty difficulty;
+  final ValueChanged<AiDifficulty>? onDifficultySelected;
   final ValueChanged<CarModel> onSelected;
   final VoidCallback onContinue;
   final VoidCallback onBack;
@@ -44,12 +48,40 @@ final class CarSelectionView extends StatelessWidget {
                     .toList(growable: false),
               ),
               const SizedBox(height: 18),
+              _difficultySelector(),
+              const SizedBox(height: 18),
               _actions(constraints.maxWidth),
             ],
           ),
         );
       },
     ),
+  );
+
+  Widget _difficultySelector() => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: <Widget>[
+      gameHeading('AI DIFFICULTY', size: 18),
+      const SizedBox(height: 10),
+      Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 10,
+        runSpacing: 10,
+        children: <Widget>[
+          for (final value in AiDifficulty.values)
+            SizedBox(
+              width: 180,
+              child: GameActionButton(
+                key: ValueKey<String>('difficulty-${value.name}'),
+                label:
+                    '${value.name.toUpperCase()}${value == difficulty ? ' ✓' : ''}',
+                secondary: value != difficulty,
+                onPressed: () => onDifficultySelected?.call(value),
+              ),
+            ),
+        ],
+      ),
+    ],
   );
 
   Widget _actions(double width) {

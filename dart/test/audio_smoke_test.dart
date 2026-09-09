@@ -17,6 +17,51 @@ void main() {
   );
 
   test(
+    'unchanged race mix avoids platform writes and failed writes retry',
+    () async {
+      final backend = _RecordingAudioBackend();
+      final audio = GameAudioController(backend: backend, policy: nativePolicy);
+      await audio.prepare();
+      await audio.startRaceLoops();
+      Future<void> update(double speed) => audio.updateRace(
+        speed: speed,
+        maxSpeed: 30,
+        input: PlayerInput.none,
+        driftAmount: 0,
+        racing: true,
+        surface: SurfaceType.asphalt,
+      );
+      await update(0);
+      final writes = backend.createdLoops.fold<int>(
+        0,
+        (sum, loop) => sum + loop.volumes.length + loop.pitches.length,
+      );
+      for (var index = 0; index < 100; index++) {
+        await update(0);
+      }
+      expect(
+        backend.createdLoops.fold<int>(
+          0,
+          (sum, loop) => sum + loop.volumes.length + loop.pitches.length,
+        ),
+        writes,
+      );
+      final engine = backend.createdLoops.first;
+      final previousPitch = engine.pitches.last;
+      engine.failNextPitch = true;
+      await update(20);
+      expect(engine.pitches.last, previousPitch);
+      await update(20);
+      expect(engine.pitches.last, isNot(previousPitch));
+      await audio.stopRaceLoops();
+      await audio.startRaceLoops();
+      await update(20);
+      expect(backend.createdLoops.last.volumes, isNotEmpty);
+      await audio.dispose();
+    },
+  );
+
+  test(
     'native smoke: menu music initializes and preloads bundled audio',
     () async {
       final backend = _RecordingAudioBackend();
@@ -543,9 +588,14 @@ final class _RecordingAudioLoop implements GameAudioLoop {
   final List<double> pitches = <double>[];
   int stopCalls = 0;
   int disposeCalls = 0;
+  bool failNextPitch = false;
 
   @override
   Future<void> setPitch(double pitch) async {
+    if (failNextPitch) {
+      failNextPitch = false;
+      throw StateError('simulated pitch write failure');
+    }
     pitches.add(pitch);
   }
 

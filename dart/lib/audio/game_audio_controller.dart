@@ -463,6 +463,8 @@ final class _LoopVoice {
   Future<void>? _starting;
   double _volume = 0;
   double _pitch = 1;
+  double? _appliedVolume;
+  double? _appliedPitch;
   bool _stopped = false;
 
   Future<void> start(GameAudioBackend backend) {
@@ -485,16 +487,18 @@ final class _LoopVoice {
   Future<void> setVolume(double volume) async {
     _volume = volume;
     final loop = _loop;
-    if (loop != null) {
+    if (loop != null && _appliedVolume != volume) {
       await loop.setVolume(volume);
+      if (identical(loop, _loop)) _appliedVolume = volume;
     }
   }
 
   Future<void> setPitch(double pitch) async {
     _pitch = pitch;
     final loop = _loop;
-    if (loop != null) {
+    if (loop != null && _appliedPitch != pitch) {
       await loop.setPitch(pitch);
+      if (identical(loop, _loop)) _appliedPitch = pitch;
     }
   }
 
@@ -510,6 +514,8 @@ final class _LoopVoice {
     }
     final loop = _loop;
     _loop = null;
+    _appliedVolume = null;
+    _appliedPitch = null;
     if (loop != null) {
       await _stopAndDispose(loop);
     }
@@ -522,10 +528,7 @@ final class _LoopVoice {
       return;
     }
     _loop = loop;
-    await Future.wait(<Future<void>>[
-      loop.setVolume(_volume),
-      loop.setPitch(_pitch),
-    ]);
+    await Future.wait(<Future<void>>[setVolume(_volume), setPitch(_pitch)]);
   }
 
   Future<void> _stopAndDispose(GameAudioLoop loop) async {
